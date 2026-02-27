@@ -16,7 +16,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                 styles={{ body: { padding: 0 } }}
                 style={{ overflow: 'hidden' }}
             >
-                <div style={{ width: '100%', aspectRatio: '1 / 1', background: '#fafafa' }}>
+                <div style={{ width: '100%', aspectRatio: '1 / 1' }}>
                     {activeUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -45,7 +45,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                             }}
                             aria-label={`Imagen ${idx + 1}`}
                         >
-                            <div style={{ width: 70, height: 70, background: '#fafafa', borderRadius: 8, overflow: 'hidden' }}>
+                            <div style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden' }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={img.url}

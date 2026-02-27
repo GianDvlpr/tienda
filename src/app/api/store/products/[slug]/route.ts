@@ -3,21 +3,25 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
-export async function GET(_req: NextRequest, ctx: { params: { slug: string } }) {
-    const slug = ctx.params.slug;
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+    const resolvedParams = await params;
+    const raw = resolvedParams.slug;
+    const slug = decodeURIComponent(String(raw)).trim().toLowerCase();
 
     try {
-        // 1) Product
+        const db = await prisma.$queryRaw<any[]>`SELECT DB_NAME() AS db;`;
+        console.log('[detail] db:', db?.[0]?.db, 'slug:', slug);
         const productRows = await prisma.$queryRaw<any[]>`
-      SELECT TOP 1
-        product_id,
-        slug,
-        name,
-        description,
-        COALESCE(base_price, 0) AS base_price
-      FROM dbo.product
-      WHERE slug = ${slug} AND is_active = 1;
-    `;
+  SELECT TOP 1
+    product_id,
+    slug,
+    name,
+    description,
+    COALESCE(base_price, 0) AS base_price
+  FROM dbo.product
+  WHERE LOWER(LTRIM(RTRIM(slug))) = CONVERT(NVARCHAR(180), ${slug})
+    AND is_active = 1;
+`;
 
         const p = productRows?.[0];
         if (!p) return NextResponse.json({ error: 'Not found' }, { status: 404 });

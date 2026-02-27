@@ -178,7 +178,7 @@ export default function CheckoutPage() {
 
                 <Divider />
 
-                <Space direction="vertical" style={{ width: '100%' }} size={6}>
+                <Space orientation="vertical" style={{ width: '100%' }} size={6}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <Text type="secondary">Subtotal</Text>
                         <Text>{formatPEN(subtotal)}</Text>

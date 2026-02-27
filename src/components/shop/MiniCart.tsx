@@ -58,7 +58,7 @@ export default function MiniCart({
                         >
                             <List.Item.Meta
                                 avatar={
-                                    <div style={{ width: 56, height: 56, background: '#fafafa', overflow: 'hidden', borderRadius: 8 }}>
+                                    <div style={{ width: 56, height: 56, overflow: 'hidden', borderRadius: 8 }}>
                                         {item.imageUrl ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img
@@ -70,7 +70,7 @@ export default function MiniCart({
                                     </div>
                                 }
                                 title={
-                                    <Space direction="vertical" size={0}>
+                                    <Space orientation="vertical" size={0}>
                                         <Link href={`/product/${item.slug}`} onClick={onClose}>
                                             <Text strong>{item.name}</Text>
                                         </Link>
@@ -78,7 +78,7 @@ export default function MiniCart({
                                     </Space>
                                 }
                                 description={
-                                    <Space direction="vertical" size={6}>
+                                    <Space orientation="vertical" size={6}>
                                         <Text>{formatPEN(item.unitPrice)}</Text>
                                         <Space>
                                             <Text type="secondary">Cantidad</Text>

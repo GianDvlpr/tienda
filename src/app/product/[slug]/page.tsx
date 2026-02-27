@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Divider, Radio, Space, Typography, message } from 'antd';
 import { useParams } from 'next/navigation';
+import useSWR from 'swr';
+
 import ProductGallery from '@/components/shop/ProductGallery';
+import ProductDetailSkeleton from '@/components/shop/ProductDetailSkeleton';
+
 import type { ProductDetailResponse, ProductVariant } from '@/types/product';
 import { formatPEN } from '@/lib/money';
 import { useCartStore } from '@/store/cart.store';
+import { fetcher } from '@/lib/fetcher';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -16,41 +21,27 @@ export default function ProductDetailPage() {
 
     const addItem = useCartStore((s) => s.addItem);
 
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState<ProductDetailResponse | null>(null);
+    const { data, error, isLoading } = useSWR<ProductDetailResponse>(
+        slug ? `/api/store/products/${slug}` : null,
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            keepPreviousData: true,
+        }
+    );
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
     useEffect(() => {
-        const controller = new AbortController();
+        if (!data) return;
 
-        const run = async () => {
-            try {
-                setLoading(true);
-                const res = await fetch(`/api/store/products/${slug}`, { signal: controller.signal });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = (await res.json()) as ProductDetailResponse;
-                setData(json);
-
-                // Preselección inteligente: primera variante con stock
-                const first = (json.variants ?? []).find((v) => v.stock > 0) ?? (json.variants ?? [])[0];
-                if (first) {
-                    setSelectedSize(first.size);
-                    setSelectedColor(first.color);
-                }
-            } catch (e: any) {
-                if (e?.name !== 'AbortError') {
-                    message.error('No se pudo cargar el producto');
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        run();
-        return () => controller.abort();
-    }, [slug]);
+        const first = (data.variants ?? []).find((v) => v.stock > 0) ?? (data.variants ?? [])[0];
+        if (first) {
+            setSelectedSize(first.size);
+            setSelectedColor(first.color);
+        }
+    }, [data]);
 
     const variants = data?.variants ?? [];
 
@@ -69,13 +60,14 @@ export default function ProductDetailPage() {
         return Array.from(set);
     }, [variants, selectedSize]);
 
-    // Si cambias talla y el color ya no existe, re-selecciona el primero disponible
     useEffect(() => {
         if (!selectedSize) return;
+
         if (!selectedColor) {
             setSelectedColor(colorOptionsForSize[0] ?? null);
             return;
         }
+
         if (selectedColor && !colorOptionsForSize.includes(selectedColor)) {
             setSelectedColor(colorOptionsForSize[0] ?? null);
         }
@@ -114,20 +106,28 @@ export default function ProductDetailPage() {
         message.success('Agregado al carrito');
     };
 
-    if (loading) {
+    if (isLoading && !data) {
+        return <ProductDetailSkeleton />;
+    }
+
+    if (error) {
         return (
             <Card>
-                <div style={{ padding: 40, textAlign: 'center' }}>
-                    <Spin />
-                </div>
+                <Alert
+                    type="error"
+                    showIcon
+                    message="No se pudo cargar el producto"
+                    description={error.message}
+                />
             </Card>
         );
     }
 
+    // ✅ Not found
     if (!data) {
         return (
             <Card>
-                <Alert type="error" message="Producto no encontrado" />
+                <Alert type="error" showIcon message="Producto no encontrado" />
             </Card>
         );
     }
@@ -135,18 +135,24 @@ export default function ProductDetailPage() {
     return (
         <div style={{ display: 'grid', gap: 16 }}>
             <Card>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24 }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                        gap: 24,
+                    }}
+                >
                     <div>
                         <ProductGallery images={data.images ?? []} />
                     </div>
 
                     <div>
-                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                            <Title level={3} style={{ margin: 0 }}>{data.product.name}</Title>
+                        <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+                            <Title level={3} style={{ margin: 0 }}>
+                                {data.product.name}
+                            </Title>
 
-                            <Text type="secondary">
-                                {selectedVariant ? `SKU: ${selectedVariant.sku}` : null}
-                            </Text>
+                            <Text type="secondary">{selectedVariant ? `SKU: ${selectedVariant.sku}` : null}</Text>
 
                             <Title level={4} style={{ margin: 0 }}>
                                 {formatPEN(selectedVariant?.price ?? data.product.basePrice ?? 0)}
@@ -196,6 +202,7 @@ export default function ProductDetailPage() {
                                         })}
                                     </Radio.Group>
                                 </div>
+
                                 <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
                                     {selectedVariant
                                         ? selectedVariant.stock > 0
@@ -212,6 +219,9 @@ export default function ProductDetailPage() {
                             {!canAdd ? (
                                 <Text type="secondary">Selecciona una variante con stock.</Text>
                             ) : null}
+
+                            {/* Feedback sutil si SWR revalida y ya hay data */}
+                            {isLoading && data ? <Text type="secondary">Actualizando...</Text> : null}
                         </Space>
                     </div>
                 </div>

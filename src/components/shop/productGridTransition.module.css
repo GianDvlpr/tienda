@@ -1,0 +1,13 @@
+.grid {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  will-change: opacity, transform;
+}
+
+.gridLoading {
+  opacity: 0.55;
+  transform: translateY(4px);
+}

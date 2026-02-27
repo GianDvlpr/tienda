@@ -17,7 +17,7 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
             <Card
                 hoverable
                 cover={
-                    <div style={{ width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', background: '#fafafa' }}>
+                    <div style={{ width: '100%', aspectRatio: '1 / 1', overflow: 'hidden' }}>
                         {item.primaryImageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -37,6 +37,6 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                     </Text>
                 </div>
             </Card>
-        </Link>
+        </Link >
     );
 }
