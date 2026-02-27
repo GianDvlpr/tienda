@@ -1,0 +1,221 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Divider, Radio, Space, Spin, Typography, message } from 'antd';
+import { useParams } from 'next/navigation';
+import ProductGallery from '@/components/shop/ProductGallery';
+import type { ProductDetailResponse, ProductVariant } from '@/types/product';
+import { formatPEN } from '@/lib/money';
+import { useCartStore } from '@/store/cart.store';
+
+const { Title, Text, Paragraph } = Typography;
+
+export default function ProductDetailPage() {
+    const params = useParams<{ slug: string }>();
+    const slug = params.slug;
+
+    const addItem = useCartStore((s) => s.addItem);
+
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<ProductDetailResponse | null>(null);
+
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const run = async () => {
+            try {
+                setLoading(true);
+                const res = await fetch(`/api/store/products/${slug}`, { signal: controller.signal });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = (await res.json()) as ProductDetailResponse;
+                setData(json);
+
+                // Preselección inteligente: primera variante con stock
+                const first = (json.variants ?? []).find((v) => v.stock > 0) ?? (json.variants ?? [])[0];
+                if (first) {
+                    setSelectedSize(first.size);
+                    setSelectedColor(first.color);
+                }
+            } catch (e: any) {
+                if (e?.name !== 'AbortError') {
+                    message.error('No se pudo cargar el producto');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        run();
+        return () => controller.abort();
+    }, [slug]);
+
+    const variants = data?.variants ?? [];
+
+    const sizeOptions = useMemo(() => {
+        const set = new Set<string>();
+        for (const v of variants) set.add(v.size);
+        return Array.from(set);
+    }, [variants]);
+
+    const colorOptionsForSize = useMemo(() => {
+        if (!selectedSize) return [];
+        const set = new Set<string>();
+        for (const v of variants) {
+            if (v.size === selectedSize) set.add(v.color);
+        }
+        return Array.from(set);
+    }, [variants, selectedSize]);
+
+    // Si cambias talla y el color ya no existe, re-selecciona el primero disponible
+    useEffect(() => {
+        if (!selectedSize) return;
+        if (!selectedColor) {
+            setSelectedColor(colorOptionsForSize[0] ?? null);
+            return;
+        }
+        if (selectedColor && !colorOptionsForSize.includes(selectedColor)) {
+            setSelectedColor(colorOptionsForSize[0] ?? null);
+        }
+    }, [selectedSize, selectedColor, colorOptionsForSize]);
+
+    const selectedVariant: ProductVariant | null = useMemo(() => {
+        if (!selectedSize || !selectedColor) return null;
+        return variants.find((v) => v.size === selectedSize && v.color === selectedColor) ?? null;
+    }, [variants, selectedSize, selectedColor]);
+
+    const canAdd = !!selectedVariant && selectedVariant.stock > 0;
+
+    const onAddToCart = () => {
+        if (!data || !selectedVariant) return;
+
+        if (selectedVariant.stock <= 0) {
+            message.warning('No hay stock de esa variante');
+            return;
+        }
+
+        addItem(
+            {
+                variantId: selectedVariant.variantId,
+                productId: data.product.productId,
+                slug: data.product.slug,
+                name: data.product.name,
+                size: selectedVariant.size,
+                color: selectedVariant.color,
+                sku: selectedVariant.sku,
+                imageUrl: data.images?.[0]?.url ?? null,
+                unitPrice: selectedVariant.price,
+            },
+            1
+        );
+
+        message.success('Agregado al carrito');
+    };
+
+    if (loading) {
+        return (
+            <Card>
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                    <Spin />
+                </div>
+            </Card>
+        );
+    }
+
+    if (!data) {
+        return (
+            <Card>
+                <Alert type="error" message="Producto no encontrado" />
+            </Card>
+        );
+    }
+
+    return (
+        <div style={{ display: 'grid', gap: 16 }}>
+            <Card>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24 }}>
+                    <div>
+                        <ProductGallery images={data.images ?? []} />
+                    </div>
+
+                    <div>
+                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                            <Title level={3} style={{ margin: 0 }}>{data.product.name}</Title>
+
+                            <Text type="secondary">
+                                {selectedVariant ? `SKU: ${selectedVariant.sku}` : null}
+                            </Text>
+
+                            <Title level={4} style={{ margin: 0 }}>
+                                {formatPEN(selectedVariant?.price ?? data.product.basePrice ?? 0)}
+                            </Title>
+
+                            {data.product.description ? (
+                                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                                    {data.product.description}
+                                </Paragraph>
+                            ) : null}
+
+                            <Divider style={{ margin: '12px 0' }} />
+
+                            <div>
+                                <Text strong>Talla</Text>
+                                <div style={{ marginTop: 8 }}>
+                                    <Radio.Group
+                                        value={selectedSize ?? undefined}
+                                        onChange={(e) => setSelectedSize(e.target.value)}
+                                        buttonStyle="solid"
+                                    >
+                                        {sizeOptions.map((s) => (
+                                            <Radio.Button key={s} value={s}>
+                                                {s}
+                                            </Radio.Button>
+                                        ))}
+                                    </Radio.Group>
+                                </div>
+                            </div>
+
+                            <div>
+                                <Text strong>Color</Text>
+                                <div style={{ marginTop: 8 }}>
+                                    <Radio.Group
+                                        value={selectedColor ?? undefined}
+                                        onChange={(e) => setSelectedColor(e.target.value)}
+                                        buttonStyle="solid"
+                                    >
+                                        {colorOptionsForSize.map((c) => {
+                                            const v = variants.find((x) => x.size === selectedSize && x.color === c);
+                                            const disabled = !v || v.stock <= 0;
+                                            return (
+                                                <Radio.Button key={c} value={c} disabled={disabled}>
+                                                    {c}
+                                                </Radio.Button>
+                                            );
+                                        })}
+                                    </Radio.Group>
+                                </div>
+                                <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                                    {selectedVariant
+                                        ? selectedVariant.stock > 0
+                                            ? `Stock: ${selectedVariant.stock}`
+                                            : 'Sin stock'
+                                        : 'Elige una talla y color'}
+                                </Text>
+                            </div>
+
+                            <Button type="primary" size="large" disabled={!canAdd} onClick={onAddToCart}>
+                                Agregar al carrito
+                            </Button>
+
+                            {!canAdd ? (
+                                <Text type="secondary">Selecciona una variante con stock.</Text>
+                            ) : null}
+                        </Space>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+}
