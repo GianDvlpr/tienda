@@ -5,6 +5,7 @@ import {
     Alert,
     Card,
     Checkbox,
+    Collapse,
     Divider,
     Flex,
     Input,
@@ -253,64 +254,75 @@ export default function ShopPage() {
                         </div>
                     </Flex>
 
-                    <Divider />
+                    <Divider style={{ margin: '16px 0' }} />
 
-                    <Flex gap={24} wrap="wrap" align="flex-start">
-                        <div style={{ minWidth: 320 }}>
-                            <Text strong>Precio (S/)</Text>
-                            <Slider
-                                range
-                                min={priceBounds.min}
-                                max={priceBounds.max}
-                                step={1}
-                                value={priceUI}
-                                onChange={(v) => setPriceUI(v as [number, number])}
-                                onChangeComplete={(v) => {
-                                    setPrice(v as [number, number]);
-                                    resetPage();
-                                }}
-                                style={{ marginTop: 8 }}
-                                disabled={metaLoading}
-                            />
-                            <Text type="secondary">{`S/ ${priceUI[0]} - S/ ${priceUI[1]}`}</Text>
-                        </div>
+                    <Collapse
+                        ghost
+                        items={[
+                            {
+                                key: 'advanced-filters',
+                                label: <Text strong>Filtros avanzados</Text>,
+                                children: (
+                                    <Flex gap={24} wrap="wrap" align="flex-start" style={{ paddingTop: 8 }}>
+                                        <div style={{ minWidth: 320 }}>
+                                            <Text strong>Precio (S/)</Text>
+                                            <Slider
+                                                range
+                                                min={priceBounds.min}
+                                                max={priceBounds.max}
+                                                step={1}
+                                                value={priceUI}
+                                                onChange={(v) => setPriceUI(v as [number, number])}
+                                                onChangeComplete={(v) => {
+                                                    setPrice(v as [number, number]);
+                                                    resetPage();
+                                                }}
+                                                style={{ marginTop: 8 }}
+                                                disabled={metaLoading}
+                                            />
+                                            <Text type="secondary">{`S/ ${priceUI[0]} - S/ ${priceUI[1]}`}</Text>
+                                        </div>
 
-                        <div style={{ minWidth: 260 }}>
-                            <Text strong>Tallas</Text>
-                            <Checkbox.Group
-                                options={sizeOptions}
-                                value={sizes}
-                                onChange={(v) => {
-                                    setSizes(v as string[]);
-                                }}
-                                style={{
-                                    marginTop: 8,
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
-                                    gap: 8,
-                                }}
-                                disabled={metaLoading}
-                            />
-                        </div>
+                                        <div style={{ minWidth: 260 }}>
+                                            <Text strong>Tallas</Text>
+                                            <Checkbox.Group
+                                                options={sizeOptions}
+                                                value={sizes}
+                                                onChange={(v) => {
+                                                    setSizes(v as string[]);
+                                                }}
+                                                style={{
+                                                    marginTop: 8,
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                                    gap: 8,
+                                                }}
+                                                disabled={metaLoading}
+                                            />
+                                        </div>
 
-                        <div style={{ minWidth: 260 }}>
-                            <Text strong>Colores</Text>
-                            <Checkbox.Group
-                                options={colorOptions}
-                                value={colors}
-                                onChange={(v) => {
-                                    setColors(v as string[]);
-                                }}
-                                style={{
-                                    marginTop: 8,
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(2, 1fr)',
-                                    gap: 8,
-                                }}
-                                disabled={metaLoading}
-                            />
-                        </div>
-                    </Flex>
+                                        <div style={{ minWidth: 260 }}>
+                                            <Text strong>Colores</Text>
+                                            <Checkbox.Group
+                                                options={colorOptions}
+                                                value={colors}
+                                                onChange={(v) => {
+                                                    setColors(v as string[]);
+                                                }}
+                                                style={{
+                                                    marginTop: 8,
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'repeat(2, 1fr)',
+                                                    gap: 8,
+                                                }}
+                                                disabled={metaLoading}
+                                            />
+                                        </div>
+                                    </Flex>
+                                ),
+                            },
+                        ]}
+                    />
                 </Card>
 
             )}
