@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Menu, Badge, Button, Switch, Space } from "antd";
+import { Layout, Badge, Button, Switch, Space } from "antd";
 import { ShoppingOutlined, BulbOutlined, BulbFilled } from "@ant-design/icons";
 import Link from "next/link";
 import { useState } from "react";
@@ -38,20 +38,9 @@ export default function ShopHeader() {
                     AURA
                 </Link>
 
-                <Menu
-                    theme="dark"
-                    mode="horizontal"
-                    defaultSelectedKeys={["shop"]}
-                    items={[
-                        {
-                            key: "shop",
-                            label: <Link href="/shop">Tienda</Link>,
-                        },
-                    ]}
-                    style={{ flex: 1, minWidth: 0 }}
-                />
 
-                <Space size="middle">
+
+                <Space size="middle" style={{ marginLeft: "auto" }}>
                     <Switch
                         checked={isDarkMode}
                         onChange={toggleDarkMode}

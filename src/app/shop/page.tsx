@@ -264,7 +264,7 @@ function ShopContent() {
                                 label: <Text strong>Filtros avanzados</Text>,
                                 children: (
                                     <Flex gap={24} wrap="wrap" align="flex-start" style={{ paddingTop: 8 }}>
-                                        <div style={{ minWidth: 320 }}>
+                                        <div style={{ flex: 1, minWidth: 200 }}>
                                             <Text strong>Precio (S/)</Text>
                                             <Slider
                                                 range
