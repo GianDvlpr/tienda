@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Typography, message } from 'antd';
+import { Alert, Button, Card, Divider, Radio, Space, Typography, message, Row, Col } from 'antd';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 
@@ -135,18 +135,12 @@ export default function ProductDetailPage() {
     return (
         <div style={{ display: 'grid', gap: 16 }}>
             <Card>
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-                        gap: 24,
-                    }}
-                >
-                    <div>
+                <Row gutter={[24, 24]}>
+                    <Col xs={24} md={12}>
                         <ProductGallery images={data.images ?? []} />
-                    </div>
+                    </Col>
 
-                    <div>
+                    <Col xs={24} md={12}>
                         <Space orientation="vertical" size={10} style={{ width: '100%' }}>
                             <Title level={3} style={{ margin: 0 }}>
                                 {data.product.name}
@@ -173,6 +167,7 @@ export default function ProductDetailPage() {
                                         value={selectedSize ?? undefined}
                                         onChange={(e) => setSelectedSize(e.target.value)}
                                         buttonStyle="solid"
+                                        style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
                                     >
                                         {sizeOptions.map((s) => (
                                             <Radio.Button key={s} value={s}>
@@ -190,6 +185,7 @@ export default function ProductDetailPage() {
                                         value={selectedColor ?? undefined}
                                         onChange={(e) => setSelectedColor(e.target.value)}
                                         buttonStyle="solid"
+                                        style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
                                     >
                                         {colorOptionsForSize.map((c) => {
                                             const v = variants.find((x) => x.size === selectedSize && x.color === c);
@@ -223,8 +219,8 @@ export default function ProductDetailPage() {
                             {/* Feedback sutil si SWR revalida y ya hay data */}
                             {isLoading && data ? <Text type="secondary">Actualizando...</Text> : null}
                         </Space>
-                    </div>
-                </div>
+                    </Col>
+                </Row>
             </Card>
         </div>
     );
