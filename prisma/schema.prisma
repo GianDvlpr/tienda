@@ -10,3 +10,178 @@ datasource db {
 model Healthcheck {
   id String @id @default(cuid())
 }
+
+model collection {
+  collection_id      String               @id(map: "PK_collection") @default(dbgenerated("newsequentialid()"), map: "DF_collection_id") @db.UniqueIdentifier
+  slug               String               @unique(map: "UX_collection_slug") @db.NVarChar(180)
+  name               String               @db.NVarChar(200)
+  description        String?              @db.NVarChar(Max)
+  is_active          Boolean              @default(true, map: "DF_collection_is_active")
+  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_collection_created_at")
+  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_collection_updated_at")
+  product_collection product_collection[]
+
+  @@index([is_active, created_at(sort: Desc)], map: "IX_collection_active")
+  @@index([is_active, slug], map: "IX_collection_active_slug")
+}
+
+model customer {
+  customer_id  String         @id(map: "PK_customer") @default(dbgenerated("newsequentialid()"), map: "DF_customer_id") @db.UniqueIdentifier
+  full_name    String         @db.NVarChar(200)
+  phone        String?        @db.NVarChar(30)
+  email        String?        @db.NVarChar(200)
+  created_at   DateTime       @default(dbgenerated("sysutcdatetime()"), map: "DF_customer_created_at")
+  order_header order_header[]
+
+  @@index([email], map: "IX_customer_email")
+  @@index([phone], map: "IX_customer_phone")
+}
+
+model inventory_movement {
+  movement_id     String          @id(map: "PK_inventory_movement") @default(dbgenerated("newsequentialid()"), map: "DF_inventory_movement_id") @db.UniqueIdentifier
+  variant_id      String          @db.UniqueIdentifier
+  movement_type   String          @db.NVarChar(20)
+  qty             Int
+  stock_before    Int
+  stock_after     Int
+  reason          String?         @db.NVarChar(250)
+  order_id        String?         @db.UniqueIdentifier
+  order_item_id   String?         @db.UniqueIdentifier
+  created_at      DateTime        @default(dbgenerated("sysutcdatetime()"), map: "DF_inventory_movement_created_at")
+  order_header    order_header?   @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_movement_order")
+  order_item      order_item?     @relation(fields: [order_item_id], references: [order_item_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_movement_order_item")
+  product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_movement_variant")
+
+  @@index([order_id, created_at(sort: Desc)], map: "IX_inventory_order_created")
+  @@index([variant_id, created_at(sort: Desc)], map: "IX_inventory_variant_created")
+}
+
+model order_header {
+  order_id           String               @id(map: "PK_order_header") @default(dbgenerated("newsequentialid()"), map: "DF_order_id") @db.UniqueIdentifier
+  code               String               @unique(map: "UX_order_code") @db.NVarChar(30)
+  status             String               @db.NVarChar(30)
+  customer_id        String?              @db.UniqueIdentifier
+  shipping_name      String               @db.NVarChar(200)
+  shipping_phone     String               @db.NVarChar(30)
+  shipping_address   String               @db.NVarChar(500)
+  shipping_city      String?              @db.NVarChar(120)
+  shipping_reference String?              @db.NVarChar(250)
+  notes              String?
+  subtotal           Decimal              @db.Decimal(18, 2)
+  shipping_cost      Decimal              @default(0, map: "DF_order_shipping_cost") @db.Decimal(18, 2)
+  discount_total     Decimal              @default(0, map: "DF_order_discount_total") @db.Decimal(18, 2)
+  total              Decimal              @db.Decimal(18, 2)
+  currency           String               @default("PEN", map: "DF_order_currency") @db.Char(3)
+  payment_method     String?              @db.NVarChar(30)
+  payment_reference  String?              @db.NVarChar(120)
+  paid_at            DateTime?
+  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_created_at")
+  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_updated_at")
+  inventory_movement inventory_movement[]
+  customer           customer?            @relation(fields: [customer_id], references: [customer_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_customer")
+  order_item         order_item[]
+  stock_reservation  stock_reservation[]
+
+  @@index([customer_id, created_at(sort: Desc)], map: "IX_order_customer")
+  @@index([status, created_at(sort: Desc)], map: "IX_order_status_created")
+}
+
+model order_item {
+  order_item_id      String               @id(map: "PK_order_item") @default(dbgenerated("newsequentialid()"), map: "DF_order_item_id") @db.UniqueIdentifier
+  order_id           String               @db.UniqueIdentifier
+  variant_id         String               @db.UniqueIdentifier
+  qty                Int
+  unit_price         Decimal              @db.Decimal(18, 2)
+  line_total         Decimal              @db.Decimal(18, 2)
+  product_name       String               @db.NVarChar(250)
+  variant_size       String               @db.NVarChar(50)
+  variant_color      String               @db.NVarChar(80)
+  sku                String               @db.NVarChar(80)
+  image_url          String?              @db.NVarChar(500)
+  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_item_created_at")
+  inventory_movement inventory_movement[]
+  order_header       order_header         @relation(fields: [order_id], references: [order_id], onUpdate: NoAction, map: "FK_item_order")
+  product_variant    product_variant      @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_item_variant")
+
+  @@index([order_id], map: "IX_order_item_order")
+  @@index([variant_id], map: "IX_order_item_variant")
+}
+
+model product {
+  product_id         String               @id(map: "PK_product") @default(dbgenerated("newsequentialid()"), map: "DF_product_id") @db.UniqueIdentifier
+  slug               String               @unique(map: "UX_product_slug") @db.NVarChar(180)
+  name               String               @db.NVarChar(250)
+  description        String?              @db.NVarChar(Max)
+  is_active          Boolean              @default(true, map: "DF_product_is_active")
+  base_price         Decimal?             @db.Decimal(18, 2)
+  base_cost          Decimal?             @db.Decimal(18, 2)
+  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_created_at")
+  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_updated_at")
+  product_collection product_collection[]
+  product_image      product_image[]
+  product_variant    product_variant[]
+
+  @@index([is_active, created_at(sort: Desc)], map: "IX_product_active")
+}
+
+model product_collection {
+  product_id    String     @db.UniqueIdentifier
+  collection_id String     @db.UniqueIdentifier
+  created_at    DateTime   @default(dbgenerated("sysutcdatetime()"), map: "DF_product_collection_created_at")
+  collection    collection @relation(fields: [collection_id], references: [collection_id], onUpdate: NoAction, map: "FK_pc_collection")
+  product       product    @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_pc_product")
+
+  @@id([product_id, collection_id], map: "PK_product_collection")
+  @@index([collection_id, created_at(sort: Desc)], map: "IX_pc_collection")
+  @@index([product_id, collection_id], map: "IX_pc_product")
+}
+
+model product_image {
+  image_id   String   @id(map: "PK_product_image") @default(dbgenerated("newsequentialid()"), map: "DF_image_id") @db.UniqueIdentifier
+  product_id String   @db.UniqueIdentifier
+  url        String   @db.NVarChar(500)
+  public_id  String   @unique(map: "UX_image_public_id") @db.NVarChar(300)
+  sort_order Int      @default(0, map: "DF_image_sort_order")
+  created_at DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_image_created_at")
+  product    product  @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_image_product")
+
+  @@index([product_id, sort_order, created_at(sort: Desc)], map: "IX_image_product")
+}
+
+model product_variant {
+  variant_id         String               @id(map: "PK_product_variant") @default(dbgenerated("newsequentialid()"), map: "DF_variant_id") @db.UniqueIdentifier
+  product_id         String               @db.UniqueIdentifier
+  sku                String               @unique(map: "UX_variant_sku") @db.NVarChar(80)
+  size               String               @db.NVarChar(50)
+  color              String               @db.NVarChar(80)
+  price              Decimal?             @db.Decimal(18, 2)
+  cost               Decimal?             @db.Decimal(18, 2)
+  stock              Int                  @default(0, map: "DF_variant_stock")
+  is_active          Boolean              @default(true, map: "DF_variant_is_active")
+  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_variant_created_at")
+  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_variant_updated_at")
+  inventory_movement inventory_movement[]
+  order_item         order_item[]
+  product            product              @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_variant_product")
+  stock_reservation  stock_reservation[]
+
+  @@unique([product_id, size, color], map: "UX_variant_product_size_color")
+  @@index([product_id, is_active, size, color], map: "IX_variant_filter")
+  @@index([product_id, is_active], map: "IX_variant_product")
+}
+
+model stock_reservation {
+  reservation_id  String          @id(map: "PK_stock_reservation") @default(dbgenerated("newsequentialid()"), map: "DF_stock_reservation_id") @db.UniqueIdentifier
+  variant_id      String          @db.UniqueIdentifier
+  order_id        String?         @db.UniqueIdentifier
+  qty             Int
+  status          String          @db.NVarChar(20)
+  expires_at      DateTime
+  created_at      DateTime        @default(dbgenerated("sysutcdatetime()"), map: "DF_stock_reservation_created_at")
+  released_at     DateTime?
+  order_header    order_header?   @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reservation_order")
+  product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_reservation_variant")
+
+  @@index([order_id], map: "IX_reservation_order")
+  @@index([variant_id, status, expires_at], map: "IX_reservation_variant_status")
+}

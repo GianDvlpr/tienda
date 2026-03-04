@@ -59,7 +59,7 @@ export default function OrderPage() {
 
     return (
         <Card>
-            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={10} style={{ width: '100%' }}>
                 <Title level={3} style={{ marginTop: 0 }}>Pedido creado ✅</Title>
                 <Text>Tu código: <Text strong>{data.code}</Text></Text>
                 <Text>Estado: <Text strong>{data.status}</Text></Text>
