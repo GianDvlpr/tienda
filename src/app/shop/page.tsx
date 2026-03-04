@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import {
     Alert,
     Card,
@@ -49,7 +49,7 @@ function parseJsonArray(param: string | null): string[] {
     }
 }
 
-export default function ShopPage() {
+function ShopContent() {
     const router = useRouter();
     const sp = useSearchParams();
 
@@ -363,5 +363,13 @@ export default function ShopPage() {
                 )}
             </Card>
         </Space>
+    );
+}
+
+export default function ShopPage() {
+    return (
+        <Suspense fallback={<Spin size="large" style={{ display: 'block', margin: '50px auto' }} />}>
+            <ShopContent />
+        </Suspense>
     );
 }
