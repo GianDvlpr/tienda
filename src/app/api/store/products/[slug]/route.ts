@@ -13,14 +13,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
         console.log('[detail] db:', db?.[0]?.db, 'slug:', slug);
         const productRows = await prisma.$queryRaw<any[]>`
   SELECT TOP 1
-    product_id,
-    slug,
-    name,
-    description,
-    COALESCE(base_price, 0) AS base_price
-  FROM dbo.product
-  WHERE LOWER(LTRIM(RTRIM(slug))) = CONVERT(NVARCHAR(180), ${slug})
-    AND is_active = 1;
+    p.product_id,
+    p.slug,
+    p.name,
+    p.description,
+    COALESCE(p.base_price, 0) AS base_price,
+    c.name AS collection_name,
+    c.slug AS collection_slug
+  FROM dbo.product p
+  OUTER APPLY (
+    SELECT TOP 1 col.name, col.slug
+    FROM dbo.product_collection pc
+    JOIN dbo.collection col ON col.collection_id = pc.collection_id
+    WHERE pc.product_id = p.product_id
+  ) c
+  WHERE LOWER(LTRIM(RTRIM(p.slug))) = CONVERT(NVARCHAR(180), ${slug})
+    AND p.is_active = 1;
 `;
 
         const p = productRows?.[0];
@@ -56,14 +64,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
                 name: p.name,
                 description: p.description ?? null,
                 basePrice: Number(p.base_price ?? 0),
+                collection: p.collection_name ? {
+                    name: p.collection_name,
+                    slug: p.collection_slug
+                } : null
             },
-            images: (images ?? []).map((r) => ({
+            images: (images ?? []).map((r: any) => ({
                 imageId: r.image_id,
                 url: r.url,
                 publicId: r.public_id,
                 sortOrder: Number(r.sort_order ?? 0),
             })),
-            variants: (variants ?? []).map((r) => ({
+            variants: (variants ?? []).map((r: any) => ({
                 variantId: r.variant_id,
                 sku: r.sku,
                 size: r.size,

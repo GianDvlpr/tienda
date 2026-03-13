@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import {
     Alert,
+    Button,
     Card,
     Checkbox,
     Collapse,
@@ -17,11 +18,15 @@ import {
     Switch,
     Typography,
     Empty,
+    Drawer,
 } from 'antd';
+import { MenuOutlined } from '@ant-design/icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import styles from '@/components/shop/productGridTransition.module.css';
 import ProductGrid from '@/components/shop/ProductGrid';
+import { useUIStore } from '@/store/ui.store';
+import HeroSlider from '@/components/shop/HeroSlider';
 import type { ProductListResponse } from '@/types/product';
 import type { StoreMetaResponse } from '@/types/meta';
 import { useDebounce } from '@/lib/useDebounce';
@@ -58,6 +63,9 @@ function ShopContent() {
     );
     const [collections, setCollections] = useState<{ value: string; label: string }[]>([]);
 
+    const isFilterDrawerOpen = useUIStore((s) => s.isFilterDrawerOpen);
+    const setFilterDrawerOpen = useUIStore((s) => s.setFilterDrawerOpen);
+
     const [q, setQ] = useState<string>(sp.get('q') ?? '');
     const debouncedQ = useDebounce(q, 300);
 
@@ -85,6 +93,10 @@ function ShopContent() {
     const [sort, setSort] = useState<string>(sp.get('sort') ?? 'NEW');
     const [page, setPage] = useState<number>(Number(sp.get('page') ?? 1));
     const [pageSize, setPageSize] = useState<number>(Number(sp.get('pageSize') ?? 12));
+
+    useEffect(() => {
+        setQ(sp.get('q') ?? '');
+    }, [sp]);
 
     useEffect(() => {
         setPage(1);
@@ -181,10 +193,12 @@ function ShopContent() {
     const resetPage = () => setPage(1);
 
     return (
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-            <Title level={3} style={{ margin: 0 }}>
-                Tienda
-            </Title>
+        <div style={{ paddingBottom: 64 }}>
+            {/* HERO SLIDER FULL WIDTH */}
+            <HeroSlider />
+
+            <div id="shop-grid" style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 24px 24px' }}>
+                <Space orientation="vertical" size={16} style={{ width: '100%' }}>
 
             {(metaError || productsError) ? (
                 <Alert
@@ -198,133 +212,127 @@ function ShopContent() {
             {metaLoading && !meta ? (
                 <ShopFiltersSkeleton />
             ) : (
-                <Card>
-                    <Flex gap={16} wrap="wrap" align="flex-start">
-                        <div style={{ minWidth: 220 }}>
-                            <Text strong>Colección</Text>
-                            <Select
-                                allowClear
-                                placeholder="Todas"
-                                value={collection}
-                                onChange={(v) => {
-                                    setCollection(v);
-                                    resetPage();
-                                }}
-                                options={collections}
-                                style={{ width: '100%', marginTop: 8 }}
-                                loading={metaLoading}
-                            />
-                        </div>
+                <>
+                    <Flex justify="end" align="center" style={{ marginBottom: 16 }}>
+                        <Select
+                            value={sort}
+                            onChange={(v) => {
+                                setSort(v);
+                                resetPage();
+                            }}
+                            options={SORT_OPTIONS as any}
+                            style={{ minWidth: 200 }}
+                            placeholder="Ordenar por"
+                        />
+                    </Flex>
 
-                        <div style={{ minWidth: 260, flex: 1 }}>
-                            <Text strong>Buscar</Text>
-                            <Input
-                                placeholder="Ej: vestido, blazer, falda..."
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
-                                style={{ marginTop: 8 }}
-                                allowClear
-                            />
-                        </div>
+                    <Drawer
+                        title="Filtrar Productos"
+                        placement="left"
+                        onClose={() => setFilterDrawerOpen(false)}
+                        open={isFilterDrawerOpen}
+                        width={320}
+                    >
+                        <Space direction="vertical" size={24} style={{ width: '100%' }}>
+                            <div>
+                                <Text strong>Colección</Text>
+                                <Select
+                                    allowClear
+                                    placeholder="Todas"
+                                    value={collection}
+                                    onChange={(v) => {
+                                        setCollection(v);
+                                        resetPage();
+                                    }}
+                                    options={collections}
+                                    style={{ width: '100%', marginTop: 8 }}
+                                    loading={metaLoading}
+                                />
+                            </div>
 
-                        <div style={{ minWidth: 260 }}>
-                            <Text strong>Orden</Text>
-                            <Select
-                                value={sort}
-                                onChange={(v) => {
-                                    setSort(v);
-                                    resetPage();
-                                }}
-                                options={SORT_OPTIONS as any}
-                                style={{ width: '100%', marginTop: 8 }}
-                            />
-                        </div>
-
-                        <div style={{ minWidth: 220 }}>
-                            <Text strong>Solo con stock</Text>
-                            <div style={{ marginTop: 8 }}>
+                            <Flex align="center" justify="space-between">
+                                <Text strong>Solo con stock</Text>
                                 <Switch
                                     checked={onlyInStock}
-                                    onChange={(v) => {
+                                    onChange={(v: boolean) => {
                                         setOnlyInStock(v);
                                         resetPage();
                                     }}
                                 />
+                            </Flex>
+
+                            <Divider style={{ margin: 0 }} />
+
+                            <div>
+                                <Text strong>Precio (S/)</Text>
+                                <Slider
+                                    range
+                                    min={priceBounds.min}
+                                    max={priceBounds.max}
+                                    step={1}
+                                    value={priceUI}
+                                    onChange={(v) => setPriceUI(v as [number, number])}
+                                    onChangeComplete={(v) => {
+                                        setPrice(v as [number, number]);
+                                        resetPage();
+                                    }}
+                                    style={{ marginTop: 8 }}
+                                    disabled={metaLoading}
+                                />
+                                <Text type="secondary">{`S/ ${priceUI[0]} - S/ ${priceUI[1]}`}</Text>
                             </div>
-                        </div>
-                    </Flex>
 
-                    <Divider style={{ margin: '16px 0' }} />
+                            <Collapse
+                                ghost
+                                items={[
+                                    {
+                                        key: 'advanced',
+                                        label: <Text strong>Tallas y Colores</Text>,
+                                        children: (
+                                            <Space direction="vertical" size={24} style={{ width: '100%', paddingTop: 8 }}>
+                                                <div>
+                                                    <Text strong>Tallas</Text>
+                                                    <Checkbox.Group
+                                                        options={sizeOptions}
+                                                        value={sizes}
+                                                        onChange={(v) => {
+                                                            setSizes(v as string[]);
+                                                        }}
+                                                        style={{
+                                                            marginTop: 8,
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(3, 1fr)',
+                                                            gap: 8,
+                                                        }}
+                                                        disabled={metaLoading}
+                                                    />
+                                                </div>
 
-                    <Collapse
-                        ghost
-                        items={[
-                            {
-                                key: 'advanced-filters',
-                                label: <Text strong>Filtros avanzados</Text>,
-                                children: (
-                                    <Flex gap={24} wrap="wrap" align="flex-start" style={{ paddingTop: 8 }}>
-                                        <div style={{ flex: 1, minWidth: 200 }}>
-                                            <Text strong>Precio (S/)</Text>
-                                            <Slider
-                                                range
-                                                min={priceBounds.min}
-                                                max={priceBounds.max}
-                                                step={1}
-                                                value={priceUI}
-                                                onChange={(v) => setPriceUI(v as [number, number])}
-                                                onChangeComplete={(v) => {
-                                                    setPrice(v as [number, number]);
-                                                    resetPage();
-                                                }}
-                                                style={{ marginTop: 8 }}
-                                                disabled={metaLoading}
-                                            />
-                                            <Text type="secondary">{`S/ ${priceUI[0]} - S/ ${priceUI[1]}`}</Text>
-                                        </div>
-
-                                        <div style={{ minWidth: 260 }}>
-                                            <Text strong>Tallas</Text>
-                                            <Checkbox.Group
-                                                options={sizeOptions}
-                                                value={sizes}
-                                                onChange={(v) => {
-                                                    setSizes(v as string[]);
-                                                }}
-                                                style={{
-                                                    marginTop: 8,
-                                                    display: 'grid',
-                                                    gridTemplateColumns: 'repeat(3, 1fr)',
-                                                    gap: 8,
-                                                }}
-                                                disabled={metaLoading}
-                                            />
-                                        </div>
-
-                                        <div style={{ minWidth: 260 }}>
-                                            <Text strong>Colores</Text>
-                                            <Checkbox.Group
-                                                options={colorOptions}
-                                                value={colors}
-                                                onChange={(v) => {
-                                                    setColors(v as string[]);
-                                                }}
-                                                style={{
-                                                    marginTop: 8,
-                                                    display: 'grid',
-                                                    gridTemplateColumns: 'repeat(2, 1fr)',
-                                                    gap: 8,
-                                                }}
-                                                disabled={metaLoading}
-                                            />
-                                        </div>
-                                    </Flex>
-                                ),
-                            },
-                        ]}
-                    />
-                </Card>
-
+                                                <div>
+                                                    <Text strong>Colores</Text>
+                                                    <Checkbox.Group
+                                                        options={colorOptions}
+                                                        value={colors}
+                                                        onChange={(v) => {
+                                                            setColors(v as string[]);
+                                                        }}
+                                                        style={{
+                                                            marginTop: 8,
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(2, 1fr)',
+                                                            gap: 8,
+                                                        }}
+                                                        disabled={metaLoading}
+                                                    />
+                                                </div>
+                                            </Space>
+                                        ),
+                                    },
+                                ]}
+                            />
+                        </Space>
+                    </Drawer>
+                </>
             )}
 
             <Card>
@@ -362,7 +370,9 @@ function ShopContent() {
                     </>
                 )}
             </Card>
-        </Space>
+            </Space>
+            </div>
+        </div>
     );
 }
 

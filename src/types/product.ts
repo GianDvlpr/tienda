@@ -37,6 +37,10 @@ export interface ProductDetail {
     name: string;
     description: string | null;
     basePrice: number;
+    collection?: {
+        name: string;
+        slug: string;
+    } | null;
 }
 
 export interface ProductDetailResponse {

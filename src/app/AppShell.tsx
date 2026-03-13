@@ -10,14 +10,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Layout style={{ minHeight: "100vh" }}>
             <ShopHeader />
 
-            <Content
-                style={{
-                    padding: 24,
-                    maxWidth: 1200,
-                    width: "100%",
-                    margin: "0 auto",
-                }}
-            >
+            <Content style={{ width: "100%", margin: 0, padding: 0 }}>
                 {children}
             </Content>
 

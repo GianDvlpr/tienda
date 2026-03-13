@@ -133,7 +133,8 @@ export default function ProductDetailPage() {
     }
 
     return (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24, paddingTop: 100 }}>
+            <div style={{ display: 'grid', gap: 16 }}>
             <Card>
                 <Row gutter={[24, 24]}>
                     <Col xs={24} md={12}>
@@ -222,6 +223,7 @@ export default function ProductDetailPage() {
                     </Col>
                 </Row>
             </Card>
+        </div>
         </div>
     );
 }
