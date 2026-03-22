@@ -51,30 +51,13 @@ export default function MiniCart({
             const data = await res.json();
             const orderCode = data.orderCode;
 
-            // 2. Generate WhatsApp Message
-            let text = `Hola Aura Boutique, acabo de realizar el pedido *${orderCode}*.\n\n`;
-            text += `*Mis datos de envío:*\n`;
-            text += `Nombre: ${values.shipping_name}\n`;
-            text += `Celular: ${values.shipping_phone}\n`;
-            text += `Dirección: ${values.shipping_address || 'Por confirmar'}\n\n`;
-            
-            text += `*Mi lista de prendas:*\n`;
-            items.forEach((item, i) => {
-                text += `${i + 1}. *${item.name}* (Talla: ${item.size}, Color: ${item.color}) - Cant.: ${item.qty} - Precio Ref: ${formatPEN(item.unitPrice)}\n`;
-            });
-            text += `\n*Total Referencial: ${formatPEN(subtotal)}*`;
-            
-            const encodedText = encodeURIComponent(text);
-            const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
-            window.open(`https://wa.me/${waNumber}?text=${encodedText}`, '_blank');
-            
-            // 3. Clear cart and close
+            // 2. Clear cart and close
             clearCart();
             setIsCheckoutView(false);
             form.resetFields();
             onClose();
             
-            message.success('Pedido registrado correctamente. Revisa WhatsApp.');
+            message.success(`Pedido ${orderCode} registrado correctamente. Nos pondremos en contacto contigo pronto.`);
         } catch (error: any) {
             message.error(error.message);
         } finally {
@@ -148,10 +131,9 @@ export default function MiniCart({
                             type="primary" 
                             htmlType="submit"
                             loading={isSubmitting}
-                            icon={<WhatsAppOutlined />}
-                            style={{ backgroundColor: '#25D366', borderColor: '#25D366', width: '100%', height: 44, fontSize: 16, marginTop: 24 }}
+                            style={{ width: '100%', height: 44, fontSize: 16, marginTop: 24 }}
                         >
-                            Enviar Pedido por WhatsApp
+                            Finalizar Pedido
                         </Button>
                     </Form>
                 </div>

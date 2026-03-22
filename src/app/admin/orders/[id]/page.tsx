@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card, Select, Button, Typography, Space, Descriptions, Table, message, Row, Col, Input, Tag, Alert } from 'antd';
-import { LeftOutlined, SaveOutlined, PrinterOutlined } from '@ant-design/icons';
+import { LeftOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import { fetcher } from '@/lib/fetcher';
@@ -60,6 +60,19 @@ export default function OrderDetailPage() {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleContactWhatsApp = () => {
+        if (!order || !order.shipping_phone) return;
+        
+        let text = `Hola ${order.shipping_name}, hemos recibido tu pedido *${order.code}*.\n\n`;
+        text += `El monto total de tu pedido es de *${formatPEN(Number(order.total))}*.\n`;
+        text += `Por favor, envíanos la constancia de pago por este medio para proceder con el envío a la dirección: ${order.shipping_address || 'Tu dirección acordada'}.\n\n`;
+        text += `¡Gracias por tu compra en Aura Boutique!`;
+        
+        const encodedText = encodeURIComponent(text);
+        const phone = order.shipping_phone.replace(/\D/g, ''); // limpia espacios y símbolos 
+        window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
     };
 
     const handlePrint = () => {
@@ -240,6 +253,14 @@ export default function OrderDetailPage() {
                             <Descriptions.Item label="Teléfono / WS">{order.shipping_phone}</Descriptions.Item>
                             <Descriptions.Item label="Dirección">{order.shipping_address || '-'}</Descriptions.Item>
                         </Descriptions>
+                        <Button 
+                            type="primary" 
+                            icon={<WhatsAppOutlined />} 
+                            style={{ backgroundColor: '#25D366', borderColor: '#25D366', width: '100%', marginTop: 16 }}
+                            onClick={handleContactWhatsApp}
+                        >
+                            Contactar por WhatsApp
+                        </Button>
                     </Card>
                 </Col>
             </Row>
