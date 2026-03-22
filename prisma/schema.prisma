@@ -206,6 +206,7 @@ model admin_user {
   username      String   @unique(map: "UX_admin_username") @db.NVarChar(100)
   password_hash String   @db.NVarChar(255)
   full_name     String   @db.NVarChar(200)
+  role          String   @default("ADMIN", map: "DF_admin_role") @db.NVarChar(50)
   is_active     Boolean  @default(true, map: "DF_admin_is_active")
   created_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_created_at")
   updated_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_updated_at")

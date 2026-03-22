@@ -18,6 +18,8 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useThemeStore } from '@/store/theme.store';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 const { Header, Sider, Content } = Layout;
 
@@ -28,6 +30,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
   const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
+  
+  const { data: user } = useSWR<any>('/api/admin/me', fetcher);
 
   if (pathname === '/admin/login') {
     return <Layout style={{ minHeight: '100vh', background: colorBgContainer }}>{children}</Layout>;
@@ -72,6 +76,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     },
   ];
 
+  const filteredMenuItems = user?.role === 'SELLER' 
+    ? menuItems.filter(m => m.key === '/admin' || m.key === '/admin/orders')
+    : menuItems;
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider trigger={null} collapsible collapsed={collapsed} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
@@ -83,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Menu
           mode="inline"
           selectedKeys={[pathname === '/admin' ? '/admin' : pathname]}
-          items={menuItems}
+          items={filteredMenuItems}
           style={{ borderRight: 0, marginTop: 16 }}
         />
       </Sider>

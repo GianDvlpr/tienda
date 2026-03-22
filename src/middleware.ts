@@ -10,11 +10,25 @@ export function middleware(request: NextRequest) {
             return NextResponse.next();
         }
 
-        const token = request.cookies.get('admin_token');
+        const token = request.cookies.get('admin_token')?.value;
 
         if (!token) {
             const loginUrl = new URL('/admin/login', request.url);
             return NextResponse.redirect(loginUrl);
+        }
+
+        try {
+            const payload = JSON.parse(atob(token));
+            
+            if (payload.role === 'SELLER') {
+                const isAllowed = pathname === '/admin' || pathname.startsWith('/admin/orders');
+                if (!isAllowed) {
+                    return NextResponse.redirect(new URL('/admin', request.url));
+                }
+            }
+        } catch (e) {
+            // Invalid token
+            return NextResponse.redirect(new URL('/admin/login', request.url));
         }
     }
 

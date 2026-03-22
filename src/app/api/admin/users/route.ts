@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { username, password, full_name, is_active } = body;
+        const { username, password, full_name, is_active, role } = body;
 
         if (!username || !password || !full_name) {
             return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
         const existing = await prisma.admin_user.findUnique({ where: { username } });
         if (existing) {
-            return NextResponse.json({ error: 'El nombre de usuario ya existe' }, { status: 400 });
+            return NextResponse.json({ error: 'El usuario ya existe' }, { status: 400 });
         }
 
         const password_hash = await bcrypt.hash(password, 10);
@@ -42,9 +42,9 @@ export async function POST(req: Request) {
                 username,
                 password_hash,
                 full_name,
+                role: role || 'SELLER',
                 is_active: is_active ?? true,
-            },
-            select: { user_id: true, username: true, full_name: true, is_active: true }
+            }
         });
 
         return NextResponse.json(newUser);

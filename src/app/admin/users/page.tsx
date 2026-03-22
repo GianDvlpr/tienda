@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, message, Popconfirm } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, message, Popconfirm, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -19,7 +19,7 @@ export default function AdminUsersPage() {
     const openCreateModal = () => {
         setEditingUser(null);
         form.resetFields();
-        form.setFieldsValue({ is_active: true });
+        form.setFieldsValue({ is_active: true, role: 'SELLER' });
         setIsModalOpen(true);
     };
 
@@ -30,6 +30,7 @@ export default function AdminUsersPage() {
             username: record.username,
             full_name: record.full_name,
             is_active: record.is_active,
+            role: record.role || 'SELLER'
             // never load password
         });
         setIsModalOpen(true);
@@ -84,6 +85,16 @@ export default function AdminUsersPage() {
             title: 'Usuario',
             dataIndex: 'username',
             key: 'username',
+        },
+        {
+            title: 'Rol',
+            dataIndex: 'role',
+            key: 'role',
+            render: (role: string) => (
+                <Tag color={role === 'ADMIN' ? 'gold' : 'blue'}>
+                    {role === 'ADMIN' ? 'Administrador' : 'Vendedor'}
+                </Tag>
+            )
         },
         {
             title: 'Estado',
@@ -162,6 +173,13 @@ export default function AdminUsersPage() {
                         rules={[{ required: true, message: 'Requerido' }]}
                     >
                         <Input disabled={!!editingUser} />
+                    </Form.Item>
+
+                    <Form.Item name="role" label="Rol del Usuario" rules={[{ required: true }]}>
+                        <Select options={[
+                            { value: 'SELLER', label: 'Vendedor (Solo Pedidos y Tablero)' },
+                            { value: 'ADMIN', label: 'Administrador (Acceso Total)' }
+                        ]} />
                     </Form.Item>
 
                     <Form.Item 

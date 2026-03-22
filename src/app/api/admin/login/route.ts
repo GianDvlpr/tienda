@@ -8,30 +8,24 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { username, password } = body;
 
-        const validUser = process.env.ADMIN_USER || 'admin';
-        const validPass = process.env.ADMIN_PASS || 'admin123';
+        const dbAdmin = await prisma.admin_user.findUnique({
+            where: { username }
+        });
 
-        // 1. Check Super Admin (Fallback/.env)
-        let isValidLogin = false;
-        
-        if (username === validUser && password === validPass) {
-            isValidLogin = true;
-        } else {
-            // 2. Check Database Admin User
-            const dbAdmin = await prisma.admin_user.findUnique({
-                where: { username }
-            });
-
-            if (dbAdmin && dbAdmin.is_active) {
-                const match = await bcrypt.compare(password, dbAdmin.password_hash);
-                if (match) isValidLogin = true;
-            }
+        if (!dbAdmin || !dbAdmin.is_active) {
+            return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
         }
 
-        if (isValidLogin) {
-            // Generamos un token tonto para demostrar la sesión.
-            // Para un solo usuario o poquitos administradores es suficiente una cookie HttpOnly firme.
-            const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
+        const match = await bcrypt.compare(password, dbAdmin.password_hash);
+        
+        if (match) {
+            // Guardamos usuario y ROL en el token usando JSON en Base64
+            const payload = JSON.stringify({ 
+                username: dbAdmin.username, 
+                role: dbAdmin.role,
+                timestamp: Date.now() 
+            });
+            const token = Buffer.from(payload).toString('base64');
             
             const cookieStore = await cookies();
             cookieStore.set('admin_token', token, {
