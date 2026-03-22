@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const id = params.id;
+        const resolvedParams = await params;
+        const id = resolvedParams.id;
         const body = await req.json();
         const { username, full_name, is_active, password } = body;
 
@@ -26,9 +27,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const id = params.id;
+        const resolvedParams = await params;
+        const id = resolvedParams.id;
         await prisma.admin_user.delete({
             where: { user_id: id }
         });

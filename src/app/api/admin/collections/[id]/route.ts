@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const id = params.id;
+        const resolvedParams = await params;
+        const id = resolvedParams.id;
         const body = await req.json();
         const { name, slug, description, is_active } = body;
 
@@ -28,9 +29,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const id = params.id;
+        const resolvedParams = await params;
+        const id = resolvedParams.id;
 
         // Validar si tiene productos asosciados antes de borrar
         const links = await prisma.product_collection.count({ where: { collection_id: id } });
