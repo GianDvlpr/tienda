@@ -9,7 +9,7 @@ export default function AuraLogo({ size = 'default' }: { size?: 'small' | 'defau
                 alignItems: 'center', 
                 lineHeight: 1,
                 transform: `scale(${scale})`,
-                transformOrigin: 'left center'
+                transformOrigin: 'center center'
             }}
         >
             <span 

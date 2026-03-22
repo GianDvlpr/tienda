@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Badge, Button, Switch, Space, Input } from "antd";
+import { Layout, Badge, Button, Switch, Space, Input, Grid } from "antd";
 import { HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
@@ -20,6 +20,8 @@ export default function ShopHeader() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const inputRef = useRef<any>(null);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const totalItems = useCartStore((s) => s.totalItems());
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
@@ -72,29 +74,30 @@ export default function ShopHeader() {
                     position: "fixed",
                     width: "100%",
                     zIndex: 1000,
-                    height: 80, // slightly taller to fit the logo
+                    height: isMobile ? 64 : 80, // slightly taller to fit the logo
                     borderBottom: scrolled ? "1px solid rgba(255,255,255,0.1)" : "none",
+                    padding: isMobile ? "0 12px" : "0 24px",
                 }}
             >
                 {/* Left section: Navigation / Search */}
-                <Space size="middle" style={{ flex: 1, color: "white" }}>
+                <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, color: "white" }}>
                     {!isSearchOpen && (
                         <>
                             <Button 
                                 type="text" 
-                                icon={<MenuOutlined style={{ fontSize: 20, color: 'white' }} />} 
+                                icon={<MenuOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />} 
                                 onClick={() => toggleFilterDrawer()}
-                                style={{ color: 'white', display: 'flex', alignItems: 'center' }}
+                                style={{ color: 'white', display: 'flex', alignItems: 'center', padding: isMobile ? "0 4px" : "4px 15px" }}
                             >
-                                <span style={{ marginLeft: 8, fontWeight: 500, letterSpacing: 1 }}>Menú</span>
+                                {!isMobile && <span style={{ marginLeft: 8, fontWeight: 500, letterSpacing: 1 }}>Menú</span>}
                             </Button>
                             <Button 
                                 type="text" 
-                                icon={<SearchOutlined style={{ fontSize: 20, color: 'white' }} />} 
+                                icon={<SearchOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />} 
                                 onClick={() => toggleSearch()}
-                                style={{ color: 'white', display: 'flex', alignItems: 'center' }}
+                                style={{ color: 'white', display: 'flex', alignItems: 'center', padding: isMobile ? "0 4px" : "4px 15px" }}
                             >
-                                <span style={{ marginLeft: 8, fontWeight: 500, letterSpacing: 1 }}>Buscar</span>
+                                {!isMobile && <span style={{ marginLeft: 8, fontWeight: 500, letterSpacing: 1 }}>Buscar</span>}
                             </Button>
                         </>
                     )}
@@ -139,24 +142,26 @@ export default function ShopHeader() {
                         alignItems: "center"
                     }}
                 >
-                    <AuraLogo size="default" />
+                    <AuraLogo size={isMobile ? "small" : "default"} />
                 </Link>
 
                 {/* Right section: User actions */}
-                <Space size="middle" style={{ flex: 1, justifyContent: "flex-end", color: "white" }}>
-                    <Switch
-                        checked={isDarkMode}
-                        onChange={toggleDarkMode}
-                        checkedChildren={<BulbFilled />}
-                        unCheckedChildren={<BulbOutlined />}
-                    />
+                <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, justifyContent: "flex-end", color: "white" }}>
+                    {!isMobile && (
+                        <Switch
+                            checked={isDarkMode}
+                            onChange={toggleDarkMode}
+                            checkedChildren={<BulbFilled />}
+                            unCheckedChildren={<BulbOutlined />}
+                        />
+                    )}
                     <Badge count={totalItems} size="small" overflowCount={99}>
                         <Button
                             type="text"
-                            icon={<HeartOutlined style={{ fontSize: 20, color: 'white' }} />}
+                            icon={<HeartOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
                             onClick={() => setOpen(true)}
                             title="Mi Lista"
-                            style={{ color: 'white' }}
+                            style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 15px" }}
                         />
                     </Badge>
                 </Space>
