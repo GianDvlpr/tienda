@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Typography, message, Row, Col } from 'antd';
+import { Alert, Button, Card, Divider, Radio, Space, Typography, message, Row, Col, Flex } from 'antd';
+import { WhatsAppOutlined, HeartOutlined } from '@ant-design/icons';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 
@@ -103,7 +104,15 @@ export default function ProductDetailPage() {
             1
         );
 
-        message.success('Agregado al carrito');
+        message.success('Agregado a tu lista de selección');
+    };
+
+    const handleWhatsAppConsult = () => {
+        if (!data || !selectedVariant) return;
+        const text = `Hola Aura Boutique, deseo consultar por la siguiente prenda:\n\n*${data.product.name}*\nTalla: ${selectedVariant.size}\nColor: ${selectedVariant.color}\nSKU: ${selectedVariant.sku}\nPrecio Ref: ${formatPEN(selectedVariant.price)}\n\n¿Tienen disponibilidad?`;
+        
+        const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
+        window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     if (isLoading && !data) {
@@ -203,18 +212,37 @@ export default function ProductDetailPage() {
                                 <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
                                     {selectedVariant
                                         ? selectedVariant.stock > 0
-                                            ? `Stock: ${selectedVariant.stock}`
-                                            : 'Sin stock'
+                                            ? `Disponible`
+                                            : 'Agotado temporalmente'
                                         : 'Elige una talla y color'}
                                 </Text>
                             </div>
 
-                            <Button type="primary" size="large" disabled={!canAdd} onClick={onAddToCart}>
-                                Agregar al carrito
-                            </Button>
+                            <Flex gap="middle" wrap="wrap" style={{ marginTop: 16 }}>
+                                <Button 
+                                    type="primary" 
+                                    size="large" 
+                                    icon={<WhatsAppOutlined />}
+                                    disabled={!canAdd} 
+                                    onClick={handleWhatsAppConsult}
+                                    style={{ backgroundColor: '#25D366', borderColor: '#25D366', flex: 1, minWidth: 200 }}
+                                >
+                                    Consultar por WhatsApp
+                                </Button>
+                                
+                                <Button 
+                                    size="large" 
+                                    icon={<HeartOutlined />}
+                                    disabled={!canAdd} 
+                                    onClick={onAddToCart}
+                                    style={{ flex: 1, minWidth: 200 }}
+                                >
+                                    Agregar a mi lista
+                                </Button>
+                            </Flex>
 
                             {!canAdd ? (
-                                <Text type="secondary">Selecciona una variante con stock.</Text>
+                                <Text type="secondary" style={{ color: 'red' }}>Selecciona una variante disponible para consultar.</Text>
                             ) : null}
 
                             {/* Feedback sutil si SWR revalida y ya hay data */}

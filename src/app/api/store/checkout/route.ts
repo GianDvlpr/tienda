@@ -1,91 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export const runtime = 'nodejs';
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+        const { shipping_name, shipping_phone, shipping_address, items, subtotal } = body;
 
-const bodySchema = z.object({
-  items: z
-    .array(
-      z.object({
-        variantId: z.string().min(10),
-        qty: z.number().int().min(1),
-      })
-    )
-    .min(1),
+        if (!shipping_name || !shipping_phone || !items || items.length === 0) {
+            return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
+        }
 
-  customerName: z.string().min(3),
-  customerPhone: z.string().optional().nullable(),
-  customerEmail: z.string().email().optional().nullable(),
+        // Generate a random Code like ORD-XXXX
+        const code = `ORD-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
 
-  shippingName: z.string().min(3),
-  shippingPhone: z.string().min(7),
-  shippingAddress: z.string().min(8),
-  shippingCity: z.string().optional().nullable(),
-  shippingReference: z.string().optional().nullable(),
+        const newOrder = await prisma.$transaction(async (tx) => {
+            // 1. Create order header
+            const header = await tx.order_header.create({
+                data: {
+                    code,
+                    status: 'PENDING_WS',
+                    shipping_name,
+                    shipping_phone,
+                    shipping_address: shipping_address || 'Por confirmar',
+                    subtotal,
+                    total: subtotal, // without shipping cost for now
+                    currency: 'PEN',
+                }
+            });
 
-  notes: z.string().optional().nullable(),
-  paymentMethod: z.enum(['YAPE', 'PLIN', 'TRANSFER']).optional().nullable(),
-});
+            // 2. Create order items
+            for (const item of items) {
+                await tx.order_item.create({
+                    data: {
+                        order_id: header.order_id,
+                        variant_id: item.variantId,
+                        qty: item.qty,
+                        unit_price: item.unitPrice,
+                        line_total: item.unitPrice * item.qty,
+                        product_name: item.name,
+                        variant_size: item.size,
+                        variant_color: item.color,
+                        sku: item.sku || 'N/A',
+                        image_url: item.imageUrl
+                    }
+                });
 
-export async function POST(req: NextRequest) {
-  try {
-    const json = await req.json();
-    const parsed = bodySchema.safeParse(json);
+                // Optional: We can discount stock here or from the Admin Panel. 
+                // Let's discount it right away to prevent overselling.
+                await tx.product_variant.update({
+                    where: { variant_id: item.variantId },
+                    data: { stock: { decrement: item.qty } }
+                });
+            }
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid body', details: parsed.error.flatten() },
-        { status: 400 }
-      );
+            return header;
+        });
+
+        return NextResponse.json({ success: true, orderCode: newOrder.code });
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
     }
-
-    const b = parsed.data;
-
-    const itemsJson = JSON.stringify(
-      b.items.map((x) => ({ variantId: x.variantId, qty: x.qty }))
-    );
-
-    const shippingCost = 0;
-    const discountTotal = 0;
-
-    // ✅ SQL Server + Prisma: usa $queryRaw con template literal
-    const rows = await prisma.$queryRaw<any[]>`
-      DECLARE @order_code NVARCHAR(30);
-      DECLARE @order_id UNIQUEIDENTIFIER;
-
-      EXEC dbo.USP_SHOP_CREATE_ORDER
-        @items_json         = ${itemsJson},
-        @customer_name      = ${b.customerName},
-        @customer_phone     = ${b.customerPhone ?? null},
-        @customer_email     = ${b.customerEmail ?? null},
-        @shipping_name      = ${b.shippingName},
-        @shipping_phone     = ${b.shippingPhone},
-        @shipping_address   = ${b.shippingAddress},
-        @shipping_city      = ${b.shippingCity ?? null},
-        @shipping_reference = ${b.shippingReference ?? null},
-        @notes              = ${b.notes ?? null},
-        @payment_method     = ${b.paymentMethod ?? 'YAPE'},
-        @shipping_cost      = ${shippingCost},
-        @discount_total     = ${discountTotal},
-        @order_code         = @order_code OUTPUT,
-        @order_id           = @order_id OUTPUT;
-
-      SELECT
-        CONVERT(VARCHAR(36), @order_id) AS orderId,
-        @order_code AS code;
-    `;
-
-    const out = rows?.[0] as any;
-    if (!out?.orderId || !out?.code) {
-      return NextResponse.json(
-        { error: 'SP did not return order data' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ orderId: out.orderId, code: out.code }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Checkout failed' }, { status: 500 });
-  }
 }

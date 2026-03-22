@@ -1,7 +1,7 @@
 "use client";
 
 import { Layout, Badge, Button, Switch, Space, Input } from "antd";
-import { ShoppingOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined } from "@ant-design/icons";
+import { HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -153,8 +153,9 @@ export default function ShopHeader() {
                     <Badge count={totalItems} size="small" overflowCount={99}>
                         <Button
                             type="text"
-                            icon={<ShoppingOutlined style={{ fontSize: 20, color: 'white' }} />}
+                            icon={<HeartOutlined style={{ fontSize: 20, color: 'white' }} />}
                             onClick={() => setOpen(true)}
+                            title="Mi Lista"
                             style={{ color: 'white' }}
                         />
                     </Badge>

@@ -1,13 +1,13 @@
 'use client';
 
-import React from 'react';
-import { Button, Drawer, Empty, InputNumber, List, Space, Typography } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Button, Drawer, Empty, InputNumber, List, Space, Typography, Form, Input, message, Card } from 'antd';
+import { DeleteOutlined, WhatsAppOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useCartStore } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export default function MiniCart({
     open,
@@ -19,27 +19,144 @@ export default function MiniCart({
     const items = useCartStore((s) => s.items);
     const removeItem = useCartStore((s) => s.removeItem);
     const setQty = useCartStore((s) => s.setQty);
+    const clearCart = useCartStore((s) => s.clear);
     const subtotal = useCartStore((s) => s.subtotal());
+
+    const [isCheckoutView, setIsCheckoutView] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [form] = Form.useForm();
+
+    // The legacy direct-to-whatsapp flow is now wrapped by a Form submission to our API
+    const handleCheckoutSubmit = async (values: any) => {
+        setIsSubmitting(true);
+        try {
+            // 1. Save to Database
+            const res = await fetch('/api/store/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    shipping_name: values.shipping_name,
+                    shipping_phone: values.shipping_phone,
+                    shipping_address: values.shipping_address,
+                    items: items,
+                    subtotal: subtotal
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Ocurrió un error al procesar el pedido');
+            }
+
+            const data = await res.json();
+            const orderCode = data.orderCode;
+
+            // 2. Generate WhatsApp Message
+            let text = `Hola Aura Boutique, acabo de realizar el pedido *${orderCode}*.\n\n`;
+            text += `*Mis datos de envío:*\n`;
+            text += `Nombre: ${values.shipping_name}\n`;
+            text += `Celular: ${values.shipping_phone}\n`;
+            text += `Dirección: ${values.shipping_address || 'Por confirmar'}\n\n`;
+            
+            text += `*Mi lista de prendas:*\n`;
+            items.forEach((item, i) => {
+                text += `${i + 1}. *${item.name}* (Talla: ${item.size}, Color: ${item.color}) - Cant.: ${item.qty} - Precio Ref: ${formatPEN(item.unitPrice)}\n`;
+            });
+            text += `\n*Total Referencial: ${formatPEN(subtotal)}*`;
+            
+            const encodedText = encodeURIComponent(text);
+            const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
+            window.open(`https://wa.me/${waNumber}?text=${encodedText}`, '_blank');
+            
+            // 3. Clear cart and close
+            clearCart();
+            setIsCheckoutView(false);
+            form.resetFields();
+            onClose();
+            
+            message.success('Pedido registrado correctamente. Revisa WhatsApp.');
+        } catch (error: any) {
+            message.error(error.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleClose = () => {
+        setIsCheckoutView(false);
+        onClose();
+    };
 
     return (
         <Drawer
-            title="Carrito"
+            title={
+                isCheckoutView ? (
+                    <Space>
+                        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setIsCheckoutView(false)} />
+                        <span>Completar Pedido</span>
+                    </Space>
+                ) : "Mi Lista"
+            }
             open={open}
-            onClose={onClose}
-            size={420}
+            onClose={handleClose}
+            size={isCheckoutView ? 380 : 420}
             footer={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text strong>Subtotal: {formatPEN(subtotal)}</Text>
-                    <Link href="/checkout" onClick={onClose}>
-                        <Button type="primary" disabled={items.length === 0}>
-                            Ir a pagar
+                !isCheckoutView && items.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text strong>Total Ref: {formatPEN(subtotal)}</Text>
+                        </div>
+                        <Button 
+                            type="primary" 
+                            onClick={() => setIsCheckoutView(true)}
+                            style={{ width: '100%', height: 40, fontSize: 16 }}
+                        >
+                            Proceder al Checkout
                         </Button>
-                    </Link>
-                </div>
+                    </div>
+                )
             }
         >
-            {items.length === 0 ? (
-                <Empty description="Tu carrito está vacío" />
+            {isCheckoutView ? (
+                <div>
+                    <Typography.Paragraph type="secondary">
+                        Ingresa tus datos para registrar el pedido antes de coordinar por WhatsApp.
+                    </Typography.Paragraph>
+                    <Form layout="vertical" form={form} onFinish={handleCheckoutSubmit}>
+                        <Form.Item label="Nombre Completo" name="shipping_name" rules={[{ required: true, message: 'Ingresa tu nombre' }]}>
+                            <Input placeholder="Ej. Ana Pérez" size="large" />
+                        </Form.Item>
+                        <Form.Item label="Celular / WhatsApp" name="shipping_phone" rules={[{ required: true, message: 'Ingresa tu celular' }]}>
+                            <Input placeholder="Ej. 999 888 777" size="large" />
+                        </Form.Item>
+                        <Form.Item label="Dirección de envío (Opcional)" name="shipping_address">
+                            <Input.TextArea placeholder="Añade referencias si deseas delivery" rows={3} />
+                        </Form.Item>
+
+                        <Card size="small" style={{ marginTop: 24, marginBottom: 24 }}>
+                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <Text>Productos ({items.length})</Text>
+                                <Text>{formatPEN(subtotal)}</Text>
+                             </div>
+                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Text strong>Total Referencial</Text>
+                                <Text strong>{formatPEN(subtotal)}</Text>
+                             </div>
+                        </Card>
+
+                        <Button 
+                            type="primary" 
+                            htmlType="submit"
+                            loading={isSubmitting}
+                            icon={<WhatsAppOutlined />}
+                            style={{ backgroundColor: '#25D366', borderColor: '#25D366', width: '100%', height: 44, fontSize: 16, marginTop: 24 }}
+                        >
+                            Enviar Pedido por WhatsApp
+                        </Button>
+                    </Form>
+                </div>
+            ) : items.length === 0 ? (
+                <Empty description="Tu lista está vacía" />
             ) : (
                 <List
                     itemLayout="horizontal"

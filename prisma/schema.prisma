@@ -185,3 +185,30 @@ model stock_reservation {
   @@index([order_id], map: "IX_reservation_order")
   @@index([variant_id, status, expires_at], map: "IX_reservation_variant_status")
 }
+
+model hero_slide {
+  slide_id    String   @id(map: "PK_hero_slide") @default(dbgenerated("newsequentialid()"), map: "DF_hero_slide_id") @db.UniqueIdentifier
+  image_url   String   @db.NVarChar(500)
+  title       String?  @db.NVarChar(100)
+  subtitle    String?  @db.NVarChar(100)
+  button_text String?  @db.NVarChar(50)
+  link_url    String?  @db.NVarChar(300)
+  sort_order  Int      @default(0, map: "DF_hero_slide_sort_order")
+  is_active   Boolean  @default(true, map: "DF_hero_slide_is_active")
+  created_at  DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_hero_slide_created_at")
+  updated_at  DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_hero_slide_updated_at")
+
+  @@index([is_active, sort_order], map: "IX_hero_slide_active_order")
+}
+
+model admin_user {
+  user_id       String   @id(map: "PK_admin_user") @default(dbgenerated("newsequentialid()"), map: "DF_admin_user_id") @db.UniqueIdentifier
+  username      String   @unique(map: "UX_admin_username") @db.NVarChar(100)
+  password_hash String   @db.NVarChar(255)
+  full_name     String   @db.NVarChar(200)
+  is_active     Boolean  @default(true, map: "DF_admin_is_active")
+  created_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_created_at")
+  updated_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_updated_at")
+
+  @@index([is_active, created_at(sort: Desc)], map: "IX_admin_active")
+}
