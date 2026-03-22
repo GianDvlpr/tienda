@@ -10,7 +10,7 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export default function AdminCollectionsPage() {
-    const { data: collections, error, mutate, isLoading } = useSWR('/api/admin/collections', fetcher);
+    const { data: collections, error, mutate, isLoading } = useSWR<any[]>('/api/admin/collections', fetcher);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<any>(null);

@@ -9,7 +9,7 @@ import { fetcher } from '@/lib/fetcher';
 const { Title } = Typography;
 
 export default function AdminUsersPage() {
-    const { data: users, error, mutate, isLoading } = useSWR('/api/admin/users', fetcher);
+    const { data: users, error, mutate, isLoading } = useSWR<any[]>('/api/admin/users', fetcher);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);

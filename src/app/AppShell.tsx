@@ -1,6 +1,7 @@
 "use client";
 
 import { Layout } from "antd";
+import { Suspense } from "react";
 import ShopHeader from "@/components/shop/ShopHeader";
 import { usePathname } from "next/navigation";
 
@@ -12,7 +13,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     return (
         <Layout style={{ minHeight: "100vh" }}>
-            {!isAdmin && <ShopHeader />}
+            {!isAdmin && (
+                <Suspense fallback={<div style={{ height: 80 }} />}>
+                    <ShopHeader />
+                </Suspense>
+            )}
 
             <Content style={{ width: "100%", margin: 0, padding: 0 }}>
                 {children}

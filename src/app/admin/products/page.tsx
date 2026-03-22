@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 const { Title, Text } = Typography;
 
 export default function AdminProductsPage() {
-    const { data: products, error, mutate, isLoading } = useSWR('/api/admin/products', fetcher);
+    const { data: products, error, mutate, isLoading } = useSWR<any[]>('/api/admin/products', fetcher);
     const router = useRouter();
 
     const handleDelete = async (product_id: string) => {
