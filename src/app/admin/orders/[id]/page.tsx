@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Card, Select, Button, Typography, Space, Descriptions, Table, message, Row, Col, Input, Tag, Alert } from 'antd';
+import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert } from 'antd';
 import { LeftOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
@@ -53,10 +54,10 @@ export default function OrderDetailPage() {
                 throw new Error(err.error || 'Error al actualizar pedido');
             }
 
-            message.success('Pedido actualizado con éxito');
+            toast.success('Pedido actualizado con éxito');
             mutate();
         } catch (error: any) {
-            message.error(error.message);
+            toast.error(error.message);
         } finally {
             setIsSaving(false);
         }

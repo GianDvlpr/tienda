@@ -1,7 +1,9 @@
 'use client';
+import { toast } from 'sonner';
+
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Typography, message, Row, Col, Flex } from 'antd';
+import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex } from 'antd';
 import { WhatsAppOutlined, HeartOutlined } from '@ant-design/icons';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
@@ -85,7 +87,7 @@ export default function ProductDetailPage() {
         if (!data || !selectedVariant) return;
 
         if (selectedVariant.stock <= 0) {
-            message.warning('No hay stock de esa variante');
+            toast.warning('No hay stock de esa variante');
             return;
         }
 
@@ -104,7 +106,7 @@ export default function ProductDetailPage() {
             1
         );
 
-        message.success('Agregado a tu lista de selección');
+        toast.success('Agregado a tu lista de selección');
     };
 
     const handleWhatsAppConsult = () => {

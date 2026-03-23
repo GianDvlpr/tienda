@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React from 'react';
-import { Card, Table, Typography, Tag, Button, Space, message } from 'antd';
+import { Card, Table, Typography, Tag, Button, Space } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -76,7 +77,7 @@ export default function AdminOrdersPage() {
     ];
 
     if (error) {
-        message.error('Error al cargar pedidos');
+        toast.error('Error al cargar pedidos');
     }
 
     return (

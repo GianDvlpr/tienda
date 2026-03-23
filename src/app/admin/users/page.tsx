@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, message, Popconfirm, Select } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -40,10 +41,10 @@ export default function AdminUsersPage() {
         try {
             const res = await fetch(`/api/admin/users/${user_id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Error eliminando usuario');
-            message.success('Usuario eliminado');
+            toast.success('Usuario eliminado');
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         }
     };
 
@@ -65,11 +66,11 @@ export default function AdminUsersPage() {
                 throw new Error(data.error || 'Error guardando usuario');
             }
 
-            message.success(`Usuario ${isUpdate ? 'actualizado' : 'creado'} correctamente`);
+            toast.success(`Usuario ${isUpdate ? 'actualizado' : 'creado'} correctamente`);
             setIsModalOpen(false);
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         } finally {
             setIsSaving(false);
         }

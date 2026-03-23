@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, message, Popconfirm, Image, InputNumber } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm, Image, InputNumber } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -48,16 +49,16 @@ export default function AdminSliderPage() {
         try {
             const res = await fetch(`/api/admin/slider/${slide_id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Error eliminando slide');
-            message.success('Slide eliminado');
+            toast.success('Slide eliminado');
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         }
     };
 
     const onFinish = async (values: any) => {
         if (!uploadedImageUrl) {
-            message.error("Debes subir una imagen para el slider");
+            toast.error("Debes subir una imagen para el slider");
             return;
         }
 
@@ -83,11 +84,11 @@ export default function AdminSliderPage() {
                 throw new Error(data.error || 'Error guardando slide');
             }
 
-            message.success(`Slide ${isUpdate ? 'actualizado' : 'creado'} correctamente`);
+            toast.success(`Slide ${isUpdate ? 'actualizado' : 'creado'} correctamente`);
             setIsModalOpen(false);
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         } finally {
             setIsSaving(false);
         }
@@ -95,7 +96,7 @@ export default function AdminSliderPage() {
 
     const handleUploadSuccess = (url: string) => {
         setUploadedImageUrl(url);
-        message.success("Imagen subida correctamente");
+        toast.success("Imagen subida correctamente");
     };
 
     const columns = [

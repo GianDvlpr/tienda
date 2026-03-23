@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, message, Popconfirm } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -43,10 +44,10 @@ export default function AdminCollectionsPage() {
                 const err = await res.json();
                 throw new Error(err.error || 'Error eliminando colección');
             }
-            message.success('Colección eliminada');
+            toast.success('Colección eliminada');
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         }
     };
 
@@ -68,11 +69,11 @@ export default function AdminCollectionsPage() {
                 throw new Error(data.error || 'Error guardando colección');
             }
 
-            message.success(`Colección ${isUpdate ? 'actualizada' : 'creada'} correctamente`);
+            toast.success(`Colección ${isUpdate ? 'actualizada' : 'creada'} correctamente`);
             setIsModalOpen(false);
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         } finally {
             setIsSaving(false);
         }

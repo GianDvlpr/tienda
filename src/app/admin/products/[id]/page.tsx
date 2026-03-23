@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, message, Image, Spin } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
@@ -78,10 +79,10 @@ export default function EditProductPage() {
                 throw new Error(err.error || 'Error actualizando producto');
             }
 
-            message.success('Producto actualizado satisfactoriamente');
+            toast.success('Producto actualizado satisfactoriamente');
             router.push('/admin/products');
         } catch (error: any) {
-            message.error(error.message);
+            toast.error(error.message);
         } finally {
             setIsSaving(false);
         }

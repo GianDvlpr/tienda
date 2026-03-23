@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React from 'react';
-import { Table, Button, Space, Typography, Tag, message, Popconfirm } from 'antd';
+import { Table, Button, Space, Typography, Tag, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -22,10 +23,10 @@ export default function AdminProductsPage() {
             
             if (!res.ok) throw new Error(data.error || 'Error eliminando producto');
             
-            message.success(data.message || 'Producto eliminado exitosamente');
+            toast.success(data.message || 'Producto eliminado exitosamente');
             mutate();
         } catch (e: any) {
-            message.error(e.message);
+            toast.error(e.message);
         }
     };
 

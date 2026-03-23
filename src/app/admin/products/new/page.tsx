@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Divider, message, Image } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Divider, Image } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -67,10 +68,10 @@ export default function NewProductPage() {
                 throw new Error(err.error || 'Error creando producto');
             }
 
-            message.success('Producto creado satisfactoriamente');
+            toast.success('Producto creado satisfactoriamente');
             router.push('/admin/products');
         } catch (error: any) {
-            message.error(error.message);
+            toast.error(error.message);
         } finally {
             setIsSaving(false);
         }

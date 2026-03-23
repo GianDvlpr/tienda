@@ -6,6 +6,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import Providers from "./providers";
 import AppShell from "./AppShell";
 import Script from "next/script";
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,13 @@ export default function RootLayout({
         <AntdRegistry>
           <Providers>
             <AppShell>{children}</AppShell>
+            <Toaster 
+              position="top-center" 
+              richColors 
+              toastOptions={{ 
+                style: { width: 'fit-content', minWidth: '250px', margin: '0 auto' } 
+              }} 
+            />
           </Providers>
         </AntdRegistry>
         <Script src="https://checkout.culqi.com/js/v4" strategy="afterInteractive" />

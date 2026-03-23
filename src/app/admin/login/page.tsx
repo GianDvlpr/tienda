@@ -1,7 +1,8 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState } from 'react';
-import { Card, Form, Input, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Button, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 
 const { Title } = Typography;
@@ -20,13 +21,13 @@ export default function AdminLoginPage() {
             });
 
             if (res.ok) {
-                message.success('Bienvenido de nuevo');
+                toast.success('Bienvenido de nuevo');
                 router.push('/admin');
             } else {
-                message.error('Credenciales incorrectas');
+                toast.error('Credenciales incorrectas');
             }
         } catch (e: any) {
-            message.error(e.message || 'Error al iniciar sesión');
+            toast.error(e.message || 'Error al iniciar sesión');
         } finally {
             setLoading(false);
         }

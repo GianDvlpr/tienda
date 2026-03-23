@@ -1,7 +1,9 @@
 'use client';
+import { toast } from 'sonner';
+
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Drawer, Empty, InputNumber, List, Space, Typography, Form, Input, message, Card, Result, Spin } from 'antd';
+import { Button, Drawer, Empty, InputNumber, List, Space, Typography, Form, Input, Card, Result, Spin } from 'antd';
 import confetti from 'canvas-confetti';
 import { DeleteOutlined, WhatsAppOutlined, ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons';
 import Link from 'next/link';
@@ -51,7 +53,7 @@ export default function MiniCart({
             } else if (Culqi.order) {
                 // For Yape / PagoEfectivo logic if needed
             } else if (Culqi.error) {
-                message.error(Culqi.error.user_message || 'Error en el pago');
+                toast.error(Culqi.error.user_message || 'Error en el pago');
                 setIsSubmitting(false);
                 if (Culqi.close) Culqi.close();
             }
@@ -75,7 +77,7 @@ export default function MiniCart({
 
         const Culqi = (window as any).Culqi;
         if (!Culqi) {
-            message.error('Culqi no está cargado. Revisa tu conexión a internet.');
+            toast.error('Culqi no está cargado. Revisa tu conexión a internet.');
             return;
         }
 
@@ -144,13 +146,13 @@ export default function MiniCart({
             form.resetFields();
             onClose();
 
-            message.success(`Tu pedido ${orderCode} ha sido registrado. Redirigiendo a WhatsApp...`);
+            toast.success(`Tu pedido ${orderCode} ha sido registrado. Redirigiendo a WhatsApp...`);
             
             const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
             window.open(waUrl, '_blank');
         } catch (error: any) {
-            message.error(error.message);
+            toast.error(error.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -197,7 +199,7 @@ export default function MiniCart({
             });
             
         } catch (error: any) {
-            message.error(error.message);
+            toast.error(error.message);
         } finally {
             setIsSubmitting(false);
             setIsProcessingPayment(false);
