@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button, Drawer, Empty, InputNumber, List, Space, Typography, Form, Input, message, Card } from 'antd';
-import { DeleteOutlined, WhatsAppOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Drawer, Empty, InputNumber, List, Space, Typography, Form, Input, message, Card, Result, Spin } from 'antd';
+import confetti from 'canvas-confetti';
+import { DeleteOutlined, WhatsAppOutlined, ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useCartStore } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
@@ -24,22 +25,97 @@ export default function MiniCart({
 
     const [isCheckoutView, setIsCheckoutView] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+    const [paymentMethod, setPaymentMethod] = useState<'CULQI' | 'WHATSAPP'>('CULQI');
     const [form] = Form.useForm();
+    const shippingDataRef = useRef<any>(null);
+    const processingRef = useRef(false);
 
-    // The legacy direct-to-whatsapp flow is now wrapped by a Form submission to our API
-    const handleCheckoutSubmit = async (values: any) => {
+    // Global callback required by Culqi documentation
+    useEffect(() => {
+        (window as any).culqi = async () => {
+            if (processingRef.current) return; // Prevent double firing
+            const Culqi = (window as any).Culqi;
+            
+            if (Culqi.token) {
+                processingRef.current = true;
+                const token = Culqi.token.id;
+                const email = Culqi.token.email || 'compras@auraboutique.com';
+                
+                // Immediately close Culqi overlay to prevent double clicks and show our loading state
+                if (Culqi.close) Culqi.close();
+                setIsProcessingPayment(true);
+                
+                await processBackendCheckout(token, email);
+            } else if (Culqi.order) {
+                // For Yape / PagoEfectivo logic if needed
+            } else if (Culqi.error) {
+                message.error(Culqi.error.user_message || 'Error en el pago');
+                setIsSubmitting(false);
+                if (Culqi.close) Culqi.close();
+            }
+        };
+    }, []);
+
+    const handleCheckoutSubmit = (values: any) => {
+        const frozenItems = useCartStore.getState().items;
+        const frozenSubtotal = useCartStore.getState().subtotal();
+        
+        shippingDataRef.current = {
+            ...values,
+            items: frozenItems,
+            subtotal: frozenSubtotal
+        };
+        
+        if (paymentMethod === 'WHATSAPP') {
+            processWhatsAppCheckout(shippingDataRef.current);
+            return;
+        }
+
+        const Culqi = (window as any).Culqi;
+        if (!Culqi) {
+            message.error('Culqi no está cargado. Revisa tu conexión a internet.');
+            return;
+        }
+
+        // Reset the processing lock every time we open Culqi natively
+        processingRef.current = false;
+
+        Culqi.publicKey = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY;
+        Culqi.settings({
+            title: 'Aura Boutique',
+            currency: 'PEN',
+            amount: Math.round(useCartStore.getState().subtotal() * 100), // En céntimos
+        });
+        Culqi.options({
+            lang: 'auto',
+            installments: false,
+            paymentMethods: {
+                tarjeta: true,
+                yape: true,
+                bancaMovil: false,
+                agente: false,
+                cuotealo: false,
+            }
+        });
+        
+        Culqi.open();
+    };
+
+    const processWhatsAppCheckout = async (payload: any) => {
         setIsSubmitting(true);
         try {
-            // 1. Save to Database
             const res = await fetch('/api/store/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    shipping_name: values.shipping_name,
-                    shipping_phone: values.shipping_phone,
-                    shipping_address: values.shipping_address,
-                    items: items,
-                    subtotal: subtotal
+                    shipping_name: payload.shipping_name,
+                    shipping_phone: payload.shipping_phone,
+                    shipping_address: payload.shipping_address,
+                    items: payload.items,
+                    subtotal: payload.subtotal,
+                    payment_method: 'WHATSAPP'
                 })
             });
 
@@ -51,13 +127,28 @@ export default function MiniCart({
             const data = await res.json();
             const orderCode = data.orderCode;
 
-            // 2. Clear cart and close
-            clearCart();
+            // Generate WhatsApp message
+            let text = `¡Hola! Quiero hacer el pedido *${orderCode}*:\n\n`;
+            payload.items.forEach((item: any) => {
+                text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color}) - ${formatPEN(item.unitPrice * item.qty)}\n`;
+            });
+            text += `\n*Total Referencial: ${formatPEN(payload.subtotal)}*\n\n`;
+            text += `*Mis datos:*\n`;
+            text += `Nombre: ${payload.shipping_name}\n`;
+            if (payload.shipping_address) {
+                text += `Dirección: ${payload.shipping_address}\n`;
+            }
+            
+            useCartStore.getState().clear();
             setIsCheckoutView(false);
             form.resetFields();
             onClose();
+
+            message.success(`Tu pedido ${orderCode} ha sido registrado. Redirigiendo a WhatsApp...`);
             
-            message.success(`Pedido ${orderCode} registrado correctamente. Nos pondremos en contacto contigo pronto.`);
+            const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
+            const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
+            window.open(waUrl, '_blank');
         } catch (error: any) {
             message.error(error.message);
         } finally {
@@ -65,14 +156,67 @@ export default function MiniCart({
         }
     };
 
+    const processBackendCheckout = async (tokenId: string, email: string) => {
+        setIsSubmitting(true);
+        const payload = shippingDataRef.current;
+
+        try {
+            const res = await fetch('/api/store/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    shipping_name: payload.shipping_name,
+                    shipping_phone: payload.shipping_phone,
+                    shipping_address: payload.shipping_address,
+                    items: payload.items,
+                    subtotal: payload.subtotal,
+                    culqi_token: tokenId,
+                    email: email,
+                    payment_method: 'CULQI'
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Ocurrió un error al procesar el pedido');
+            }
+
+            const data = await res.json();
+            const orderCode = data.orderCode;
+
+            useCartStore.getState().clear();
+            form.resetFields();
+            
+            // Show success fireworks instead of closing
+            setOrderSuccess(orderCode);
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                zIndex: 9999
+            });
+            
+        } catch (error: any) {
+            message.error(error.message);
+        } finally {
+            setIsSubmitting(false);
+            setIsProcessingPayment(false);
+            processingRef.current = false;
+        }
+    };
+
     const handleClose = () => {
         setIsCheckoutView(false);
+        setOrderSuccess(null);
+        setIsProcessingPayment(false);
         onClose();
     };
 
     return (
         <Drawer
             title={
+                isProcessingPayment ? "Procesando..." :
+                orderSuccess ? "Pedido Completado" : 
                 isCheckoutView ? (
                     <Space>
                         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setIsCheckoutView(false)} />
@@ -82,9 +226,9 @@ export default function MiniCart({
             }
             open={open}
             onClose={handleClose}
-            size={isCheckoutView ? 380 : 420}
+            size={isCheckoutView || orderSuccess || isProcessingPayment ? 380 : 420}
             footer={
-                !isCheckoutView && items.length > 0 && (
+                !isCheckoutView && !orderSuccess && !isProcessingPayment && items.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text strong>Total Ref: {formatPEN(subtotal)}</Text>
@@ -100,7 +244,30 @@ export default function MiniCart({
                 )
             }
         >
-            {isCheckoutView ? (
+            {isProcessingPayment ? (
+                <Result
+                    icon={<LoadingOutlined style={{ color: '#000', fontSize: 72 }} spin />}
+                    title="Procesando tu pago..."
+                    subTitle="Por favor, no cierres esta ventana. Estamos validando la transacción de forma segura con tu banco, esto puede tomar unos segundos."
+                />
+            ) : orderSuccess ? (
+                <Result
+                    status="success"
+                    title="¡Pago Exitoso!"
+                    subTitle={
+                        <>
+                            Tu pedido <Text strong>{orderSuccess}</Text> ha sido procesado correctamente.
+                            <br />
+                            Nos pondremos en contacto contigo en breve para coordinar el envío.
+                        </>
+                    }
+                    extra={[
+                        <Button type="primary" key="console" onClick={handleClose} style={{ backgroundColor: '#000', height: 44, width: '100%', fontSize: 16 }}>
+                            Seguir Comprando
+                        </Button>
+                    ]}
+                />
+            ) : isCheckoutView ? (
                 <div>
                     <Typography.Paragraph type="secondary">
                         Ingresa tus datos para registrar el pedido antes de coordinar por WhatsApp.
@@ -127,14 +294,26 @@ export default function MiniCart({
                              </div>
                         </Card>
 
-                        <Button 
-                            type="primary" 
-                            htmlType="submit"
-                            loading={isSubmitting}
-                            style={{ width: '100%', height: 44, fontSize: 16, marginTop: 24 }}
-                        >
-                            Finalizar Pedido
-                        </Button>
+                        <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
+                            <Button 
+                                type="primary" 
+                                htmlType="submit"
+                                onClick={() => setPaymentMethod('CULQI')}
+                                loading={isSubmitting && paymentMethod === 'CULQI'}
+                                style={{ width: '100%', height: 44, fontSize: 16, backgroundColor: '#000' }}
+                            >
+                                Pagar con Tarjeta (Culqi)
+                            </Button>
+                            <Button 
+                                htmlType="submit"
+                                onClick={() => setPaymentMethod('WHATSAPP')}
+                                loading={isSubmitting && paymentMethod === 'WHATSAPP'}
+                                icon={<WhatsAppOutlined />}
+                                style={{ width: '100%', height: 44, fontSize: 16, borderColor: '#25D366', color: '#25D366' }}
+                            >
+                                Pedir por WhatsApp
+                            </Button>
+                        </Space>
                     </Form>
                 </div>
             ) : items.length === 0 ? (

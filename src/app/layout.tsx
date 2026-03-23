@@ -5,6 +5,7 @@ import "./globals.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import Providers from "./providers";
 import AppShell from "./AppShell";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
           </Providers>
         </AntdRegistry>
+        <Script src="https://checkout.culqi.com/js/v4" strategy="afterInteractive" />
       </body>
     </html>
   );
