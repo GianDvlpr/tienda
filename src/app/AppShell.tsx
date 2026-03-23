@@ -3,6 +3,7 @@
 import { Layout } from "antd";
 import { Suspense } from "react";
 import ShopHeader from "@/components/shop/ShopHeader";
+import QuickViewDrawer from "@/components/shop/QuickViewDrawer";
 import { usePathname } from "next/navigation";
 
 const { Content, Footer } = Layout;
@@ -14,9 +15,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <Layout style={{ minHeight: "100vh" }}>
             {!isAdmin && (
-                <Suspense fallback={<div style={{ height: 80 }} />}>
-                    <ShopHeader />
-                </Suspense>
+                <>
+                    <Suspense fallback={<div style={{ height: 80 }} />}>
+                        <ShopHeader />
+                    </Suspense>
+                    <QuickViewDrawer />
+                </>
             )}
 
             <Content style={{ width: "100%", margin: 0, padding: 0 }}>

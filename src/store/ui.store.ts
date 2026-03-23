@@ -7,6 +7,10 @@ interface UIState {
     isSearchOpen: boolean;
     toggleSearch: () => void;
     setSearchOpen: (open: boolean) => void;
+    isQuickViewOpen: boolean;
+    quickViewProductSlug: string | null;
+    openQuickView: (slug: string) => void;
+    closeQuickView: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -16,4 +20,8 @@ export const useUIStore = create<UIState>((set) => ({
     isSearchOpen: false,
     toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
     setSearchOpen: (open) => set({ isSearchOpen: open }),
+    isQuickViewOpen: false,
+    quickViewProductSlug: null,
+    openQuickView: (slug) => set({ isQuickViewOpen: true, quickViewProductSlug: slug }),
+    closeQuickView: () => set({ isQuickViewOpen: false, quickViewProductSlug: null }),
 }));

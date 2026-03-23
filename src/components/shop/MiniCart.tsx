@@ -296,7 +296,7 @@ export default function MiniCart({
                              </div>
                         </Card>
 
-                        <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
+                        <Space orientation="vertical" style={{ width: '100%', marginTop: 16 }}>
                             <Button 
                                 type="primary" 
                                 htmlType="submit"

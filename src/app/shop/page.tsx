@@ -5,28 +5,28 @@ import {
     Alert,
     Button,
     Card,
-    Checkbox,
-    Collapse,
     Divider,
     Flex,
-    Input,
     Pagination,
     Select,
-    Slider,
     Space,
     Spin,
-    Switch,
     Typography,
     Empty,
     Drawer,
+    Grid,
+    Tag,
+    Row,
+    Col
 } from 'antd';
-import { MenuOutlined } from '@ant-design/icons';
+import { FilterOutlined, CloseCircleFilled } from '@ant-design/icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import styles from '@/components/shop/productGridTransition.module.css';
 import ProductGrid from '@/components/shop/ProductGrid';
 import { useUIStore } from '@/store/ui.store';
 import HeroSlider from '@/components/shop/HeroSlider';
+import ShopFilters from '@/components/shop/ShopFilters';
 import type { ProductListResponse } from '@/types/product';
 import type { StoreMetaResponse } from '@/types/meta';
 import { useDebounce } from '@/lib/useDebounce';
@@ -57,6 +57,10 @@ function parseJsonArray(param: string | null): string[] {
 function ShopContent() {
     const router = useRouter();
     const sp = useSearchParams();
+    const screens = Grid.useBreakpoint();
+    const isDesktop = screens.lg; // Utilizar pantallas lg para 2 columnas fijas, si es menor usar Drawer
+
+    const [showSidebar, setShowSidebar] = useState(true);
 
     const [collection, setCollection] = useState<string | undefined>(
         sp.get('collection') ?? undefined
@@ -148,7 +152,6 @@ function ShopContent() {
         });
     }, [meta]);
 
-    // Query string para listado
     const queryString = useMemo(() => {
         const params = new URLSearchParams();
 
@@ -175,7 +178,7 @@ function ShopContent() {
     }, [debouncedSizes, debouncedColors]);
 
     useEffect(() => {
-        router.replace(`/shop?${queryString}`);
+        window.history.replaceState(null, '', `/shop?${queryString}`);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [queryString]);
 
@@ -192,185 +195,187 @@ function ShopContent() {
 
     const resetPage = () => setPage(1);
 
+    const handleClearAll = () => {
+        setCollection(undefined);
+        setSizes([]);
+        setColors([]);
+        setOnlyInStock(false);
+        setPrice([priceBounds.min, priceBounds.max]);
+        setPriceUI([priceBounds.min, priceBounds.max]);
+        resetPage();
+    };
+
+    const hasActiveFilters = collection || sizes.length > 0 || colors.length > 0 || onlyInStock || price[0] > priceBounds.min || price[1] < priceBounds.max;
+
+    const filterProps = {
+        collections,
+        collection,
+        setCollection: (v: string | undefined) => { setCollection(v); resetPage(); },
+        onlyInStock,
+        setOnlyInStock: (v: boolean) => { setOnlyInStock(v); resetPage(); },
+        priceBounds,
+        priceUI,
+        setPriceUI,
+        onPriceChangeComplete: (v: [number, number]) => { setPrice(v); resetPage(); },
+        sizeOptions,
+        sizes,
+        setSizes: (v: string[]) => { setSizes(v); resetPage(); },
+        colorOptions,
+        colors,
+        setColors: (v: string[]) => { setColors(v); resetPage(); },
+        metaLoading
+    };
+
     return (
         <div style={{ paddingBottom: 64 }}>
             {/* HERO SLIDER FULL WIDTH */}
             <HeroSlider />
 
-            <div id="shop-grid" style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 24px 24px' }}>
-                <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+            <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: '48px 24px 24px' }}>
+                {(metaError || productsError) ? (
+                    <Alert
+                        type="error"
+                        showIcon
+                        message="Ocurrió un error"
+                        description={(metaError?.message ?? productsError?.message) || 'Error'}
+                        style={{ marginBottom: 24 }}
+                    />
+                ) : null}
 
-            {(metaError || productsError) ? (
-                <Alert
-                    type="error"
-                    showIcon
-                    message="Ocurrió un error"
-                    description={(metaError?.message ?? productsError?.message) || 'Error'}
-                />
-            ) : null}
+                <Row gutter={[32, 32]}>
+                    {/* COLUMNA IZQUIERDA: SIDEBAR (Oculto en celular) */}
+                    {isDesktop && showSidebar && (
+                        <Col lg={6}>
+                            <Card variant="borderless" style={{ position: 'sticky', top: 100 }}>
+                                <Flex justify="space-between" align="center" style={{ marginBottom: 24 }}>
+                                    <Title level={4} style={{ margin: 0 }}>Filtros</Title>
+                                    {hasActiveFilters && (
+                                        <Button type="link" onClick={handleClearAll} style={{ padding: 0 }}>Limpiar</Button>
+                                    )}
+                                </Flex>
+                                {metaLoading && !meta ? <ShopFiltersSkeleton /> : <ShopFilters {...filterProps} />}
+                            </Card>
+                        </Col>
+                    )}
 
-            {metaLoading && !meta ? (
-                <ShopFiltersSkeleton />
-            ) : (
-                <>
-                    <Flex justify="end" align="center" style={{ marginBottom: 16 }}>
-                        <Select
-                            value={sort}
-                            onChange={(v) => {
-                                setSort(v);
-                                resetPage();
-                            }}
-                            options={SORT_OPTIONS as any}
-                            style={{ minWidth: 200 }}
-                            placeholder="Ordenar por"
-                        />
-                    </Flex>
+                    {/* DRAWER MÓVIL */}
+                    {!isDesktop && (
+                        <Drawer
+                            title="Filtrar Productos"
+                            placement="left"
+                            onClose={() => setFilterDrawerOpen(false)}
+                            open={isFilterDrawerOpen}
+                            extra={hasActiveFilters && <Button type="link" onClick={handleClearAll}>Limpiar</Button>}
+                        >
+                            {metaLoading && !meta ? <ShopFiltersSkeleton /> : <ShopFilters {...filterProps} />}
+                        </Drawer>
+                    )}
 
-                    <Drawer
-                        title="Filtrar Productos"
-                        placement="left"
-                        onClose={() => setFilterDrawerOpen(false)}
-                        open={isFilterDrawerOpen}
-                        width={320}
-                    >
-                        <Space direction="vertical" size={24} style={{ width: '100%' }}>
-                            <div>
-                                <Text strong>Colección</Text>
-                                <Select
-                                    allowClear
-                                    placeholder="Todas"
-                                    value={collection}
-                                    onChange={(v) => {
-                                        setCollection(v);
-                                        resetPage();
-                                    }}
-                                    options={collections}
-                                    style={{ width: '100%', marginTop: 8 }}
-                                    loading={metaLoading}
-                                />
-                            </div>
-
-                            <Flex align="center" justify="space-between">
-                                <Text strong>Solo con stock</Text>
-                                <Switch
-                                    checked={onlyInStock}
-                                    onChange={(v: boolean) => {
-                                        setOnlyInStock(v);
-                                        resetPage();
-                                    }}
-                                />
+                    {/* COLUMNA DERECHA: PRODUCTOS */}
+                    <Col xs={24} lg={isDesktop && showSidebar ? 18 : 24}>
+                        {/* Control superior: Chips Activos y OrderBy */}
+                        <Flex justify="space-between" align="center" wrap="wrap" gap={16} style={{ marginBottom: 24 }}>
+                            {/* Chips Section */}
+                            <Flex wrap="wrap" gap={8} align="center" style={{ flex: 1 }}>
+                                {isDesktop && (
+                                    <Button 
+                                        icon={<FilterOutlined />} 
+                                        onClick={() => setShowSidebar(!showSidebar)}
+                                    >
+                                        {showSidebar ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+                                    </Button>
+                                )}
+                                {!isDesktop && (
+                                    <Button 
+                                        icon={<FilterOutlined />} 
+                                        onClick={() => setFilterDrawerOpen(true)}
+                                    >
+                                        Filtros {hasActiveFilters ? '(Activos)' : ''}
+                                    </Button>
+                                )}
+                                
+                                {collection && (
+                                    <Tag closable onClose={() => setCollection(undefined)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
+                                        {collections.find(c => c.value === collection)?.label || 'Colección'}
+                                    </Tag>
+                                )}
+                                {sizes.map(s => (
+                                    <Tag key={s} closable onClose={() => setSizes(sizes.filter(x => x !== s))} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
+                                        Talla: {s}
+                                    </Tag>
+                                ))}
+                                {colors.map(c => (
+                                    <Tag key={c} closable onClose={() => setColors(colors.filter(x => x !== c))} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
+                                        Color: {c}
+                                    </Tag>
+                                ))}
+                                {onlyInStock && (
+                                    <Tag closable onClose={() => setOnlyInStock(false)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
+                                        Con stock
+                                    </Tag>
+                                )}
                             </Flex>
 
-                            <Divider style={{ margin: 0 }} />
-
-                            <div>
-                                <Text strong>Precio (S/)</Text>
-                                <Slider
-                                    range
-                                    min={priceBounds.min}
-                                    max={priceBounds.max}
-                                    step={1}
-                                    value={priceUI}
-                                    onChange={(v) => setPriceUI(v as [number, number])}
-                                    onChangeComplete={(v) => {
-                                        setPrice(v as [number, number]);
-                                        resetPage();
-                                    }}
-                                    style={{ marginTop: 8 }}
-                                    disabled={metaLoading}
-                                />
-                                <Text type="secondary">{`S/ ${priceUI[0]} - S/ ${priceUI[1]}`}</Text>
-                            </div>
-
-                            <Collapse
-                                ghost
-                                items={[
-                                    {
-                                        key: 'advanced',
-                                        label: <Text strong>Tallas y Colores</Text>,
-                                        children: (
-                                            <Space direction="vertical" size={24} style={{ width: '100%', paddingTop: 8 }}>
-                                                <div>
-                                                    <Text strong>Tallas</Text>
-                                                    <Checkbox.Group
-                                                        options={sizeOptions}
-                                                        value={sizes}
-                                                        onChange={(v) => {
-                                                            setSizes(v as string[]);
-                                                        }}
-                                                        style={{
-                                                            marginTop: 8,
-                                                            display: 'grid',
-                                                            gridTemplateColumns: 'repeat(3, 1fr)',
-                                                            gap: 8,
-                                                        }}
-                                                        disabled={metaLoading}
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <Text strong>Colores</Text>
-                                                    <Checkbox.Group
-                                                        options={colorOptions}
-                                                        value={colors}
-                                                        onChange={(v) => {
-                                                            setColors(v as string[]);
-                                                        }}
-                                                        style={{
-                                                            marginTop: 8,
-                                                            display: 'grid',
-                                                            gridTemplateColumns: 'repeat(2, 1fr)',
-                                                            gap: 8,
-                                                        }}
-                                                        disabled={metaLoading}
-                                                    />
-                                                </div>
-                                            </Space>
-                                        ),
-                                    },
-                                ]}
-                            />
-                        </Space>
-                    </Drawer>
-                </>
-            )}
-
-            <Card>
-                {productsLoading && !data ? (
-                    <ProductGridSkeleton count={pageSize} />
-                ) : !data || data.items.length === 0 ? (
-                    <Empty description="No hay productos con esos filtros" />
-                ) : (
-                    <>
-                        <div className={`${styles.grid} ${productsLoading ? styles.gridLoading : ''}`}>
-                            <ProductGrid items={data.items} />
-                        </div>
-                        <Divider />
-                        <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-                            <Text type="secondary">{`Total: ${data.total}`}</Text>
-                            <Pagination
-                                current={data.page}
-                                pageSize={data.pageSize}
-                                total={data.total}
-                                showSizeChanger
-                                pageSizeOptions={[12, 24, 48]}
-                                onChange={(p, ps) => {
-                                    setPage(p);
-                                    setPageSize(ps);
+                            {/* Sort Section */}
+                            <Select
+                                value={sort}
+                                onChange={(v) => {
+                                    setSort(v);
+                                    resetPage();
                                 }}
+                                options={SORT_OPTIONS as any}
+                                style={{ minWidth: 200 }}
+                                placeholder="Ordenar por"
+                                size="large"
                             />
                         </Flex>
 
-                        {/* Si está revalidando y ya hay data previa, opcional: feedback sutil */}
-                        {productsLoading && data ? (
-                            <div style={{ marginTop: 12 }}>
-                                <Text type="secondary">Actualizando...</Text>
-                            </div>
-                        ) : null}
-                    </>
-                )}
-            </Card>
-            </Space>
+                        {/* Product Grid Layout */}
+                        <Card variant="borderless" style={{ background: 'transparent' }} styles={{ body: { padding: 0 } }}>
+                            {productsLoading && !data ? (
+                                <ProductGridSkeleton count={pageSize} />
+                            ) : !data || data.items.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '64px 0', background: '#fff', borderRadius: 12 }}>
+                                    <Empty 
+                                        description={<Text type="secondary" style={{ fontSize: 16 }}>No hay productos que coincidan con estos filtros</Text>} 
+                                    />
+                                    {hasActiveFilters && (
+                                        <Button type="primary" onClick={handleClearAll} style={{ marginTop: 16, background: '#000', borderColor: '#000' }}>
+                                            Limpiar Filtros
+                                        </Button>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className={`${styles.grid} ${productsLoading ? styles.gridLoading : ''}`}>
+                                        <ProductGrid items={data.items} />
+                                    </div>
+                                    <Divider />
+                                    <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+                                        <Text type="secondary" style={{ fontWeight: 500 }}>Mostrando {data.items.length} de {data.total}</Text>
+                                        <Pagination
+                                            current={data.page}
+                                            pageSize={data.pageSize}
+                                            total={data.total}
+                                            showSizeChanger={false}
+                                            onChange={(p, ps) => {
+                                                setPage(p);
+                                                if (ps) setPageSize(ps);
+                                                window.scrollTo({ top: document.getElementById('shop-grid')?.offsetTop || 0, behavior: 'smooth' });
+                                            }}
+                                        />
+                                    </Flex>
+
+                                    {productsLoading && data ? (
+                                        <div style={{ marginTop: 12 }}>
+                                            <Text type="secondary">Actualizando...</Text>
+                                        </div>
+                                    ) : null}
+                                </>
+                            )}
+                        </Card>
+                    </Col>
+                </Row>
             </div>
         </div>
     );

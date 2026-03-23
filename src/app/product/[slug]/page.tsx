@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex } from 'antd';
+import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid } from 'antd';
 import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
@@ -22,6 +22,8 @@ const { Title, Text, Paragraph } = Typography;
 export default function ProductDetailPage() {
     const params = useParams<{ slug: string }>();
     const slug = params.slug;
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
 
     const addCartItem = useCartStore((s) => s.addItem);
     const addWishlistItem = useWishlistStore((s) => s.addItem);
@@ -291,6 +293,38 @@ export default function ProductDetailPage() {
                     </Row>
                 </Card>
             </div>
+            
+            {isMobile && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: '#fff',
+                    padding: '12px 16px',
+                    boxShadow: '0 -4px 12px rgba(0,0,0,0.08)',
+                    zIndex: 999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12
+                }}>
+                    <div style={{ flex: 1 }}>
+                        <Text strong style={{ display: 'block', fontSize: 16 }}>{formatPEN(selectedVariant?.price ?? data.product.basePrice ?? 0)}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{selectedVariant ? `Talla: ${selectedVariant.size}` : 'Seleccione variante'}</Text>
+                    </div>
+                    <Button
+                        type="primary"
+                        size="large"
+                        icon={<ShoppingCartOutlined />}
+                        disabled={!canAdd}
+                        onClick={onAddToCart}
+                        style={{ backgroundColor: '#000', borderColor: '#000', borderRadius: 24, padding: '0 24px', flexShrink: 0 }}
+                    >
+                        Comprar
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

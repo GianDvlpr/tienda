@@ -87,14 +87,7 @@ export default function ShopHeader() {
                 <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, color: "white" }}>
                     {!isSearchOpen && (
                         <>
-                            <Button 
-                                type="text" 
-                                icon={<MenuOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />} 
-                                onClick={() => toggleFilterDrawer()}
-                                style={{ color: 'white', display: 'flex', alignItems: 'center', padding: isMobile ? "0 4px" : "4px 15px" }}
-                            >
-                                {!isMobile && <span style={{ marginLeft: 8, fontWeight: 500, letterSpacing: 1 }}>Menú</span>}
-                            </Button>
+
                             <Button 
                                 type="text" 
                                 icon={<SearchOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />} 
