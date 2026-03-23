@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex } from 'antd';
-import { WhatsAppOutlined, HeartOutlined } from '@ant-design/icons';
+import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 
@@ -14,6 +14,7 @@ import ProductDetailSkeleton from '@/components/shop/ProductDetailSkeleton';
 import type { ProductDetailResponse, ProductVariant } from '@/types/product';
 import { formatPEN } from '@/lib/money';
 import { useCartStore } from '@/store/cart.store';
+import { useWishlistStore } from '@/store/wishlist.store';
 import { fetcher } from '@/lib/fetcher';
 
 const { Title, Text, Paragraph } = Typography;
@@ -22,7 +23,10 @@ export default function ProductDetailPage() {
     const params = useParams<{ slug: string }>();
     const slug = params.slug;
 
-    const addItem = useCartStore((s) => s.addItem);
+    const addCartItem = useCartStore((s) => s.addItem);
+    const addWishlistItem = useWishlistStore((s) => s.addItem);
+    const removeWishlistItem = useWishlistStore((s) => s.removeItem);
+    const isInWishlist = useWishlistStore((s) => s.isInWishlist);
 
     const { data, error, isLoading } = useSWR<ProductDetailResponse>(
         slug ? `/api/store/products/${slug}` : null,
@@ -83,6 +87,9 @@ export default function ProductDetailPage() {
 
     const canAdd = !!selectedVariant && selectedVariant.stock > 0;
 
+
+    const isWishlisted = selectedVariant ? isInWishlist(selectedVariant.variantId) : false;
+
     const onAddToCart = () => {
         if (!data || !selectedVariant) return;
 
@@ -91,8 +98,29 @@ export default function ProductDetailPage() {
             return;
         }
 
-        addItem(
-            {
+        addCartItem({
+            variantId: selectedVariant.variantId,
+            productId: data.product.productId,
+            slug: data.product.slug,
+            name: data.product.name,
+            size: selectedVariant.size,
+            color: selectedVariant.color,
+            sku: selectedVariant.sku,
+            imageUrl: data.images?.[0]?.url ?? null,
+            unitPrice: selectedVariant.price,
+        }, 1);
+
+        toast.success('Agregado a tu carrito');
+    };
+
+    const onToggleWishlist = () => {
+        if (!data || !selectedVariant) return;
+
+        if (isWishlisted) {
+            removeWishlistItem(selectedVariant.variantId);
+            toast.success('Eliminado de tus favoritos');
+        } else {
+            addWishlistItem({
                 variantId: selectedVariant.variantId,
                 productId: data.product.productId,
                 slug: data.product.slug,
@@ -102,17 +130,16 @@ export default function ProductDetailPage() {
                 sku: selectedVariant.sku,
                 imageUrl: data.images?.[0]?.url ?? null,
                 unitPrice: selectedVariant.price,
-            },
-            1
-        );
-
-        toast.success('Agregado a tu lista de selección');
+            });
+            toast.success('Agregado a tus favoritos');
+        }
     };
+
 
     const handleWhatsAppConsult = () => {
         if (!data || !selectedVariant) return;
         const text = `Hola Aura Boutique, deseo consultar por la siguiente prenda:\n\n*${data.product.name}*\nTalla: ${selectedVariant.size}\nColor: ${selectedVariant.color}\nSKU: ${selectedVariant.sku}\nPrecio Ref: ${formatPEN(selectedVariant.price)}\n\n¿Tienen disponibilidad?`;
-        
+
         const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
         window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`, '_blank');
     };
@@ -146,114 +173,124 @@ export default function ProductDetailPage() {
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24, paddingTop: 100 }}>
             <div style={{ display: 'grid', gap: 16 }}>
-            <Card>
-                <Row gutter={[24, 24]}>
-                    <Col xs={24} md={12}>
-                        <ProductGallery images={data.images ?? []} />
-                    </Col>
+                <Card>
+                    <Row gutter={[24, 24]}>
+                        <Col xs={24} md={12}>
+                            <ProductGallery images={data.images ?? []} />
+                        </Col>
 
-                    <Col xs={24} md={12}>
-                        <Space orientation="vertical" size={10} style={{ width: '100%' }}>
-                            <Title level={3} style={{ margin: 0 }}>
-                                {data.product.name}
-                            </Title>
+                        <Col xs={24} md={12}>
+                            <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+                                <Title level={3} style={{ margin: 0 }}>
+                                    {data.product.name}
+                                </Title>
 
-                            <Text type="secondary">{selectedVariant ? `SKU: ${selectedVariant.sku}` : null}</Text>
+                                <Text type="secondary">{selectedVariant ? `SKU: ${selectedVariant.sku}` : null}</Text>
 
-                            <Title level={4} style={{ margin: 0 }}>
-                                {formatPEN(selectedVariant?.price ?? data.product.basePrice ?? 0)}
-                            </Title>
+                                <Title level={4} style={{ margin: 0 }}>
+                                    {formatPEN(selectedVariant?.price ?? data.product.basePrice ?? 0)}
+                                </Title>
 
-                            {data.product.description ? (
-                                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                                    {data.product.description}
-                                </Paragraph>
-                            ) : null}
+                                {data.product.description ? (
+                                    <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                                        {data.product.description}
+                                    </Paragraph>
+                                ) : null}
 
-                            <Divider style={{ margin: '12px 0' }} />
+                                <Divider style={{ margin: '12px 0' }} />
 
-                            <div>
-                                <Text strong>Talla</Text>
-                                <div style={{ marginTop: 8 }}>
-                                    <Radio.Group
-                                        value={selectedSize ?? undefined}
-                                        onChange={(e) => setSelectedSize(e.target.value)}
-                                        buttonStyle="solid"
-                                        style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
-                                    >
-                                        {sizeOptions.map((s) => (
-                                            <Radio.Button key={s} value={s}>
-                                                {s}
-                                            </Radio.Button>
-                                        ))}
-                                    </Radio.Group>
-                                </div>
-                            </div>
-
-                            <div>
-                                <Text strong>Color</Text>
-                                <div style={{ marginTop: 8 }}>
-                                    <Radio.Group
-                                        value={selectedColor ?? undefined}
-                                        onChange={(e) => setSelectedColor(e.target.value)}
-                                        buttonStyle="solid"
-                                        style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
-                                    >
-                                        {colorOptionsForSize.map((c) => {
-                                            const v = variants.find((x) => x.size === selectedSize && x.color === c);
-                                            const disabled = !v || v.stock <= 0;
-                                            return (
-                                                <Radio.Button key={c} value={c} disabled={disabled}>
-                                                    {c}
+                                <div>
+                                    <Text strong>Talla</Text>
+                                    <div style={{ marginTop: 8 }}>
+                                        <Radio.Group
+                                            value={selectedSize ?? undefined}
+                                            onChange={(e) => setSelectedSize(e.target.value)}
+                                            buttonStyle="solid"
+                                            style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
+                                        >
+                                            {sizeOptions.map((s) => (
+                                                <Radio.Button key={s} value={s}>
+                                                    {s}
                                                 </Radio.Button>
-                                            );
-                                        })}
-                                    </Radio.Group>
+                                            ))}
+                                        </Radio.Group>
+                                    </div>
                                 </div>
 
-                                <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                                    {selectedVariant
-                                        ? selectedVariant.stock > 0
-                                            ? `Disponible`
-                                            : 'Agotado temporalmente'
-                                        : 'Elige una talla y color'}
-                                </Text>
-                            </div>
+                                <div>
+                                    <Text strong>Color</Text>
+                                    <div style={{ marginTop: 8 }}>
+                                        <Radio.Group
+                                            value={selectedColor ?? undefined}
+                                            onChange={(e) => setSelectedColor(e.target.value)}
+                                            buttonStyle="solid"
+                                            style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}
+                                        >
+                                            {colorOptionsForSize.map((c) => {
+                                                const v = variants.find((x) => x.size === selectedSize && x.color === c);
+                                                const disabled = !v || v.stock <= 0;
+                                                return (
+                                                    <Radio.Button key={c} value={c} disabled={disabled}>
+                                                        {c}
+                                                    </Radio.Button>
+                                                );
+                                            })}
+                                        </Radio.Group>
+                                    </div>
 
-                            <Flex gap="middle" wrap="wrap" style={{ marginTop: 16 }}>
-                                <Button 
-                                    type="primary" 
-                                    size="large" 
-                                    icon={<WhatsAppOutlined />}
-                                    disabled={!canAdd} 
-                                    onClick={handleWhatsAppConsult}
-                                    style={{ backgroundColor: '#25D366', borderColor: '#25D366', flex: 1, minWidth: 200 }}
-                                >
-                                    Consultar por WhatsApp
-                                </Button>
-                                
-                                <Button 
-                                    size="large" 
-                                    icon={<HeartOutlined />}
-                                    disabled={!canAdd} 
-                                    onClick={onAddToCart}
-                                    style={{ flex: 1, minWidth: 200 }}
-                                >
-                                    Agregar a mi lista
-                                </Button>
-                            </Flex>
+                                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                                        {selectedVariant
+                                            ? selectedVariant.stock > 0
+                                                ? `Disponible`
+                                                : 'Agotado temporalmente'
+                                            : 'Elige una talla y color'}
+                                    </Text>
+                                </div>
 
-                            {!canAdd ? (
-                                <Text type="secondary" style={{ color: 'red' }}>Selecciona una variante disponible para consultar.</Text>
-                            ) : null}
+                                <Flex gap="middle" wrap="wrap" style={{ marginTop: 16 }}>
+                                    <Button
+                                        type="primary"
+                                        size="large"
+                                        icon={<ShoppingCartOutlined />}
+                                        disabled={!canAdd}
+                                        onClick={onAddToCart}
+                                        style={{ backgroundColor: '#000', borderColor: '#000', flex: 1, minWidth: 200 }}
+                                    >
+                                        Agregar al Carrito
+                                    </Button>
 
-                            {/* Feedback sutil si SWR revalida y ya hay data */}
-                            {isLoading && data ? <Text type="secondary">Actualizando...</Text> : null}
-                        </Space>
-                    </Col>
-                </Row>
-            </Card>
-        </div>
+                                    <Button
+                                        size="large"
+                                        icon={isWishlisted ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
+                                        disabled={!canAdd}
+                                        onClick={onToggleWishlist}
+                                        style={{ flex: 1, minWidth: 200 }}
+                                    >
+                                        {isWishlisted ? 'En Favoritos' : 'Añadir a Deseos'}
+                                    </Button>
+
+                                    <Button
+                                        size="large"
+                                        icon={<WhatsAppOutlined />}
+                                        disabled={!canAdd}
+                                        onClick={handleWhatsAppConsult}
+                                        style={{ color: '#25D366', borderColor: '#25D366', flex: 1, minWidth: 200 }}
+                                    >
+                                        Consultar por WhatsApp
+                                    </Button>
+                                </Flex>
+
+                                {!canAdd ? (
+                                    <Text type="secondary" style={{ color: 'red' }}>Selecciona una variante disponible para consultar.</Text>
+                                ) : null}
+
+                                {/* Feedback sutil si SWR revalida y ya hay data */}
+                                {isLoading && data ? <Text type="secondary">Actualizando...</Text> : null}
+                            </Space>
+                        </Col>
+                    </Row>
+                </Card>
+            </div>
         </div>
     );
 }

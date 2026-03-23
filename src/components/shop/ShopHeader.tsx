@@ -1,21 +1,24 @@
 "use client";
 
 import { Layout, Badge, Button, Switch, Space, Input, Grid } from "antd";
-import { HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined } from "@ant-design/icons";
+import { HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
+import { useWishlistStore } from "@/store/wishlist.store";
 import { useThemeStore } from "@/store/theme.store";
 import { useUIStore } from "@/store/ui.store";
 import MiniCart from "./MiniCart";
+import WishlistDrawer from "./WishlistDrawer";
 
 import AuraLogo from "@/components/AuraLogo";
 
 const { Header } = Layout;
 
 export default function ShopHeader() {
-    const [open, setOpen] = useState(false);
+    const [openCart, setOpenCart] = useState(false);
+    const [openWishlist, setOpenWishlist] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -23,7 +26,8 @@ export default function ShopHeader() {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.sm;
 
-    const totalItems = useCartStore((s) => s.totalItems());
+    const totalCartItems = useCartStore((s) => s.totalItems());
+    const totalWishlistItems = useWishlistStore((s) => s.totalItems());
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
     const toggleFilterDrawer = useUIStore((s) => s.toggleFilterDrawer);
@@ -155,19 +159,31 @@ export default function ShopHeader() {
                             unCheckedChildren={<BulbOutlined />}
                         />
                     )}
-                    <Badge count={totalItems} size="small" overflowCount={99}>
-                        <Button
-                            type="text"
-                            icon={<HeartOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
-                            onClick={() => setOpen(true)}
-                            title="Mi Lista"
-                            style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 15px" }}
-                        />
-                    </Badge>
+                    <Space size={16}>
+                        <Badge count={totalWishlistItems} size="small" overflowCount={99}>
+                            <Button
+                                type="text"
+                                icon={<HeartOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
+                                onClick={() => setOpenWishlist(true)}
+                                title="Favoritos"
+                                style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 8px" }}
+                            />
+                        </Badge>
+                        <Badge count={totalCartItems} size="small" overflowCount={99}>
+                            <Button
+                                type="text"
+                                icon={<ShoppingCartOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
+                                onClick={() => setOpenCart(true)}
+                                title="Mi Carrito"
+                                style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 8px" }}
+                            />
+                        </Badge>
+                    </Space>
                 </Space>
             </Header>
 
-            <MiniCart open={open} onClose={() => setOpen(false)} />
+            <MiniCart open={openCart} onClose={() => setOpenCart(false)} />
+            <WishlistDrawer open={openWishlist} onClose={() => setOpenWishlist(false)} />
         </>
     );
 }

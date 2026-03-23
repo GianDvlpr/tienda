@@ -224,7 +224,7 @@ export default function MiniCart({
                         <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setIsCheckoutView(false)} />
                         <span>Completar Pedido</span>
                     </Space>
-                ) : "Mi Lista"
+                ) : "Mi Carrito"
             }
             open={open}
             onClose={handleClose}
@@ -319,7 +319,7 @@ export default function MiniCart({
                     </Form>
                 </div>
             ) : items.length === 0 ? (
-                <Empty description="Tu lista está vacía" />
+                <Empty description="Tu carrito está vacío" />
             ) : (
                 <List
                     itemLayout="horizontal"
