@@ -30,8 +30,29 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Aura Boutique",
-  description: "Tienda online",
+  title: {
+    template: '%s | Aura Boutique',
+    default: 'Aura Boutique | Moda Femenina y Exclusiva en Perú',
+  },
+  description: "Boutique de moda femenina exclusiva en Perú. Encuentra las últimas tendencias en vestidos, blusas y accesorios con envíos a todo el país. ✨ Aura Boutique - Tu estilo, tu esencia.",
+  keywords: ["boutique femenina", "moda mujer", "boutique online peru", "vestidos de fiesta lima", "ropa de mujer exclusiva", "aura boutique peru", "moda chic lima", "comprar ropa online peru", "tendencias de moda femenina"],
+  openGraph: {
+    title: 'Aura Boutique | Moda Femenina y Exclusiva en Perú',
+    description: 'Encuentra vestidos exclusivos y lo último en moda femenina con envíos a todo el Perú. 🚛✨',
+    url: 'https://auraboutique.me',
+    siteName: 'Aura Boutique',
+    locale: 'es_PE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Aura Boutique | Moda Femenina y Exclusiva en Perú',
+    description: 'Boutique online de moda femenina en Perú. ¡Descubre tu próximo look ahora! ✨',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

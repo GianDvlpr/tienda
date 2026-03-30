@@ -9,7 +9,7 @@ export default function ReturnsPage() {
         <div style={{ maxWidth: 800, margin: "0 auto", padding: "120px 24px 80px" }}>
             <Title level={1} style={{ fontWeight: 300, letterSpacing: 2, textAlign: 'center' }}>POLÍTICA DE CAMBIOS Y DEVOLUCIONES</Title>
             <Divider />
-            
+
             <Paragraph>
                 En <Text strong>AURA</Text>, queremos que estés satisfecho con tu compra. Entendemos que en ocasiones, los productos pueden no cumplir con sus expectativas, por lo cual, contamos con las siguientes políticas para asistirlo.
             </Paragraph>
@@ -32,7 +32,7 @@ export default function ReturnsPage() {
 
             <Title level={4}>3. PROCESO DE CAMBIO</Title>
             <Paragraph>
-                Los cambios se podrán realizar por otra talla o por cualquier otro producto disponible en nuestra tienda. Si el nuevo producto tiene un costo mayor, el cliente deberá cancelar la diferencia. En caso de ser menor, se le entregará una nota de crédito a su favor por el saldo restante. 
+                Los cambios se podrán realizar por otra talla o por cualquier otro producto disponible en nuestra tienda. Si el nuevo producto tiene un costo mayor, el cliente deberá cancelar la diferencia. En caso de ser menor, se le entregará una nota de crédito a su favor por el saldo restante.
             </Paragraph>
             <Paragraph>
                 <Text type="secondary">Nota: El costo de envío para devoluciones corre por cuenta del cliente, a menos que el error sea de fábrica o de envío por parte de AURA.</Text>
@@ -44,9 +44,9 @@ export default function ReturnsPage() {
             </Paragraph>
 
             <Divider />
-            
+
             <Paragraph style={{ textAlign: "center", fontStyle: "italic" }}>
-                AURA (RUC 2061334376) se reserva el derecho de rechazar devoluciones que no cumplan con las condiciones arriba mencionadas.
+                AURA (RUC 20613343769) se reserva el derecho de rechazar devoluciones que no cumplan con las condiciones arriba mencionadas.
             </Paragraph>
         </div>
     );

@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Layout, Row, Col, Typography, Space, Divider, Grid } from 'antd';
-import { 
-    WhatsAppOutlined, 
-    InstagramOutlined, 
-    FacebookOutlined, 
+import {
+    WhatsAppOutlined,
+    InstagramOutlined,
+    FacebookOutlined,
     ThunderboltFilled,
     SafetyCertificateFilled,
     CustomerServiceOutlined,
@@ -80,7 +80,7 @@ export default function ShopFooter() {
                     <div style={{ marginBottom: 20 }}>
                         <AuraLogo size="small" />
                     </div>
-                    <Text strong style={{ display: 'block', marginBottom: 8, color: textColor }}>RUC: 2061334376</Text>
+                    <Text strong style={{ display: 'block', marginBottom: 8, color: textColor }}>RUC: 20613343769</Text>
                     <Paragraph style={{ fontSize: 14, color: secondaryColor }}>
                         Somos AURA, una marca comprometida con la elegancia y la calidad en cada prenda. Diseñamos para quienes buscan destacar.
                     </Paragraph>
@@ -169,11 +169,11 @@ export default function ShopFooter() {
                                     justifyContent: 'center',
                                     transition: 'opacity 0.2s'
                                 }}>
-                                    <svg 
-                                        viewBox="0 0 448 512" 
+                                    <svg
+                                        viewBox="0 0 448 512"
                                         style={{ width: 14, fill: bgFooter }}
                                     >
-                                        <path d="M448 209.91a210.06 210.06 0 0 1 -122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0l88 0a121.18 121.18 0 0 0 1.86 22.32c7.87 33.32 31.74 60.39 63.06 73.56 24.12 10.19 50.85 13.91 77.85 13.91l0 100.12z"/>
+                                        <path d="M448 209.91a210.06 210.06 0 0 1 -122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0l88 0a121.18 121.18 0 0 0 1.86 22.32c7.87 33.32 31.74 60.39 63.06 73.56 24.12 10.19 50.85 13.91 77.85 13.91l0 100.12z" />
                                     </svg>
                                 </div>
                             </Link>
