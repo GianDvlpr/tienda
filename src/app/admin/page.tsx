@@ -23,7 +23,7 @@ export default function AdminDashboardPage() {
     const { data, isLoading, error } = useSWR<any>('/api/admin/dashboard', fetcher);
 
     if (error) {
-        return <Alert message="Error al cargar analíticas" type="error" />;
+        return <Alert title="Error al cargar analíticas" type="error" />;
     }
 
     const { totalRevenue = 0, pendingCount = 0, recentOrders = [], lowStock = [] } = data || {};
@@ -67,7 +67,7 @@ export default function AdminDashboardPage() {
             
             <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
                 <Col xs={24} sm={12} md={8}>
-                    <Card loading={isLoading} bordered={false}>
+                    <Card loading={isLoading} variant="borderless">
                         <Statistic
                             title="Ingresos Estimados"
                             value={Number(totalRevenue)}
@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8}>
-                    <Card loading={isLoading} bordered={false}>
+                    <Card loading={isLoading} variant="borderless">
                         <Statistic
                             title="Pedidos Pendientes"
                             value={pendingCount}
@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} md={8}>
-                    <Card bordered={false} hoverable>
+                    <Card variant="borderless" hoverable>
                         <Link href="/admin/products" style={{ display: 'block', textDecoration: 'none' }}>
                             <Statistic
                                 title="Catálogo Rápido"
@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
 
             <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
                 <Col xs={24} lg={16}>
-                    <Card title="Últimos Pedidos" bordered={false} loading={isLoading} extra={<Link href="/admin/orders">Ver todos</Link>}>
+                    <Card title="Últimos Pedidos" variant="borderless" loading={isLoading} extra={<Link href="/admin/orders">Ver todos</Link>}>
                         <Table
                             columns={columns}
                             dataSource={recentOrders}
@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
                 <Col xs={24} lg={8}>
                     <Card 
                         title="Alertas de Stock" 
-                        bordered={false} 
+                        variant="borderless" 
                         loading={isLoading}
                         extra={<WarningOutlined style={{ color: 'red' }} />}
                     >

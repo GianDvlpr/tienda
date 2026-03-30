@@ -1,7 +1,7 @@
 "use client";
 
 import { Layout, Badge, Button, Switch, Space, Input, Grid } from "antd";
-import { HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined, ShoppingCartOutlined } from "@ant-design/icons";
+import { HeartFilled, HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined, ShoppingFilled } from "@ant-design/icons";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -156,7 +156,7 @@ export default function ShopHeader() {
                         <Badge count={totalWishlistItems} size="small" overflowCount={99}>
                             <Button
                                 type="text"
-                                icon={<HeartOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
+                                icon={<HeartFilled style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
                                 onClick={() => setOpenWishlist(true)}
                                 title="Favoritos"
                                 style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 8px" }}
@@ -165,7 +165,7 @@ export default function ShopHeader() {
                         <Badge count={totalCartItems} size="small" overflowCount={99}>
                             <Button
                                 type="text"
-                                icon={<ShoppingCartOutlined style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
+                                icon={<ShoppingFilled style={{ fontSize: isMobile ? 18 : 20, color: 'white' }} />}
                                 onClick={() => setOpenCart(true)}
                                 title="Mi Carrito"
                                 style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 8px" }}

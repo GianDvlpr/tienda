@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button, Drawer, Empty, List, Space, Typography } from 'antd';
-import { DeleteOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { DeleteFilled, ShoppingFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { useWishlistStore } from '@/store/wishlist.store';
 import { useCartStore } from '@/store/cart.store';
@@ -57,7 +57,7 @@ export default function WishlistDrawer({
                                 <Button
                                     key="cart"
                                     type="text"
-                                    icon={<ShoppingCartOutlined style={{ color: '#000' }} />}
+                                    icon={<ShoppingFilled style={{ color: '#000' }} />}
                                     onClick={() => handleMoveToCart(item)}
                                     title="Mover al Carrito"
                                 />,
@@ -65,7 +65,7 @@ export default function WishlistDrawer({
                                     key="delete"
                                     type="text"
                                     danger
-                                    icon={<DeleteOutlined />}
+                                    icon={<DeleteFilled />}
                                     onClick={() => removeItem(item.variantId)}
                                     title="Eliminar"
                                 />,

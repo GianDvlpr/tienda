@@ -90,7 +90,7 @@ export default function NewProductPage() {
                 onFinish={onFinish}
             >
                 {/* --- SECCIÓN PRINCIPAL --- */}
-                <Card title="Información Básica" bordered={false} style={{ marginBottom: 24 }}>
+                <Card title="Información Básica" variant="borderless" style={{ marginBottom: 24 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
                         <Form.Item name="name" label="Nombre del Producto" rules={[{ required: true, message: 'Requerido' }]}>
                             <Input placeholder="Ej. Vestido Gala Noche" onChange={handleNameChange} />
@@ -126,7 +126,7 @@ export default function NewProductPage() {
                 </Card>
 
                 {/* --- SECCIÓN IMÁGENES --- */}
-                <Card title="Imágenes del Producto" bordered={false} style={{ marginBottom: 24 }}>
+                <Card title="Imágenes del Producto" variant="borderless" style={{ marginBottom: 24 }}>
                     <div style={{ marginBottom: 16 }}>
                         <ImageUploader onUploadSuccess={handleUploadSuccess} buttonText="Añadir Foto" />
                     </div>
@@ -153,7 +153,7 @@ export default function NewProductPage() {
                 </Card>
 
                 {/* --- SECCIÓN VARIANTES --- */}
-                <Card title="Variantes (Tallas y Colores)" bordered={false} style={{ marginBottom: 24 }}>
+                <Card title="Variantes (Tallas y Colores)" variant="borderless" style={{ marginBottom: 24 }}>
                     <Form.List name="variants">
                         {(fields, { add, remove }) => (
                             <>

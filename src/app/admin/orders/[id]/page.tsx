@@ -146,7 +146,7 @@ export default function OrderDetailPage() {
     }
 
     if (!order) {
-        return <Card><Alert type="error" message="Pedido no encontrado" /></Card>;
+        return <Card><Alert type="error" title="Pedido no encontrado" /></Card>;
     }
 
     const itemsColumns = [
@@ -154,7 +154,7 @@ export default function OrderDetailPage() {
             title: 'Producto / Variante',
             key: 'product',
             render: (_: any, record: any) => (
-                <Space direction="vertical" size={2}>
+                <Space orientation="vertical" size={2}>
                     <Text strong>{record.product_name}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>SKU: {record.sku}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>{record.variant_size} - {record.variant_color}</Text>
@@ -181,7 +181,7 @@ export default function OrderDetailPage() {
     ];
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Space>
                     <Link href="/admin/orders">
@@ -204,7 +204,7 @@ export default function OrderDetailPage() {
 
             <Row gutter={[24, 24]}>
                 <Col xs={24} md={16}>
-                    <Card title="Artículos del Pedido" bordered={false} style={{ marginBottom: 24 }}>
+                    <Card title="Artículos del Pedido" variant="borderless" style={{ marginBottom: 24 }}>
                         <Table
                             columns={itemsColumns}
                             dataSource={order.order_item}
@@ -212,15 +212,15 @@ export default function OrderDetailPage() {
                             pagination={false}
                         />
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                            <Space direction="vertical" align="end">
+                            <Space orientation="vertical" align="end">
                                 <Text type="secondary">Subtotal: {formatPEN(Number(order.subtotal))}</Text>
                                 <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(Number(order.total))}</Title>
                             </Space>
                         </div>
                     </Card>
 
-                    <Card title="Actualizar Estado del Pedido" bordered={false}>
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                    <Card title="Actualizar Estado del Pedido" variant="borderless">
+                        <Space orientation="vertical" style={{ width: '100%' }}>
                             <Text strong>Progreso del Pedido</Text>
                             <Select
                                 value={status || order.status}
@@ -247,7 +247,7 @@ export default function OrderDetailPage() {
                 </Col>
                 
                 <Col xs={24} md={8}>
-                    <Card title="Detalles del Cliente" bordered={false} style={{ marginBottom: 24 }}>
+                    <Card title="Detalles del Cliente" variant="borderless" style={{ marginBottom: 24 }}>
                         <Descriptions column={1} size="small">
                             <Descriptions.Item label="Fecha">{dayjs(order.created_at).format('DD MMM YYYY, HH:mm')}</Descriptions.Item>
                             <Descriptions.Item label="Nombre">{order.shipping_name}</Descriptions.Item>

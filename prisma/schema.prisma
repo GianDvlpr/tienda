@@ -213,3 +213,26 @@ model admin_user {
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_admin_active")
 }
+
+model complaint {
+  complaint_id     String   @id(map: "PK_complaint") @default(dbgenerated("newsequentialid()"), map: "DF_complaint_id") @db.UniqueIdentifier
+  complaint_number Int      @default(autoincrement())
+  full_name        String   @db.NVarChar(200)
+  document_type    String   @db.NVarChar(20)
+  document_number  String   @db.NVarChar(20)
+  address          String   @db.NVarChar(500)
+  phone            String   @db.NVarChar(30)
+  email            String   @db.NVarChar(200)
+  parent_full_name String?  @db.NVarChar(200)
+  type             String   @db.NVarChar(20)
+  amount           Decimal? @db.Decimal(18, 2)
+  description      String   @db.NVarChar(Max)
+  claim_type       String   @db.NVarChar(20)
+  claim_detail     String   @db.NVarChar(Max)
+  consumer_request String   @db.NVarChar(Max)
+  status           String   @default("PENDIENTE", map: "DF_complaint_status") @db.NVarChar(20)
+  created_at       DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_complaint_created_at")
+
+  @@index([complaint_number], map: "IX_complaint_number")
+  @@index([created_at(sort: Desc)], map: "IX_complaint_created")
+}

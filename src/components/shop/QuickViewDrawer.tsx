@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Drawer, Spin, Typography, Space, Divider, Radio, Flex, Button, Alert } from 'antd';
-import { ShoppingCartOutlined } from '@ant-design/icons';
+import { ShoppingFilled } from '@ant-design/icons';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 
@@ -87,7 +87,7 @@ export default function QuickViewDrawer() {
                     <Spin size="large" />
                 </Flex>
             ) : error || !data ? (
-                <Alert type="error" message="No se pudo cargar el producto" />
+                <Alert type="error" title="No se pudo cargar el producto" />
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 24 }}>
@@ -158,7 +158,7 @@ export default function QuickViewDrawer() {
                         <Button
                             type="primary"
                             size="large"
-                            icon={<ShoppingCartOutlined />}
+                            icon={<ShoppingFilled />}
                             disabled={!canAdd}
                             onClick={onAddToCart}
                             style={{ width: '100%', backgroundColor: '#000', borderRadius: 0, height: 48 }}

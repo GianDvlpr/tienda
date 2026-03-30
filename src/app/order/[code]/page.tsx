@@ -52,7 +52,7 @@ export default function OrderPage() {
     if (!data) {
         return (
             <Card>
-                <Alert type="error" message="No se encontró el pedido" />
+                <Alert type="error" title="No se encontró el pedido" />
             </Card>
         );
     }

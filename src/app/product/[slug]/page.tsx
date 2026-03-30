@@ -167,7 +167,7 @@ export default function ProductDetailPage() {
     if (!data) {
         return (
             <Card>
-                <Alert type="error" showIcon message="Producto no encontrado" />
+                <Alert type="error" showIcon title="Producto no encontrado" />
             </Card>
         );
     }

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button, Drawer, Empty, InputNumber, List, Space, Typography, Form, Input, Card, Result, Spin } from 'antd';
 import confetti from 'canvas-confetti';
-import { DeleteOutlined, WhatsAppOutlined, ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons';
+import { DeleteFilled, WhatsAppOutlined, ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useCartStore } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
@@ -331,7 +331,7 @@ export default function MiniCart({
                                     key="delete"
                                     type="text"
                                     danger
-                                    icon={<DeleteOutlined />}
+                                    icon={<DeleteFilled />}
                                     onClick={() => removeItem(item.variantId)}
                                 />,
                             ]}

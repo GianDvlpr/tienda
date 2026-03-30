@@ -3,10 +3,11 @@
 import { Layout } from "antd";
 import { Suspense } from "react";
 import ShopHeader from "@/components/shop/ShopHeader";
+import ShopFooter from "@/components/shop/ShopFooter";
 import QuickViewDrawer from "@/components/shop/QuickViewDrawer";
 import { usePathname } from "next/navigation";
 
-const { Content, Footer } = Layout;
+const { Content } = Layout;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -27,11 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {children}
             </Content>
 
-            {!isAdmin && (
-                <Footer style={{ textAlign: "center" }}>
-                    © {new Date().getFullYear()} AURA
-                </Footer>
-            )}
+            {!isAdmin && <ShopFooter />}
         </Layout>
     );
 }

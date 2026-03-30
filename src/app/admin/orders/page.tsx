@@ -81,7 +81,7 @@ export default function AdminOrdersPage() {
     }
 
     return (
-        <Card title="Gestión de Pedidos" bordered={false}>
+        <Card title="Gestión de Pedidos" variant="borderless">
             <Table
                 columns={columns}
                 dataSource={orders}

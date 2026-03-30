@@ -2,7 +2,7 @@
 
 import { useState, MouseEvent } from 'react';
 import { Card, Typography, Tooltip } from 'antd';
-import { HeartOutlined, HeartFilled, EyeOutlined } from '@ant-design/icons';
+import { HeartFilled, EyeFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -155,7 +155,7 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                                 {isWishlisted ? (
                                     <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} />
                                 ) : (
-                                    <HeartOutlined style={{ color: '#000', fontSize: 18 }} />
+                                    <HeartFilled style={{ color: 'rgba(0,0,0,0.15)', fontSize: 18 }} />
                                 )}
                             </Tooltip>
                         </div>
@@ -182,7 +182,7 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                             }}
                         >
                             <Tooltip title="Vista Rápida">
-                                <EyeOutlined style={{ color: '#000', fontSize: 18 }} />
+                                <EyeFilled style={{ color: '#000', fontSize: 18 }} />
                             </Tooltip>
                         </div>
 
