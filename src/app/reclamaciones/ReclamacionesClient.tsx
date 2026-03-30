@@ -15,7 +15,8 @@ import {
     Checkbox, 
     Space, 
     Result,
-    Alert
+    Alert,
+    notification
 } from 'antd';
 import { BookFilled, SendOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
@@ -47,9 +48,9 @@ export default function ReclamacionesClient() {
             window.scrollTo(0, 0);
         } catch (error) {
             console.error(error);
-            Alert.config({
-                title: 'Error',
-                type: 'error'
+            notification.error({
+                message: 'Error al enviar',
+                description: 'No pudimos registrar tu reclamo. Por favor intenta más tarde.',
             });
         } finally {
             setLoading(false);
@@ -93,7 +94,7 @@ export default function ReclamacionesClient() {
                         onFinish={onFinish}
                         requiredMark="optional"
                     >
-                        <Divider orientation="left">1. Identificación del Consumidor</Divider>
+                        <Divider>1. Identificación del Consumidor</Divider>
                         <Row gutter={16}>
                             <Col xs={24} md={12}>
                                 <Form.Item name="fullName" label="Nombre Completo" rules={[{ required: true, message: 'Ingresa tu nombre' }]}>
@@ -132,7 +133,7 @@ export default function ReclamacionesClient() {
                             </Col>
                         </Row>
 
-                        <Divider orientation="left">2. Detalle del Reclamo / Queja</Divider>
+                        <Divider>2. Detalle del Reclamo / Queja</Divider>
                         <Row gutter={16}>
                             <Col xs={24} md={12}>
                                 <Form.Item name="type" label="Tipo" initialValue="RECLAMO" rules={[{ required: true }]}>
