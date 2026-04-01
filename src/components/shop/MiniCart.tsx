@@ -148,7 +148,7 @@ export default function MiniCart({
 
             toast.success(`Tu pedido ${orderCode} ha sido registrado. Redirigiendo a WhatsApp...`);
             
-            const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
+            const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51907360760';
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
             window.open(waUrl, '_blank');
         } catch (error: any) {

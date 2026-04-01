@@ -126,7 +126,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         if (!initialData || !selectedVariant) return;
         const text = `Hola Aura Boutique, deseo consultar por la siguiente prenda:\n\n*${initialData.product.name}*\nTalla: ${selectedVariant.size}\nColor: ${selectedVariant.color}\nSKU: ${selectedVariant.sku}\nPrecio Ref: ${formatPEN(selectedVariant.price)}\n\n¿Tienen disponibilidad?`;
 
-        const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51992068901';
+        const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51907360760';
         window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
