@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Typography, Row, Col, Card, Statistic, Table, Tag, List, Alert, Button, Dropdown, Checkbox, Space as AntSpace } from 'antd';
+import { Typography, Row, Col, Card, Statistic, Table, Tag, List, Alert, Button, Dropdown, Checkbox, Space as AntSpace, Flex } from 'antd';
 import { ShoppingOutlined, DollarOutlined, WarningOutlined, ClockCircleOutlined, RightOutlined, SettingOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => `S/ ${value}`}
-                            valueStyle={{ color: '#3f8600' }}
+                            styles={{ content: { color: '#3f8600' } }}
                         />
                     </Card>
                 </Col>
@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
                             title="Pedidos Pendientes"
                             value={pendingCount}
                             prefix={<ClockCircleOutlined />}
-                            valueStyle={{ color: '#faad14' }}
+                            styles={{ content: { color: '#faad14' } }}
                         />
                         <div style={{ marginTop: 12 }}>
                             <Link href="/admin/orders">
@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
                                 title="Catálogo Rápido"
                                 value="Ir a Prendas"
                                 prefix={<ShoppingOutlined />}
-                                valueStyle={{ fontSize: 20, color: '#C89F53' }}
+                                styles={{ content: { fontSize: 20, color: '#C89F53' } }}
                             />
                         </Link>
                     </Card>
@@ -127,7 +127,7 @@ export default function AdminDashboardPage() {
                 <Col>
                     <Dropdown
                         trigger={['click']}
-                        dropdownRender={() => (
+                        popupRender={() => (
                             <Card variant="borderless" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                                 <AntSpace orientation="vertical">
                                     <Text strong>Mostrar Gráficas:</Text>
@@ -312,15 +312,15 @@ export default function AdminDashboardPage() {
                         {lowStock.length === 0 ? (
                             <Text type="secondary">El inventario está saludable.</Text>
                         ) : (
-                            <List
-                                size="small"
-                                dataSource={lowStock}
-                                renderItem={(item: any) => (
-                                    <List.Item>
-                                        <List.Item.Meta
-                                            title={<Link href={`/admin/products/${item.product_id}`}>{item.product.name}</Link>}
-                                            description={`${item.size} - ${item.color} | SKU: ${item.sku}`}
-                                        />
+                            <Flex vertical gap={12}>
+                                {lowStock.map((item: any) => (
+                                    <div key={item.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <Link href={`/admin/products/${item.product_id}`} style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <Text strong>{item.product.name}</Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>{`${item.size} - ${item.color} | SKU: ${item.sku}`}</Text>
+                                            </Link>
+                                        </div>
                                         <div>
                                             {item.stock === 0 ? (
                                                 <Tag color="red">Agotado</Tag>
@@ -328,9 +328,9 @@ export default function AdminDashboardPage() {
                                                 <Tag color="orange">Quedan {item.stock}</Tag>
                                             )}
                                         </div>
-                                    </List.Item>
-                                )}
-                            />
+                                    </div>
+                                ))}
+                            </Flex>
                         )}
                     </Card>
                 </Col>

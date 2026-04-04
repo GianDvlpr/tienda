@@ -14,12 +14,14 @@ import {
   BulbOutlined,
   UserOutlined,
   ShoppingCartOutlined,
+  TagOutlined,
 } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useThemeStore } from '@/store/theme.store';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import OrderNotificationListener from '@/components/admin/OrderNotificationListener';
 
 const { Header, Sider, Content } = Layout;
 
@@ -58,6 +60,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       key: '/admin/products',
       icon: <ShoppingOutlined />,
       label: <Link href="/admin/products">Productos</Link>,
+    },
+    {
+      key: '/admin/coupons',
+      icon: <TagOutlined />,
+      label: <Link href="/admin/coupons">Cupones</Link>,
     },
     {
       key: '/admin/collections',
@@ -116,6 +123,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Space>
         </Header>
         <Content style={{ margin: '24px 16px', padding: 24, minHeight: 280, background: colorBgContainer, borderRadius: borderRadiusLG }}>
+          <OrderNotificationListener />
           {children}
         </Content>
       </Layout>

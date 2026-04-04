@@ -27,6 +27,7 @@ export default function NewProductPage() {
             is_active: true,
             base_price: 0,
             base_cost: 0,
+            size_guide_url: null,
             // Create at least one empty variant by default
             variants: [{ sku: '', size: 'Única', color: 'Unicolor', price: null, cost: null, stock: 0, is_active: true }]
         });
@@ -150,6 +151,37 @@ export default function NewProductPage() {
                             <Text type="secondary">Sube al menos una imagen para tu prenda.</Text>
                         )}
                     </div>
+                </Card>
+
+                {/* --- SECCIÓN GUÍA DE TALLAS --- */}
+                <Card title="Guía de Tallas (Imagen)" variant="borderless" style={{ marginBottom: 24 }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <ImageUploader 
+                            onUploadSuccess={(url) => form.setFieldsValue({ size_guide_url: url })} 
+                            buttonText="Subir Guía de Tallas" 
+                        />
+                    </div>
+                    <Form.Item name="size_guide_url" hidden><Input /></Form.Item>
+                    
+                    <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.size_guide_url !== currentValues.size_guide_url}>
+                        {({ getFieldValue }) => {
+                            const url = getFieldValue('size_guide_url');
+                            return url ? (
+                                <div style={{ position: 'relative', width: 200 }}>
+                                    <Image src={url} alt="Guía de tallas" width={200} style={{ borderRadius: '8px', border: '1px solid #f0f0f0' }} />
+                                    <Button 
+                                        danger 
+                                        type="primary" 
+                                        shape="circle" 
+                                        icon={<DeleteOutlined />} 
+                                        size="small"
+                                        style={{ position: 'absolute', top: -8, right: -8, zIndex: 10 }}
+                                        onClick={() => form.setFieldsValue({ size_guide_url: null })}
+                                    />
+                                </div>
+                            ) : <Text type="secondary">Opcional: Sube una imagen con las medidas de esta prenda.</Text>;
+                        }}
+                    </Form.Item>
                 </Card>
 
                 {/* --- SECCIÓN VARIANTES --- */}

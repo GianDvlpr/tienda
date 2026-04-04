@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid } from 'antd';
+import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
 import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
 import ProductGallery from '@/components/shop/ProductGallery';
 import ProductDetailSkeleton from '@/components/shop/ProductDetailSkeleton';
@@ -18,6 +18,7 @@ interface ProductDetailClientProps {
 }
 
 export default function ProductDetailClient({ initialData }: ProductDetailClientProps) {
+    const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
 
@@ -28,6 +29,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
 
     useEffect(() => {
         if (!initialData) return;
@@ -160,7 +162,19 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                 <Divider style={{ margin: '12px 0' }} />
 
                                 <div>
-                                    <Text strong>Talla</Text>
+                                    <Flex align="center" justify="space-between">
+                                        <Text strong>Talla</Text>
+                                        {initialData.product.size_guide_url && (
+                                            <Button 
+                                                type="link" 
+                                                size="small" 
+                                                onClick={() => setIsSizeGuideOpen(true)}
+                                                style={{ padding: 0, height: 'auto' }}
+                                            >
+                                                Guía de Tallas
+                                            </Button>
+                                        )}
+                                    </Flex>
                                     <div style={{ marginTop: 8 }}>
                                         <Radio.Group
                                             value={selectedSize ?? undefined}
@@ -214,7 +228,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         icon={<ShoppingCartOutlined />}
                                         disabled={!canAdd}
                                         onClick={onAddToCart}
-                                        style={{ backgroundColor: '#000', borderColor: '#000', flex: 1, minWidth: 200 }}
+                                        style={{ flex: 1, minWidth: 200 }}
                                     >
                                         Agregar al Carrito
                                     </Button>
@@ -255,9 +269,9 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    background: '#fff',
+                    background: token.colorBgContainer,
                     padding: '12px 16px',
-                    boxShadow: '0 -4px 12px rgba(0,0,0,0.08)',
+                    boxShadow: token.boxShadowSecondary,
                     zIndex: 999,
                     display: 'flex',
                     alignItems: 'center',
@@ -274,12 +288,33 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                         icon={<ShoppingCartOutlined />}
                         disabled={!canAdd}
                         onClick={onAddToCart}
-                        style={{ backgroundColor: '#000', borderColor: '#000', borderRadius: 24, padding: '0 24px', flexShrink: 0 }}
+                        style={{ borderRadius: 24, padding: '0 24px', flexShrink: 0 }}
                     >
                         Comprar
                     </Button>
                 </div>
             )}
+
+            <Modal
+                title="Guía de Tallas"
+                open={isSizeGuideOpen}
+                onCancel={() => setIsSizeGuideOpen(false)}
+                footer={null}
+                width={700}
+                centered
+            >
+                {initialData.product.size_guide_url ? (
+                    <div style={{ textAlign: 'center' }}>
+                        <Image 
+                            src={initialData.product.size_guide_url} 
+                            alt="Guía de tallas" 
+                            style={{ maxWidth: '100%', borderRadius: 8 }} 
+                        />
+                    </div>
+                ) : (
+                    <Text type="secondary">Guía de tallas no disponible para este producto.</Text>
+                )}
+            </Modal>
         </div>
     );
 }

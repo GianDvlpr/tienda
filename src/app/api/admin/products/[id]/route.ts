@@ -26,7 +26,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const id = resolvedParams.id;
         const body = await req.json();
         const { 
-            name, slug, description, base_price, base_cost, is_active,
+            name, slug, description, base_price, base_cost, is_active, size_guide_url,
             collections, images, variants
         } = body;
 
@@ -39,7 +39,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             // 1. Update basic fields
             const prod = await tx.product.update({
                 where: { product_id: id },
-                data: { name, slug, description, base_price, base_cost, is_active }
+                data: { name, slug, description, base_price, base_cost, is_active, size_guide_url }
             });
 
             // 2. Sync Collections (Delete all, re-insert)
@@ -92,6 +92,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             }
 
             return prod;
+        }, {
+            timeout: 20000
         });
 
         return NextResponse.json({ success: true, product: updated });

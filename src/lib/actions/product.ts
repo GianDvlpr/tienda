@@ -11,6 +11,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 p.slug,
                 p.name,
                 p.description,
+                p.size_guide_url,
                 COALESCE(p.base_price, 0) AS base_price,
                 c.name AS collection_name,
                 c.slug AS collection_slug
@@ -57,6 +58,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 slug: p.slug,
                 name: p.name,
                 description: p.description ?? null,
+                size_guide_url: p.size_guide_url ?? null,
                 basePrice: Number(p.base_price ?? 0),
                 collection: p.collection_name ? {
                     name: p.collection_name,

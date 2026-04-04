@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, App } from 'antd';
 import { useThemeStore } from '@/store/theme.store';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 },
             }}
         >
-            {children}
+            <App>
+                {children}
+            </App>
         </ConfigProvider>
     );
 }

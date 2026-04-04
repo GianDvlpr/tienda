@@ -34,6 +34,7 @@ export default function EditProductPage() {
                 base_price: Number(product.base_price),
                 base_cost: product.base_cost ? Number(product.base_cost) : null,
                 is_active: product.is_active,
+                size_guide_url: product.size_guide_url,
                 collections: product.product_collection?.map((pc: any) => pc.collection_id) || [],
                 variants: product.product_variant?.map((v: any) => ({
                     ...v,
@@ -156,6 +157,37 @@ export default function EditProductPage() {
                             </div>
                         ))}
                     </div>
+                </Card>
+                
+                {/* --- SECCIÓN GUÍA DE TALLAS --- */}
+                <Card title="Guía de Tallas (Imagen)" variant="borderless" style={{ marginBottom: 24 }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <ImageUploader 
+                            onUploadSuccess={(url) => form.setFieldsValue({ size_guide_url: url })} 
+                            buttonText={form.getFieldValue('size_guide_url') ? "Cambiar Guía de Tallas" : "Subir Guía de Tallas"} 
+                        />
+                    </div>
+                    <Form.Item name="size_guide_url" hidden><Input /></Form.Item>
+                    
+                    <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.size_guide_url !== currentValues.size_guide_url}>
+                        {({ getFieldValue }) => {
+                            const url = getFieldValue('size_guide_url');
+                            return url ? (
+                                <div style={{ position: 'relative', width: 200 }}>
+                                    <Image src={url} alt="Guía de tallas" width={200} style={{ borderRadius: '8px', border: '1px solid #f0f0f0' }} />
+                                    <Button 
+                                        danger 
+                                        type="primary" 
+                                        shape="circle" 
+                                        icon={<DeleteOutlined />} 
+                                        size="small"
+                                        style={{ position: 'absolute', top: -8, right: -8, zIndex: 10 }}
+                                        onClick={() => form.setFieldsValue({ size_guide_url: null })}
+                                    />
+                                </div>
+                            ) : <Text type="secondary">No se ha asignado una guía de tallas a este producto.</Text>;
+                        }}
+                    </Form.Item>
                 </Card>
 
                 <Card title="Variantes (Tallas y Colores)" variant="borderless" style={{ marginBottom: 24 }}>

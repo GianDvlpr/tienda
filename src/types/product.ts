@@ -37,6 +37,7 @@ export interface ProductDetail {
     name: string;
     description: string | null;
     basePrice: number;
+    size_guide_url?: string | null;
     collection?: {
         name: string;
         slug: string;

@@ -22,7 +22,7 @@ export default function ImageUploader({ onUploadSuccess, buttonText = "Subir Ima
             options={{
                 multiple: false,
                 resourceType: "image",
-                clientAllowedFormats: ["png", "jpeg", "jpg", "webp"],
+                clientAllowedFormats: ["png", "jpeg", "jpg", "webp", "jfif"],
             }}
         >
             {({ open }) => {
