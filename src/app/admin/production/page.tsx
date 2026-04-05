@@ -56,11 +56,18 @@ export default function ProductionListPage() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <Title level={2} style={{ margin: 0 }}>Producción y Fichas Técnicas</Title>
-                <Link href="/admin/production/lots">
-                    <Button type="default" size="large">
-                        Ver Historial de Lotes
-                    </Button>
-                </Link>
+                <Space>
+                    <Link href="/admin/production/simulator">
+                        <Button type="primary" size="large" icon={<ExperimentOutlined />} style={{ background: '#C89F53', borderColor: '#C89F53' }}>
+                            Simulador de Costos
+                        </Button>
+                    </Link>
+                    <Link href="/admin/production/lots">
+                        <Button type="default" size="large">
+                            Ver Historial de Lotes
+                        </Button>
+                    </Link>
+                </Space>
             </div>
             <Card variant="borderless">
                 <Table 

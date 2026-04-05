@@ -6,6 +6,7 @@ import { PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
+import UnitCostHelper from '@/components/admin/UnitCostHelper';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -122,6 +123,12 @@ function SuppliesTab() {
                         <Form.Item name="stock" label="Stock Inicial"><InputNumber style={{ width: '100%' }} min={0} /></Form.Item>
                         <Form.Item name="min_stock" label="Alerta Stock Mínimo"><InputNumber style={{ width: '100%' }} min={0} /></Form.Item>
                     </div>
+
+                    <UnitCostHelper 
+                        onCalculate={(unitCost, qty) => form.setFieldsValue({ unit_cost: unitCost, stock: qty })} 
+                        label="¿Compraste por lote/rollo? Calcular unitario"
+                    />
+
                     <Form.Item name="is_active" label="Activo" valuePropName="checked"><Switch /></Form.Item>
                     <div style={{ textAlign: 'right', marginTop: 16 }}>
                         <Space><Button onClick={() => setIsModalOpen(false)}>Cancelar</Button><Button type="primary" htmlType="submit" loading={isSaving}>Guardar</Button></Space>
@@ -136,8 +143,14 @@ function SuppliesTab() {
                         <InputNumber min={0.1} style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name="new_unit_cost" label={`Factura: Nuevo costo unitario (Dejar vacío si no cambió)`}>
-                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} placeholder={`Cual fue el costo por ${restockSupply?.unit}?`} />
+                        <InputNumber min={0} step={0.0001} style={{ width: '100%' }} placeholder={`Cual fue el costo por ${restockSupply?.unit}?`} />
                     </Form.Item>
+
+                    <UnitCostHelper 
+                        onCalculate={(unitCost, qty) => restockForm.setFieldsValue({ new_unit_cost: unitCost, qty: qty })} 
+                        label="Calcular costo unitario desde factura global"
+                    />
+
                     <Form.Item name="reason" label="Motivo o Referencia (Opcional)">
                         <Input placeholder="Ej. Compra Factura 001-200" />
                     </Form.Item>
@@ -225,8 +238,14 @@ function ServicesTab() {
                         <Input placeholder="Ej. Confección, Corte, Planchado, Pegado de Ojal" />
                     </Form.Item>
                     <Form.Item name="unit_cost" label="Costo Unitario (S/)" rules={[{ required: true }]}>
-                        <InputNumber style={{ width: '100%' }} min={0} step={0.1} />
+                        <InputNumber style={{ width: '100%' }} min={0} step={0.01} />
                     </Form.Item>
+
+                    <UnitCostHelper 
+                        onCalculate={(unitCost) => form.setFieldsValue({ unit_cost: unitCost })} 
+                        label="¿Te dieron un precio por lote de prendas? Calcular unitario"
+                    />
+
                     <Form.Item name="is_active" label="Activo" valuePropName="checked">
                         <Switch />
                     </Form.Item>

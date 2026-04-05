@@ -242,7 +242,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                 <div>
                                     <Flex align="center" justify="space-between">
                                         <Text strong>Talla</Text>
-                                        {initialData.product.size_guide_url && (
+                                        {(initialData.product.size_guide_url || initialData.product.size_guide_json) && (
                                             <Button 
                                                 type="link" 
                                                 size="small" 
@@ -506,21 +506,21 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                             const { columns, rows } = JSON.parse(initialData.product.size_guide_json!);
                             table = (
                                 <div style={{ overflowX: 'auto', marginBottom: 24 }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${token.colorBorderSecondary}`, backgroundColor: token.colorBgContainer }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: '12px 8px', border: '1px solid #f0f0f0', background: '#fafafa', textAlign: 'left', minWidth: 100 }}>Medida (cm)</th>
+                                                <th style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout, textAlign: 'left', minWidth: 100 }}>Medida (cm)</th>
                                                 {columns.map((col: string, i: number) => (
-                                                    <th key={i} style={{ padding: '12px 8px', border: '1px solid #f0f0f0', background: '#fafafa', textAlign: 'center' }}>{col}</th>
+                                                    <th key={i} style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout, textAlign: 'center' }}>{col}</th>
                                                 ))}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {rows.map((row: any, i: number) => (
                                                 <tr key={i}>
-                                                    <td style={{ padding: '12px 8px', border: '1px solid #f0f0f0', fontWeight: 600, color: '#555' }}>{row.label}</td>
+                                                    <td style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, fontWeight: 600 }}>{row.label}</td>
                                                     {row.values.map((val: string, j: number) => (
-                                                        <td key={j} style={{ padding: '12px 8px', border: '1px solid #f0f0f0', textAlign: 'center' }}>{val}</td>
+                                                        <td key={j} style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, textAlign: 'center' }}>{val}</td>
                                                     ))}
                                                 </tr>
                                             ))}

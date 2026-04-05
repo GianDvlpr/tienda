@@ -311,7 +311,8 @@ model product_bom_service {
   id               String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
   product_id       String   @db.UniqueIdentifier
   service_id       String   @db.UniqueIdentifier
-  quantity         Decimal  @db.Decimal(18, 2)
+  quantity           Decimal  @db.Decimal(18, 2)
+  unit_cost_override Decimal? @db.Decimal(18, 2)
   
   product          product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
   service          service  @relation(fields: [service_id], references: [service_id], onDelete: Cascade)

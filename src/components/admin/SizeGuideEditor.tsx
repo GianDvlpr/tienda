@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Table, Input, Button, Space, Card, Typography, Popconfirm, Divider } from 'antd';
+import { Table, Input, Button, Space, Card, Typography, Popconfirm, Divider, theme } from 'antd';
 import { PlusOutlined, DeleteOutlined, ColumnHeightOutlined, ColumnWidthOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -20,6 +20,7 @@ interface SizeGuideEditorProps {
 }
 
 export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProps) {
+    const { token } = theme.useToken();
     const [data, setData] = useState<SizeGuideData>({
         columns: ['S', 'M', 'L'],
         rows: [
@@ -131,7 +132,7 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
 
 
     return (
-        <Card size="small" variant="borderless" style={{ background: '#fbfbfb', border: '1px solid #f0f0f0' }}>
+        <Card size="small" variant="borderless" style={{ background: token.colorBgLayout, border: `1px solid ${token.colorBorderSecondary}` }}>
             <div style={{ marginBottom: 16 }}>
                 <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>Plantillas Rápidas:</Text>
                 <Space wrap>
@@ -154,11 +155,11 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
                     <thead>
                         <tr>
-                            <th style={{ padding: 8, textAlign: 'left', border: '1px solid #ddd', background: '#f5f5f5', minWidth: 120 }}>
+                            <th style={{ padding: 8, textAlign: 'left', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, minWidth: 120 }}>
                                 Medida / Talla
                             </th>
                             {data.columns.map((col, i) => (
-                                <th key={i} style={{ padding: 8, border: '1px solid #ddd', background: '#f5f5f5', minWidth: 80 }}>
+                                <th key={i} style={{ padding: 8, border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, minWidth: 80 }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                         <Input 
                                             size="small" 
@@ -177,7 +178,7 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                                     </div>
                                 </th>
                             ))}
-                            <th style={{ padding: 8, border: '1px solid #ddd', width: 40 }}>
+                            <th style={{ padding: 8, border: `1px solid ${token.colorBorderSecondary}`, width: 40, background: token.colorBgContainer }}>
                                 <Button type="dashed" icon={<PlusOutlined />} onClick={addColumn} size="small" />
                             </th>
                         </tr>
@@ -185,7 +186,7 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                     <tbody>
                         {data.rows.map((row, rowIndex) => (
                             <tr key={rowIndex}>
-                                <td style={{ padding: 8, border: '1px solid #ddd' }}>
+                                <td style={{ padding: 8, border: `1px solid ${token.colorBorderSecondary}` }}>
                                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                         <Button 
                                             type="text" 
@@ -202,7 +203,7 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                                     </div>
                                 </td>
                                 {row.values.map((val, colIndex) => (
-                                    <td key={colIndex} style={{ padding: 8, border: '1px solid #ddd' }}>
+                                    <td key={colIndex} style={{ padding: 8, border: `1px solid ${token.colorBorderSecondary}` }}>
                                         <Input 
                                             size="small" 
                                             value={val} 
@@ -211,7 +212,7 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                                         />
                                     </td>
                                 ))}
-                                <td style={{ border: '1px solid #ddd' }}></td>
+                                <td style={{ border: `1px solid ${token.colorBorderSecondary}` }}></td>
                             </tr>
                         ))}
                     </tbody>

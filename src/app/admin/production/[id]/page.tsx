@@ -1,17 +1,21 @@
 'use client';
 
 import React, { useState, useEffect, use } from 'react';
-import { Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, message, Row, Col, Divider, Spin } from 'antd';
+import { Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, Row, Col, Divider, Spin, theme, App } from 'antd';
 import { PlusOutlined, SaveOutlined, CalculatorOutlined, CheckCircleOutlined, PrinterOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import dayjs from 'dayjs';
+import UnitCostHelper from '@/components/admin/UnitCostHelper';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-function BomTab({ productId, bomData, mutateBom }: any) {
+function BomTab({ productId, bomData, mutateBom, product }: any) {
+    const { token } = theme.useToken();
+    const { message } = App.useApp();
+    const productSizes = Array.from(new Set(product?.product_variant?.map((v: any) => v.size) || [])) as string[];
     const { data: supplies } = useSWR<any[]>('/api/admin/supplies', fetcher);
     const { data: services } = useSWR<any[]>('/api/admin/services', fetcher);
     
@@ -21,18 +25,50 @@ function BomTab({ productId, bomData, mutateBom }: any) {
 
     useEffect(() => {
         if (bomData) {
-            setLocalSupplies(bomData.supplies || []);
+            // Group supplies by supply_id if they have different sizes
+            const rawSupplies = bomData.supplies || [];
+            const groupedMap = new Map();
+
+            rawSupplies.forEach((s: any) => {
+                const key = `${s.supply_id}_${s.varies_by_color}`;
+                if (!groupedMap.has(key)) {
+                    groupedMap.set(key, { ...s, is_size_varied: false, sizeQuantities: {} });
+                }
+                const entry = groupedMap.get(key);
+                if (s.size && s.size !== 'ALL') {
+                    entry.is_size_varied = true;
+                    entry.sizeQuantities[s.size] = Number(s.quantity);
+                } else {
+                    entry.size = s.size;
+                    entry.quantity = Number(s.quantity);
+                }
+            });
+
+            setLocalSupplies(Array.from(groupedMap.values()));
             setLocalServices(bomData.services || []);
         }
     }, [bomData]);
 
     const handleSave = async () => {
         setIsSaving(true);
+        const flattenedSupplies: any[] = [];
+        localSupplies.forEach(s => {
+            if (s.is_size_varied) {
+                Object.entries(s.sizeQuantities).forEach(([sz, qty]) => {
+                    if (qty !== null && qty !== undefined) {
+                        flattenedSupplies.push({ ...s, size: sz, quantity: qty });
+                    }
+                });
+            } else {
+                flattenedSupplies.push(s);
+            }
+        });
+
         try {
             const res = await fetch(`/api/admin/production/bom/${productId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ supplies: localSupplies, services: localServices })
+                body: JSON.stringify({ supplies: flattenedSupplies, services: localServices })
             });
             if (!res.ok) throw new Error('Error al guardar ficha técnica');
             message.success('Ficha Técnica guardada exitosamente');
@@ -45,7 +81,7 @@ function BomTab({ productId, bomData, mutateBom }: any) {
     };
 
     const addSupply = () => {
-        setLocalSupplies([...localSupplies, { supply_id: null, size: null, quantity: 1, varies_by_color: false, id: Date.now().toString() }]);
+        setLocalSupplies([...localSupplies, { supply_id: null, size: null, quantity: 1, varies_by_color: false, is_size_varied: false, sizeQuantities: {}, id: Date.now().toString() }]);
     };
     
     const removeSupply = (index: number) => {
@@ -55,7 +91,7 @@ function BomTab({ productId, bomData, mutateBom }: any) {
     };
 
     const addService = () => {
-        setLocalServices([...localServices, { service_id: null, quantity: 1, id: Date.now().toString() }]);
+        setLocalServices([...localServices, { service_id: null, quantity: 1, unit_cost_override: null, id: Date.now().toString() }]);
     };
 
     const removeService = (index: number) => {
@@ -72,12 +108,13 @@ function BomTab({ productId, bomData, mutateBom }: any) {
             </div>
             
             {localSupplies.map((item, index) => (
-                <Card size="small" key={item.id} style={{ marginBottom: 8, background: '#fafafa' }}>
-                    <Row gutter={16} align="middle">
-                        <Col span={6}>
+                <Card size="small" key={item.id} style={{ marginBottom: 12, background: token.colorBgLayout, border: `1px solid ${token.colorBorderSecondary}` }}>
+                    <Row gutter={16} align="top">
+                        <Col span={7}>
+                            <Text type="secondary" style={{ fontSize: 10 }}>INSUMO</Text>
                             <Select 
                                 style={{ width: '100%' }} 
-                                placeholder="Seleccionar Insumo"
+                                placeholder="Seleccionar"
                                 value={item.supply_id}
                                 onChange={(val) => {
                                     const n = [...localSupplies]; n[index].supply_id = val; setLocalSupplies(n);
@@ -86,44 +123,95 @@ function BomTab({ productId, bomData, mutateBom }: any) {
                                 {supplies?.map(s => <Option key={s.supply_id} value={s.supply_id}>{s.name} ({s.unit})</Option>)}
                             </Select>
                         </Col>
-                        <Col span={6}>
-                            <InputNumber 
-                                style={{ width: '100%' }} 
-                                placeholder="Cantidad" 
-                                min={0} step={0.01} 
-                                value={item.quantity}
-                                onChange={(val) => {
-                                    const n = [...localSupplies]; n[index].quantity = val; setLocalSupplies(n);
-                                }}
-                            />
-                        </Col>
-                        <Col span={5}>
-                            <Select 
-                                style={{ width: '100%' }} 
-                                placeholder="Toda Talla"
-                                allowClear
-                                value={item.size}
-                                onChange={(val) => {
-                                    const n = [...localSupplies]; n[index].size = val; setLocalSupplies(n);
-                                }}
-                            >
-                                <Option value="S">Talla S</Option>
-                                <Option value="M">Talla M</Option>
-                                <Option value="L">Talla L</Option>
-                                <Option value="ALL">Todo</Option>
-                            </Select>
-                        </Col>
                         <Col span={4}>
-                            <Switch 
-                                checkedChildren="Color Indep." 
-                                unCheckedChildren="Fijo" 
-                                checked={item.varies_by_color}
-                                onChange={(val) => {
-                                    const n = [...localSupplies]; n[index].varies_by_color = val; setLocalSupplies(n);
-                                }}
-                            />
+                            <Text type="secondary" style={{ fontSize: 10 }}>¿VARÍA POR TALLA?</Text>
+                            <div style={{ marginTop: 4 }}>
+                                <Switch 
+                                    checkedChildren="SÍ" 
+                                    unCheckedChildren="NO" 
+                                    checked={item.is_size_varied}
+                                    onChange={(val) => {
+                                        const n = [...localSupplies]; 
+                                        n[index].is_size_varied = val;
+                                        if (val && Object.keys(n[index].sizeQuantities || {}).length === 0) {
+                                            // Initialize with current quantity for all sizes
+                                            const sq: any = {};
+                                            productSizes.forEach(sz => sq[sz] = n[index].quantity || 1);
+                                            n[index].sizeQuantities = sq;
+                                        }
+                                        setLocalSupplies(n);
+                                    }}
+                                />
+                            </div>
                         </Col>
-                        <Col span={3} style={{ textAlign: 'right' }}>
+                        {item.is_size_varied ? (
+                            <Col span={9}>
+                                <Text type="secondary" style={{ fontSize: 10 }}>CONSUMO POR TALLA</Text>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8, marginTop: 4 }}>
+                                    {productSizes.map(sz => (
+                                        <div key={sz} style={{ textAlign: 'center' }}>
+                                            <div style={{ fontSize: 9, color: '#999' }}>{sz}</div>
+                                            <InputNumber 
+                                                size="small" 
+                                                style={{ width: '100%' }} 
+                                                min={0} step={0.01}
+                                                value={item.sizeQuantities?.[sz]}
+                                                onChange={(val) => {
+                                                    const n = [...localSupplies];
+                                                    if (!n[index].sizeQuantities) n[index].sizeQuantities = {};
+                                                    n[index].sizeQuantities[sz] = val;
+                                                    setLocalSupplies(n);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </Col>
+                        ) : (
+                            <>
+                                <Col span={4}>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>CANT. UNIDAD</Text>
+                                    <InputNumber 
+                                        style={{ width: '100%' }} 
+                                        placeholder="0.00" 
+                                        min={0} step={0.01} 
+                                        value={item.quantity}
+                                        onChange={(val) => {
+                                            const n = [...localSupplies]; n[index].quantity = val; setLocalSupplies(n);
+                                        }}
+                                    />
+                                </Col>
+                                <Col span={5}>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>TALLA DESTINO</Text>
+                                    <Select 
+                                        style={{ width: '100%' }} 
+                                        placeholder="Toda Talla"
+                                        allowClear
+                                        value={item.size}
+                                        onChange={(val) => {
+                                            const n = [...localSupplies]; n[index].size = val; setLocalSupplies(n);
+                                        }}
+                                    >
+                                        {productSizes.map(sz => <Option key={sz} value={sz}>{sz}</Option>)}
+                                        <Option value="ALL">Todo</Option>
+                                    </Select>
+                                </Col>
+                            </>
+                        )}
+                        <Col span={4}>
+                            <Text type="secondary" style={{ fontSize: 10 }}>¿VARÍA POR COLOR?</Text>
+                            <div style={{ marginTop: 4 }}>
+                                <Switch 
+                                    checkedChildren="SÍ" 
+                                    unCheckedChildren="NO" 
+                                    checked={item.varies_by_color}
+                                    onChange={(val) => {
+                                        const n = [...localSupplies]; n[index].varies_by_color = val; setLocalSupplies(n);
+                                    }}
+                                />
+                            </div>
+                        </Col>
+                        <Col span={item.is_size_varied ? 24 : 4} style={{ textAlign: 'right', paddingTop: 10 }}>
                             <Button danger type="text" onClick={() => removeSupply(index)}>Eliminar</Button>
                         </Col>
                     </Row>
@@ -138,12 +226,13 @@ function BomTab({ productId, bomData, mutateBom }: any) {
             </div>
 
             {localServices.map((item, index) => (
-                <Card size="small" key={item.id} style={{ marginBottom: 8, background: '#fafafa' }}>
-                    <Row gutter={16} align="middle">
-                        <Col span={10}>
+                <Card size="small" key={item.id} style={{ marginBottom: 12, background: token.colorBgLayout, border: `1px solid ${token.colorBorderSecondary}` }}>
+                    <Row gutter={[16, 8]} align="top">
+                        <Col xs={24} sm={12}>
+                            <Text type="secondary" style={{ fontSize: 10 }}>SERVICIO</Text>
                             <Select 
                                 style={{ width: '100%' }} 
-                                placeholder="Seleccionar Servicio"
+                                placeholder="Seleccionar"
                                 value={item.service_id}
                                 onChange={(val) => {
                                     const n = [...localServices]; n[index].service_id = val; setLocalServices(n);
@@ -152,10 +241,11 @@ function BomTab({ productId, bomData, mutateBom }: any) {
                                 {services?.map(s => <Option key={s.service_id} value={s.service_id}>{s.name} ({formatPEN(Number(s.unit_cost))})</Option>)}
                             </Select>
                         </Col>
-                        <Col span={8}>
+                        <Col xs={8} sm={4}>
+                            <Text type="secondary" style={{ fontSize: 10 }}>OP. x PRENDA</Text>
                             <InputNumber 
                                 style={{ width: '100%' }} 
-                                placeholder="Cantidad por prenda" 
+                                placeholder="1" 
                                 min={1} 
                                 value={item.quantity}
                                 onChange={(val) => {
@@ -163,8 +253,30 @@ function BomTab({ productId, bomData, mutateBom }: any) {
                                 }}
                             />
                         </Col>
-                        <Col span={6} style={{ textAlign: 'right' }}>
-                            <Button danger type="text" onClick={() => removeService(index)}>Eliminar</Button>
+                        <Col xs={14} sm={7}>
+                            <Text type="secondary" style={{ fontSize: 10 }}>COSTO SOBRESCRITO (Opc.)</Text>
+                            <InputNumber 
+                                style={{ width: '100%' }} 
+                                placeholder="S/ Opcional" 
+                                min={0} step={0.01} 
+                                value={item.unit_cost_override}
+                                onChange={(val) => {
+                                    const n = [...localServices]; n[index].unit_cost_override = val; setLocalServices(n);
+                                }}
+                            />
+                            <UnitCostHelper 
+                                onCalculate={(unitCost, calculatedQty) => {
+                                    const n = [...localServices]; 
+                                    n[index].unit_cost_override = unitCost; 
+                                    // Also update quantity (multiplier) if it helps
+                                    n[index].quantity = calculatedQty;
+                                    setLocalServices(n);
+                                }}
+                                label="Calcular costo por lote"
+                            />
+                        </Col>
+                        <Col xs={4} sm={3} style={{ textAlign: 'right', paddingTop: 10 }}>
+                            <Button danger type="text" onClick={() => removeService(index)} size="small">Eliminar</Button>
                         </Col>
                     </Row>
                 </Card>
@@ -179,8 +291,42 @@ function BomTab({ productId, bomData, mutateBom }: any) {
     );
 }
 
-function CalculateTab({ productId }: any) {
-    const [lotItems, setLotItems] = useState([{ color: '', size: '', qty: 1, id: Date.now().toString() }]);
+function CalculateTab({ productId, product }: any) {
+    const { token } = theme.useToken();
+    const { message } = App.useApp();
+    
+    // Improved Matrix State for Lot
+    const [lotColors, setLotColors] = useState<string[]>(['Color 1']);
+    const [lotSizes, setLotSizes] = useState<string[]>([]);
+    const [lotMatrix, setLotMatrix] = useState<Record<string, Record<string, number>>>({}); // colorIndex -> size -> qty
+
+    // Flattened lot items for calculation logic
+    const [lotItems, setLotItems] = useState<any[]>([]);
+
+    // Initialize sizes from product
+    useEffect(() => {
+        if (product?.product_variant?.length > 0) {
+            const sizes = Array.from(new Set(product.product_variant.map((v:any) => v.size))) as string[];
+            setLotSizes(sizes);
+        } else {
+            setLotSizes(['S', 'M', 'L']);
+        }
+    }, [product]);
+
+    // Sync Matrix to LotItems
+    useEffect(() => {
+        const flattened: any[] = [];
+        lotColors.forEach((color, cIdx) => {
+            lotSizes.forEach(sz => {
+                const qty = lotMatrix[`${cIdx}`]?.[sz];
+                if (qty && qty > 0) {
+                    flattened.push({ color, size: sz, qty, id: `${cIdx}_${sz}` });
+                }
+            });
+        });
+        setLotItems(flattened);
+    }, [lotColors, lotSizes, lotMatrix]);
+
     const [calcResult, setCalcResult] = useState<any>(null);
     const [isCalculating, setIsCalculating] = useState(false);
     const [isSavingLot, setIsSavingLot] = useState(false);
@@ -236,43 +382,86 @@ function CalculateTab({ productId }: any) {
     return (
         <Row gutter={32}>
             <Col span={10}>
-                <Title level={4}>Ingresar Cantidades de Corte</Title>
-                <div style={{ marginBottom: 16 }}>
-                    <Button type="dashed" onClick={addItem} style={{ width: '100%' }}>Añadir Fila</Button>
-                </div>
+                <Title level={4}>Ingresar Cantidades de Corte (Matrix)</Title>
                 
-                {lotItems.map((item, index) => (
-                    <Row gutter={8} key={item.id} style={{ marginBottom: 8 }}>
-                        <Col span={10}>
-                            <Input 
-                                placeholder="Color (Ej. Rojo)" 
-                                value={item.color}
-                                onChange={(e: any) => { const n = [...lotItems]; n[index].color = e.target.value; setLotItems(n); }}
-                            />
-                        </Col>
-                        <Col span={6}>
-                            <Input 
-                                placeholder="Talla S, M..." 
-                                value={item.size}
-                                onChange={(e: any) => { const n = [...lotItems]; n[index].size = e.target.value; setLotItems(n); }}
-                            />
-                        </Col>
-                        <Col span={6}>
-                            <InputNumber 
-                                placeholder="Cant." 
-                                min={1} style={{ width: '100%' }}
-                                value={item.qty}
-                                onChange={(val:any) => { const n = [...lotItems]; n[index].qty = val; setLotItems(n); }}
-                            />
-                        </Col>
-                        <Col span={2}>
-                            <Button danger type="text" onClick={() => removeItem(index)}>X</Button>
-                        </Col>
-                    </Row>
-                ))}
+                <div style={{ width: '100%', overflowX: 'auto', marginBottom: 16 }}>
+                    <table style={{ width: '100%', minWidth: 400, borderCollapse: 'collapse', background: token.colorBgContainer, borderRadius: 8, border: `1px solid ${token.colorBorderSecondary}`, tableLayout: 'fixed' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ textAlign: 'left', padding: '12px 8px', borderBottom: `1px solid ${token.colorBorderSecondary}`, width: '120px' }}>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>COLOR</Text>
+                                </th>
+                                {lotSizes.map((sz, sIdx) => (
+                                    <th key={sz} style={{ padding: '4px 2px', borderBottom: `1px solid ${token.colorBorderSecondary}`, minWidth: 46, textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <Input 
+                                                size="small" 
+                                                variant="borderless"
+                                                style={{ textAlign: 'center', width: 36, padding: 0, fontWeight: 'bold', fontSize: 11 }} 
+                                                value={sz}
+                                                onChange={e => {
+                                                    const newSizes = [...lotSizes];
+                                                    newSizes[sIdx] = e.target.value;
+                                                    setLotSizes(newSizes);
+                                                }}
+                                            />
+                                            <Button type="text" size="small" danger onClick={() => setLotSizes(lotSizes.filter((_, i) => i !== sIdx))} style={{ padding: 0, height: 12, fontSize: 8 }}>x</Button>
+                                        </div>
+                                    </th>
+                                ))}
+                                <th style={{ padding: '12px 8px', borderBottom: `1px solid ${token.colorBorderSecondary}`, width: 30 }}>
+                                    <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => setLotSizes([...lotSizes, 'NEW'])} />
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {lotColors.map((color, cIdx) => (
+                                <tr key={cIdx}>
+                                    <td style={{ padding: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <Input 
+                                                size="small" 
+                                                placeholder="Ej. Rojo"
+                                                value={color}
+                                                onChange={e => {
+                                                    const newColors = [...lotColors];
+                                                    newColors[cIdx] = e.target.value;
+                                                    setLotColors(newColors);
+                                                }}
+                                            />
+                                            <Button type="text" size="small" danger onClick={() => setLotColors(lotColors.filter((_, i) => i !== cIdx))} style={{ padding: 0 }}>x</Button>
+                                        </div>
+                                    </td>
+                                    {lotSizes.map(sz => (
+                                        <td key={sz} style={{ padding: '2px' }}>
+                                            <InputNumber 
+                                                size="small" 
+                                                min={0} 
+                                                placeholder="0"
+                                                style={{ width: '100%' }}
+                                                value={lotMatrix[`${cIdx}`]?.[sz]}
+                                                onChange={val => {
+                                                    const newMatrix = { ...lotMatrix };
+                                                    if (!newMatrix[`${cIdx}`]) newMatrix[`${cIdx}`] = {};
+                                                    newMatrix[`${cIdx}`][sz] = val as number;
+                                                    setLotMatrix(newMatrix);
+                                                }}
+                                            />
+                                        </td>
+                                    ))}
+                                    <td></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={() => setLotColors([...lotColors, `Color ${lotColors.length+1}`])} style={{ marginBottom: 16 }}>
+                    Añadir Color
+                </Button>
 
                 <Button type="primary" block style={{ marginTop: 16 }} size="large" icon={<CalculatorOutlined />} onClick={handleCalculate} loading={isCalculating}>
-                    Calcular Materiales
+                    Calcular Materiales del Lote
                 </Button>
             </Col>
 
@@ -309,7 +498,7 @@ function CalculateTab({ productId }: any) {
                             rowKey="service_id"
                             columns={[
                                 { title: 'Servicio', dataIndex: 'name' },
-                                { title: 'Multiplicador', render: (_: any, r: any) => <span>x{r.quantity}</span> },
+                                { title: 'Cant. Total', render: (_: any, r: any) => <span>{r.quantity} op.</span> },
                                 { title: 'Costo Est.', dataIndex: 'cost', render: v => formatPEN(v) }
                             ]}
                         />
@@ -542,6 +731,7 @@ const TechPackModal = ({ open, onClose, product, bomData }: any) => {
 };
 
 export default function ProductionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { message, modal } = App.useApp();
     const { id } = use(params);
     const { data: product, isLoading: loadingProduct } = useSWR<any>(`/api/admin/products/${id}`, fetcher);
     const { data: bomData, mutate: mutateBom, isLoading: loadingBom } = useSWR<any>(`/api/admin/production/bom/${id}`, fetcher);
@@ -572,12 +762,12 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         {
                             key: '1',
                             label: 'Ficha Técnica (BOM)',
-                            children: <BomTab productId={id} bomData={bomData} mutateBom={mutateBom} />,
+                            children: <BomTab productId={id} bomData={bomData} mutateBom={mutateBom} product={product} />,
                         },
                         {
                             key: '2',
                             label: 'Cálculo de Lote',
-                            children: <CalculateTab productId={id} />,
+                            children: <CalculateTab productId={id} product={product} />,
                         },
                     ]}
                 />

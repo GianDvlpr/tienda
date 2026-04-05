@@ -48,11 +48,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             if (services) {
                 await tx.product_bom_service.deleteMany({ where: { product_id: id } });
                 if (services.length > 0) {
-                    await tx.product_bom_service.createMany({
+                    await (tx as any).product_bom_service.createMany({
                         data: services.map((s: any) => ({
                             product_id: id,
                             service_id: s.service_id,
                             quantity: Number(s.quantity) || 1,
+                            unit_cost_override: s.unit_cost_override ? Number(s.unit_cost_override) : null,
                         }))
                     });
                 }

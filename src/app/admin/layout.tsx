@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layout, Menu, Button, theme, Switch, Space, Grid } from 'antd';
+import { Layout, Menu, Button, theme, Switch, Space, Grid, App } from 'antd';
 
 import {
   DashboardOutlined,
@@ -113,89 +113,91 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     : menuItems;
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        theme="light"
-        breakpoint="md"
-        collapsedWidth={0}
-        onCollapse={(c) => setCollapsed(c)}
-        style={{
-          borderRight: '1px solid #f0f0f0',
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 1100,
-        }}
-      >
-        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0' }}>
-          <strong style={{ fontSize: collapsed ? 14 : 18, color: '#C89F53', fontFamily: 'var(--font-montserrat)' }}>
-            {collapsed ? 'AURA' : 'AURA ADMIN'}
-          </strong>
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[pathname === '/admin' ? '/admin' : pathname]}
-          items={filteredMenuItems}
-          onClick={() => isMobile && setCollapsed(true)}
-          style={{ borderRight: 0, marginTop: 16 }}
-        />
-      </Sider>
-
-      <Layout style={{
-        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
-        transition: 'all 0.2s',
-        minHeight: '100vh'
-      }}>
-        <Header style={{
-          padding: isMobile ? '0 12px' : '0 24px',
-          background: colorBgContainer,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-        }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{ fontSize: '16px', width: 64, height: 64 }}
+    <App>
+      <Layout style={{ minHeight: '100vh' }}>
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          theme="light"
+          breakpoint="md"
+          collapsedWidth={0}
+          onCollapse={(c) => setCollapsed(c)}
+          style={{
+            borderRight: '1px solid #f0f0f0',
+            overflow: 'auto',
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 1100,
+          }}
+        >
+          <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0' }}>
+            <strong style={{ fontSize: collapsed ? 14 : 18, color: '#C89F53', fontFamily: 'var(--font-montserrat)' }}>
+              {collapsed ? 'AURA' : 'AURA ADMIN'}
+            </strong>
+          </div>
+          <Menu
+            mode="inline"
+            selectedKeys={[pathname === '/admin' ? '/admin' : pathname]}
+            items={filteredMenuItems}
+            onClick={() => isMobile && setCollapsed(true)}
+            style={{ borderRight: 0, marginTop: 16 }}
           />
-          <Space size={isMobile ? 'small' : 'large'}>
-            {!isMobile && (
-              <Switch
-                checkedChildren={<BulbFilled />}
-                unCheckedChildren={<BulbOutlined />}
-                checked={isDarkMode}
-                onChange={toggleDarkMode}
-              />
-            )}
-            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} danger size={isMobile ? 'small' : 'middle'}>
-              {isMobile ? '' : 'Cerrar Sesión'}
-            </Button>
-          </Space>
-        </Header>
-        <Content style={{
-          margin: isMobile ? '12px 8px' : '24px 16px',
-          padding: isMobile ? 12 : 24,
-          minHeight: 280,
-          background: colorBgContainer,
-          borderRadius: borderRadiusLG,
-          overflowX: 'hidden'
-        }}>
-          <OrderNotificationListener />
-          {children}
-        </Content>
-      </Layout>
+        </Sider>
 
-    </Layout>
+        <Layout style={{
+          marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
+          transition: 'all 0.2s',
+          minHeight: '100vh'
+        }}>
+          <Header style={{
+            padding: isMobile ? '0 12px' : '0 24px',
+            background: colorBgContainer,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}>
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              style={{ fontSize: '16px', width: 64, height: 64 }}
+            />
+            <Space size={isMobile ? 'small' : 'large'}>
+              {!isMobile && (
+                <Switch
+                  checkedChildren={<BulbFilled />}
+                  unCheckedChildren={<BulbOutlined />}
+                  checked={isDarkMode}
+                  onChange={toggleDarkMode}
+                />
+              )}
+              <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} danger size={isMobile ? 'small' : 'middle'}>
+                {isMobile ? '' : 'Cerrar Sesión'}
+              </Button>
+            </Space>
+          </Header>
+          <Content style={{
+            margin: isMobile ? '12px 8px' : '24px 16px',
+            padding: isMobile ? 12 : 24,
+            minHeight: 280,
+            background: colorBgContainer,
+            borderRadius: borderRadiusLG,
+            overflowX: 'hidden'
+          }}>
+            <OrderNotificationListener />
+            {children}
+          </Content>
+        </Layout>
+
+      </Layout>
+    </App>
   );
 }
