@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const { 
-            name, slug, description, base_price, base_cost, is_active, size_guide_url,
+            name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
             collections, // array of collection_id strings
             images,      // array of { url, public_id, sort_order }
             variants     // array of { sku, size, color, price, cost, stock }
@@ -32,9 +32,11 @@ export async function POST(req: Request) {
 
         if (!name || !slug) return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
 
-        const newProduct = await prisma.product.create({
+        const newProduct = await (prisma as any).product.create({
             data: {
-                name, slug, description, base_price, base_cost, is_active, size_guide_url,
+                name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
+
+
                 product_collection: {
                     create: collections?.map((c_id: string) => ({ collection_id: c_id })) || []
                 },

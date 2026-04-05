@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import ImageUploader from '@/components/admin/ImageUploader';
+import SizeGuideEditor from '@/components/admin/SizeGuideEditor';
+
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -201,11 +203,23 @@ export default function NewProductPage() {
                 </Card>
 
                 {/* --- SECCIÓN GUÍA DE TALLAS --- */}
-                <Card title="Guía de Tallas (Imagen)" variant="borderless" style={{ marginBottom: 24 }}>
-                    <div style={{ marginBottom: 16 }}>
+                <Card title="Guía de Tallas" variant="borderless" style={{ marginBottom: 24 }}>
+                    <div style={{ marginBottom: 24 }}>
+                        <Text strong>Opción 1: Tabla Estructurada (Recomendado)</Text>
+                        <div style={{ marginTop: 8 }}>
+                            <Form.Item name="size_guide_json">
+                                <SizeGuideEditor />
+                            </Form.Item>
+                        </div>
+                    </div>
+                    
+                    <Divider />
+                    
+                    <Text strong>Opción 2: Imagen de la Guía</Text>
+                    <div style={{ marginTop: 16, marginBottom: 16 }}>
                         <ImageUploader 
                             onUploadSuccess={(url) => form.setFieldsValue({ size_guide_url: url })} 
-                            buttonText="Subir Guía de Tallas" 
+                            buttonText={form.getFieldValue('size_guide_url') ? "Cambiar Imagen" : "Subir Imagen"}
                         />
                     </div>
                     <Form.Item name="size_guide_url" hidden><Input /></Form.Item>
@@ -226,10 +240,11 @@ export default function NewProductPage() {
                                         onClick={() => form.setFieldsValue({ size_guide_url: null })}
                                     />
                                 </div>
-                            ) : <Text type="secondary">Opcional: Sube una imagen con las medidas de esta prenda.</Text>;
+                            ) : null;
                         }}
                     </Form.Item>
                 </Card>
+
 
                 {/* --- SECCIÓN VARIANTES --- */}
                 <Card title="Variantes (Tallas y Colores)" variant="borderless" style={{ marginBottom: 24 }}>

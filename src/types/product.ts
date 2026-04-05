@@ -38,6 +38,8 @@ export interface ProductDetail {
     description: string | null;
     basePrice: number;
     size_guide_url?: string | null;
+    size_guide_json?: string | null;
+
     collection?: {
         name: string;
         slug: string;

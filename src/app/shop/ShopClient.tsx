@@ -32,6 +32,8 @@ import { useDebounce } from '@/lib/useDebounce';
 import { fetcher } from '@/lib/fetcher';
 import ProductGridSkeleton from '@/components/shop/ProductGridSkeleton';
 import ShopFiltersSkeleton from '@/components/shop/ShopFiltersSkeleton';
+import { sortSizes } from '@/lib/sizes';
+
 
 const { Title, Text } = Typography;
 
@@ -120,13 +122,15 @@ export default function ShopClient() {
 
         setCollections((meta.collections ?? []).map((c) => ({ value: c.slug, label: c.name })));
 
-        const sizes = meta.filters?.sizes ?? [];
+        const sizesFromMeta = meta.filters?.sizes ?? [];
         const colors = meta.filters?.colors ?? [];
-        setSizeOptions(sizes);
+        setSizeOptions(sortSizes(sizesFromMeta));
         setColorOptions(colors);
 
-        setSizes((prev) => prev.filter((x) => sizes.includes(x)));
+
+        setSizes((prev) => prev.filter((x) => sizesFromMeta.includes(x)));
         setColors((prev) => prev.filter((x) => colors.includes(x)));
+
 
         const min = Math.floor(Number(meta.priceRange?.minPrice ?? 0));
         const max = Math.ceil(Number(meta.priceRange?.maxPrice ?? 0));

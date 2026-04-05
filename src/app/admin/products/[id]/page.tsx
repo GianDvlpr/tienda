@@ -2,12 +2,15 @@
 import { toast } from 'sonner';
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin, Divider } from 'antd';
+
 import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import ImageUploader from '@/components/admin/ImageUploader';
+import SizeGuideEditor from '@/components/admin/SizeGuideEditor';
+
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -37,7 +40,9 @@ export default function EditProductPage() {
                 base_cost: product.base_cost ? Number(product.base_cost) : null,
                 is_active: product.is_active,
                 size_guide_url: product.size_guide_url,
+                size_guide_json: product.size_guide_json,
                 collections: product.product_collection?.map((pc: any) => pc.collection_id) || [],
+
                 variants: product.product_variant?.map((v: any) => ({
                     ...v,
                     price: v.price ? Number(v.price) : null,
@@ -226,11 +231,23 @@ export default function EditProductPage() {
                 </Card>
                 
                 {/* --- SECCIÓN GUÍA DE TALLAS --- */}
-                <Card title="Guía de Tallas (Imagen)" variant="borderless" style={{ marginBottom: 24 }}>
-                    <div style={{ marginBottom: 16 }}>
+                <Card title="Guía de Tallas" variant="borderless" style={{ marginBottom: 24 }}>
+                    <div style={{ marginBottom: 24 }}>
+                        <Text strong>Opción 1: Tabla Estructurada (Recomendado)</Text>
+                        <div style={{ marginTop: 8 }}>
+                            <Form.Item name="size_guide_json">
+                                <SizeGuideEditor />
+                            </Form.Item>
+                        </div>
+                    </div>
+                    
+                    <Divider />
+                    
+                    <Text strong>Opción 2: Imagen de la Guía</Text>
+                    <div style={{ marginTop: 16, marginBottom: 16 }}>
                         <ImageUploader 
                             onUploadSuccess={(url) => form.setFieldsValue({ size_guide_url: url })} 
-                            buttonText={form.getFieldValue('size_guide_url') ? "Cambiar Guía de Tallas" : "Subir Guía de Tallas"} 
+                            buttonText={form.getFieldValue('size_guide_url') ? "Cambiar Imagen" : "Subir Imagen"}
                         />
                     </div>
                     <Form.Item name="size_guide_url" hidden><Input /></Form.Item>
@@ -251,10 +268,11 @@ export default function EditProductPage() {
                                         onClick={() => form.setFieldsValue({ size_guide_url: null })}
                                     />
                                 </div>
-                            ) : <Text type="secondary">No se ha asignado una guía de tallas a este producto.</Text>;
+                            ) : null;
                         }}
                     </Form.Item>
                 </Card>
+
 
                 <Card title="Variantes (Tallas y Colores)" variant="borderless" style={{ marginBottom: 24 }}>
                     <Form.List name="variants">

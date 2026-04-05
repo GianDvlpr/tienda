@@ -117,6 +117,8 @@ model product {
   base_price         Decimal?             @db.Decimal(18, 2)
   base_cost          Decimal?             @db.Decimal(18, 2)
   size_guide_url     String?              @db.NVarChar(500)
+  size_guide_json    String?              @db.NVarChar(Max)
+
   created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_created_at")
   updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_updated_at")
   product_collection product_collection[]

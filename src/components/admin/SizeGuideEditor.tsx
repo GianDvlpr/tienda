@@ -1,0 +1,231 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Table, Input, Button, Space, Card, Typography, Popconfirm, Divider } from 'antd';
+import { PlusOutlined, DeleteOutlined, ColumnHeightOutlined, ColumnWidthOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+
+interface SizeGuideData {
+    columns: string[]; // ['S', 'M', 'L']
+    rows: {
+        label: string;
+        values: string[];
+    }[];
+}
+
+interface SizeGuideEditorProps {
+    value?: string | null;
+    onChange?: (value: string | null) => void;
+}
+
+export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProps) {
+    const [data, setData] = useState<SizeGuideData>({
+        columns: ['S', 'M', 'L'],
+        rows: [
+            { label: 'Busto (cm)', values: ['', '', ''] },
+            { label: 'Cintura (cm)', values: ['', '', ''] }
+        ]
+    });
+
+    useEffect(() => {
+        if (value) {
+            try {
+                const parsed = JSON.parse(value);
+                if (parsed.columns && parsed.rows) {
+                    setData(parsed);
+                }
+            } catch (e) {
+                console.error("Error parsing size guide JSON", e);
+            }
+        }
+    }, [value]);
+
+    const triggerChange = (newData: SizeGuideData) => {
+        setData(newData);
+        if (onChange) {
+            onChange(JSON.stringify(newData));
+        }
+    };
+
+    const addColumn = () => {
+        const nextCol = `Talla ${data.columns.length + 1}`;
+        const newData = {
+            columns: [...data.columns, nextCol],
+            rows: data.rows.map(row => ({
+                ...row,
+                values: [...row.values, '']
+            }))
+        };
+        triggerChange(newData);
+    };
+
+    const removeColumn = (index: number) => {
+        if (data.columns.length <= 1) return;
+        const newData = {
+            columns: data.columns.filter((_, i) => i !== index),
+            rows: data.rows.map(row => ({
+                ...row,
+                values: row.values.filter((_, i) => i !== index)
+            }))
+        };
+        triggerChange(newData);
+    };
+
+    const addRow = () => {
+        const newData = {
+            ...data,
+            rows: [
+                ...data.rows,
+                { label: 'Nueva Medida', values: new Array(data.columns.length).fill('') }
+            ]
+        };
+        triggerChange(newData);
+    };
+
+    const removeRow = (index: number) => {
+        const newData = {
+            ...data,
+            rows: data.rows.filter((_, i) => i !== index)
+        };
+        triggerChange(newData);
+    };
+
+    const updateHeader = (index: number, val: string) => {
+        const newCols = [...data.columns];
+        newCols[index] = val;
+        triggerChange({ ...data, columns: newCols });
+    };
+
+    const updateRowLabel = (index: number, val: string) => {
+        const newRows = [...data.rows];
+        newRows[index].label = val;
+        triggerChange({ ...data, rows: newRows });
+    };
+
+    const updateCellValue = (rowIndex: number, colIndex: number, val: string) => {
+        const newRows = [...data.rows];
+        newRows[rowIndex].values[colIndex] = val;
+        triggerChange({ ...data, rows: newRows });
+    };
+
+    const applyTemplate = (labels: string[]) => {
+        const newData = {
+            ...data,
+            rows: labels.map(label => ({
+                label: `${label} (cm)`,
+                values: new Array(data.columns.length).fill('')
+            }))
+        };
+        triggerChange(newData);
+    };
+
+    const templates = {
+        'Blusa/Top': ['Busto', 'Largo', 'Manga', 'Hombros'],
+        'Pantalón': ['Cintura', 'Cadera', 'Largo', 'Tiro', 'Muslo'],
+        'Falda': ['Cintura', 'Cadera', 'Largo'],
+        'Vestido': ['Busto', 'Cintura', 'Cadera', 'Largo'],
+        'Chaleco': ['Busto', 'Espalda', 'Largo'],
+        'Saco/Casaca': ['Busto', 'Hombros', 'Manga', 'Largo']
+    };
+
+
+    return (
+        <Card size="small" variant="borderless" style={{ background: '#fbfbfb', border: '1px solid #f0f0f0' }}>
+            <div style={{ marginBottom: 16 }}>
+                <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>Plantillas Rápidas:</Text>
+                <Space wrap>
+                    {Object.entries(templates).map(([name, labels]) => (
+                        <Button 
+                            key={name} 
+                            size="small" 
+                            onClick={() => applyTemplate(labels)}
+                        >
+                            {name}
+                        </Button>
+                    ))}
+                </Space>
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
+            <div style={{ overflowX: 'auto' }}>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
+                    <thead>
+                        <tr>
+                            <th style={{ padding: 8, textAlign: 'left', border: '1px solid #ddd', background: '#f5f5f5', minWidth: 120 }}>
+                                Medida / Talla
+                            </th>
+                            {data.columns.map((col, i) => (
+                                <th key={i} style={{ padding: 8, border: '1px solid #ddd', background: '#f5f5f5', minWidth: 80 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <Input 
+                                            size="small" 
+                                            value={col} 
+                                            onChange={e => updateHeader(i, e.target.value)} 
+                                            style={{ textAlign: 'center', fontWeight: 'bold' }}
+                                        />
+                                        <Button 
+                                            type="text" 
+                                            danger 
+                                            icon={<DeleteOutlined />} 
+                                            size="small" 
+                                            onClick={() => removeColumn(i)} 
+                                            disabled={data.columns.length <= 1}
+                                        />
+                                    </div>
+                                </th>
+                            ))}
+                            <th style={{ padding: 8, border: '1px solid #ddd', width: 40 }}>
+                                <Button type="dashed" icon={<PlusOutlined />} onClick={addColumn} size="small" />
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.rows.map((row, rowIndex) => (
+                            <tr key={rowIndex}>
+                                <td style={{ padding: 8, border: '1px solid #ddd' }}>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <Button 
+                                            type="text" 
+                                            danger 
+                                            icon={<DeleteOutlined />} 
+                                            size="small" 
+                                            onClick={() => removeRow(rowIndex)} 
+                                        />
+                                        <Input 
+                                            size="small" 
+                                            value={row.label} 
+                                            onChange={e => updateRowLabel(rowIndex, e.target.value)} 
+                                        />
+                                    </div>
+                                </td>
+                                {row.values.map((val, colIndex) => (
+                                    <td key={colIndex} style={{ padding: 8, border: '1px solid #ddd' }}>
+                                        <Input 
+                                            size="small" 
+                                            value={val} 
+                                            onChange={e => updateCellValue(rowIndex, colIndex, e.target.value)} 
+                                            style={{ textAlign: 'center' }}
+                                        />
+                                    </td>
+                                ))}
+                                <td style={{ border: '1px solid #ddd' }}></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <Button type="dashed" icon={<PlusOutlined />} onClick={addRow} block>
+                Añadir Medida (Fila)
+            </Button>
+            
+            <div style={{ marginTop: 12 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    * Las guías de tallas en formato de tabla son más accesibles y profesionales que las imágenes.
+                </Text>
+            </div>
+        </Card>
+    );
+}

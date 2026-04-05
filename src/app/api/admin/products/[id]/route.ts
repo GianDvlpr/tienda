@@ -27,7 +27,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const id = resolvedParams.id;
         const body = await req.json();
         const { 
-            name, slug, description, base_price, base_cost, is_active, size_guide_url,
+            name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
             collections, images, variants
         } = body;
 
@@ -42,12 +42,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         });
 
         // Prisma $transaction is necessary for complex nested updates that require deletions
-        const updated = await prisma.$transaction(async (tx) => {
+        const updated = await prisma.$transaction(async (tx: any) => {
             // 1. Update basic fields
             const prod = await tx.product.update({
                 where: { product_id: id },
-                data: { name, slug, description, base_price, base_cost, is_active, size_guide_url }
+                data: { name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json }
             });
+
 
             // 2. Sync Collections (Delete all, re-insert)
             if (collections) {

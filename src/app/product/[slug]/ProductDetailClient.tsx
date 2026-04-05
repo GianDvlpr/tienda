@@ -13,6 +13,8 @@ import type { ProductDetailResponse, ProductVariant } from '@/types/product';
 import { formatPEN } from '@/lib/money';
 import { useCartStore } from '@/store/cart.store';
 import { useWishlistStore } from '@/store/wishlist.store';
+import { sortSizes } from '@/lib/sizes';
+
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -49,8 +51,10 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     const sizeOptions = useMemo(() => {
         const set = new Set<string>();
         for (const v of variants) set.add(v.size);
-        return Array.from(set);
+        return sortSizes(Array.from(set));
     }, [variants]);
+
+
 
     const colorOptionsForSize = useMemo(() => {
         if (!selectedSize) return [];
@@ -262,7 +266,9 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
                                 {initialData.bundles && initialData.bundles.length > 0 && (
                                     <div style={{ marginTop: 32 }}>
-                                        <Divider orientation="start">
+                                        <Divider>
+
+
 
                                             <Space>
                                                 <GiftOutlined style={{ color: '#C89F53' }} />
@@ -373,17 +379,64 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 width={700}
                 centered
             >
-                {initialData.product.size_guide_url ? (
-                    <div style={{ textAlign: 'center' }}>
-                        <Image 
-                            src={initialData.product.size_guide_url} 
-                            alt="Guía de tallas" 
-                            style={{ maxWidth: '100%', borderRadius: 8 }} 
-                        />
-                    </div>
-                ) : (
-                    <Text type="secondary">Guía de tallas no disponible para este producto.</Text>
-                )}
+                {(() => {
+                    const hasJson = !!initialData.product.size_guide_json;
+                    const hasUrl = !!initialData.product.size_guide_url;
+
+                    if (!hasJson && !hasUrl) {
+                        return <Text type="secondary">Guía de tallas no disponible para este producto.</Text>;
+                    }
+
+                    let table = null;
+                    if (hasJson) {
+                        try {
+                            const { columns, rows } = JSON.parse(initialData.product.size_guide_json!);
+                            table = (
+                                <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #f0f0f0', backgroundColor: '#fff' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ padding: '12px 8px', border: '1px solid #f0f0f0', background: '#fafafa', textAlign: 'left', minWidth: 100 }}>Medida (cm)</th>
+                                                {columns.map((col: string, i: number) => (
+                                                    <th key={i} style={{ padding: '12px 8px', border: '1px solid #f0f0f0', background: '#fafafa', textAlign: 'center' }}>{col}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {rows.map((row: any, i: number) => (
+                                                <tr key={i}>
+                                                    <td style={{ padding: '12px 8px', border: '1px solid #f0f0f0', fontWeight: 600, color: '#555' }}>{row.label}</td>
+                                                    {row.values.map((val: string, j: number) => (
+                                                        <td key={j} style={{ padding: '12px 8px', border: '1px solid #f0f0f0', textAlign: 'center' }}>{val}</td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            );
+                        } catch (e) {
+                            console.error("Error parsing size guide JSON", e);
+                        }
+                    }
+
+                    return (
+                        <>
+                            {table}
+                            {hasUrl && (
+                                <div style={{ textAlign: 'center', marginTop: hasJson ? 16 : 0 }}>
+                                    {hasJson && <Divider>Guía Visual</Divider>}
+                                    <Image 
+                                        src={initialData.product.size_guide_url!} 
+                                        alt="Guía de tallas" 
+                                        style={{ maxWidth: '100%', borderRadius: 8 }} 
+                                    />
+                                </div>
+                            )}
+                        </>
+                    );
+                })()}
+
             </Modal>
         </div>
     );
