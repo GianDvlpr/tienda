@@ -11,9 +11,11 @@ export async function GET() {
                 user_id: true,
                 username: true,
                 full_name: true,
+                role: true,
                 is_active: true,
                 created_at: true,
                 // NO devolvemos el password_hash
+
             }
         });
         return NextResponse.json(users);
