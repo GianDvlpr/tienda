@@ -25,6 +25,8 @@ export default function EditProductPage() {
     const { data: collections } = useSWR<any[]>('/api/admin/collections', fetcher);
     const { data: product, isLoading, error } = useSWR<any>(id ? `/api/admin/products/${id}` : null, fetcher);
 
+    const [manualSkuIndices, setManualSkuIndices] = useState<Set<number>>(new Set());
+
     useEffect(() => {
         if (product) {
             form.setFieldsValue({
@@ -42,6 +44,13 @@ export default function EditProductPage() {
                     cost: v.cost ? Number(v.cost) : null,
                 })) || []
             });
+            // Mark existing variants with SKU as "manual" to avoid accidental overwrite on load
+            const initialManual = new Set<number>();
+            product.product_variant?.forEach((v: any, idx: number) => {
+                if (v.sku) initialManual.add(idx);
+            });
+            setManualSkuIndices(initialManual);
+
             // Load existing images
             if (product.product_image) {
                 setUploadedImages(product.product_image.map((img: any) => ({
@@ -53,6 +62,55 @@ export default function EditProductPage() {
         }
     }, [product, form]);
 
+    const generateSKU = (name: string, color: string, size: string) => {
+        const namePart = (name || '').replace(/\s+/g, '').substring(0, 4).toUpperCase();
+        const colorPart = (color || '').replace(/\s+/g, '').substring(0, 3).toUpperCase();
+        const sizePart = (size || '').replace(/\s+/g, '').toUpperCase();
+        
+        if (!namePart && !colorPart && !sizePart) return '';
+        return `${namePart}-${colorPart}-${sizePart}`.replace(/-+$/, '').replace(/-$/, '');
+    };
+
+    const handleValuesChange = (changedValues: any, allValues: any) => {
+        // If name changed, update slug
+        if (changedValues.name) {
+            const slug = changedValues.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+            form.setFieldsValue({ slug });
+        }
+
+        // Track manual SKU edits
+        if (changedValues.variants) {
+            changedValues.variants.forEach((v: any, idx: number) => {
+                if (v && v.sku !== undefined) {
+                    setManualSkuIndices(prev => new Set(prev).add(idx));
+                }
+            });
+        }
+
+        // SKU Generation logic (Reactive)
+        if (changedValues.name || changedValues.variants) {
+            const { name, variants } = allValues;
+            const newVariants = [...(variants || [])];
+            let changed = false;
+
+            newVariants.forEach((v, idx) => {
+                // If the user hasn't manually edited this SKU, or it is empty, we update it
+                if (!manualSkuIndices.has(idx) || !v.sku) {
+                    const suggested = generateSKU(name, v.color, v.size);
+                    if (suggested && suggested !== v.sku) {
+                        newVariants[idx].sku = suggested;
+                        changed = true;
+                    }
+                }
+            });
+
+            if (changed) {
+                form.setFieldsValue({ variants: newVariants });
+            }
+        }
+    };
+
+
     const handleUploadSuccess = (url: string, public_id: string) => {
         setUploadedImages(prev => [...prev, { url, public_id, sort_order: prev.length }]);
     };
@@ -62,6 +120,8 @@ export default function EditProductPage() {
     };
 
     const onFinish = async (values: any) => {
+
+
         setIsSaving(true);
         try {
             const payload = {
@@ -100,7 +160,13 @@ export default function EditProductPage() {
                 <Title level={3} style={{ margin: 0 }}>Editar Producto</Title>
             </div>
 
-            <Form layout="vertical" form={form} onFinish={onFinish}>
+            <Form 
+                layout="vertical" 
+                form={form} 
+                onFinish={onFinish}
+                onValuesChange={handleValuesChange}
+            >
+
                 <Card title="Información Básica" variant="borderless" style={{ marginBottom: 24 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
                         <Form.Item name="name" label="Nombre del Producto" rules={[{ required: true, message: 'Requerido' }]}>
