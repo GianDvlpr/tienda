@@ -110,13 +110,23 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 name: b.name,
                 description: b.description,
                 discount_amount: Number(b.discount_amount),
-                items: b.items.map((item: any) => ({
-                    productId: item.product.product_id,
-                    name: item.product.name,
-                    slug: item.product.slug,
-                    primaryImageUrl: item.product.product_image[0]?.url ?? null
-                }))
+                items: b.items.filter((i:any) => i.product.is_active).map((item: any) => {
+                    const firstVariant = item.product.product_variant?.[0];
+                    return {
+                        productId: item.product.product_id,
+                        name: item.product.name,
+                        slug: item.product.slug,
+                        primaryImageUrl: item.product.product_image[0]?.url ?? null,
+                        // Añadiendo datos necesarios para el carrito
+                        variantId: firstVariant?.variant_id,
+                        unitPrice: Number(firstVariant?.price || item.product.base_price || 0),
+                        size: firstVariant?.size || 'UN',
+                        color: firstVariant?.color || 'UN',
+                        sku: firstVariant?.sku || ''
+                    };
+                })
             })))
+
 
         };
 

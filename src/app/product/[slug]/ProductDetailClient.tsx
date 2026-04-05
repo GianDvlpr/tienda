@@ -271,9 +271,9 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
 
                                             <Space>
-                                                <GiftOutlined style={{ color: '#C89F53' }} />
-                                                <Text strong style={{ color: '#C89F53' }}>Combo Ahorro</Text>
+                                                <Text strong style={{ fontSize: 16 }}>Arma tu conjunto</Text>
                                             </Space>
+
                                         </Divider>
                                         
                                         {initialData.bundles.map(bundle => {
@@ -283,11 +283,12 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                     key={bundle.bundle_id} 
                                                     size="small" 
                                                     style={{ 
-                                                        borderColor: '#C89F53', 
-                                                        background: '#fffdf9',
+                                                        borderColor: 'rgba(200, 159, 83, 0.4)', 
+                                                        background: 'transparent',
                                                         marginBottom: 16
                                                     }}
                                                 >
+
                                                     <Space direction="vertical" style={{ width: '100%', gap: 8 }}>
                                                         <Text strong>{bundle.name}</Text>
                                                         <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
@@ -318,12 +319,44 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                     ghost 
                                                                     size="small"
                                                                     onClick={() => {
-                                                                       onAddToCart();
-                                                                       toast.info(`¡Genial! Solo añade el ${otherItems[0].name} para aplicar el descuento.`);
+                                                                        // 1. Add current product (selected variant)
+                                                                        if (selectedVariant) {
+                                                                            addCartItem({
+                                                                                productId: initialData.product.productId,
+                                                                                variantId: selectedVariant.variantId,
+                                                                                name: initialData.product.name,
+                                                                                slug: initialData.product.slug,
+                                                                                size: selectedVariant.size,
+                                                                                color: selectedVariant.color,
+                                                                                sku: selectedVariant.sku,
+                                                                                unitPrice: Number(selectedVariant.price),
+                                                                                imageUrl: initialData.images[0]?.url
+                                                                            }, 1);
+                                                                        }
+
+                                                                        // 2. Add other items in the bundle
+                                                                        otherItems.forEach((item: any) => {
+                                                                            if (item.variantId) {
+                                                                                addCartItem({
+                                                                                    productId: item.productId,
+                                                                                    variantId: item.variantId,
+                                                                                    name: item.name,
+                                                                                    slug: item.slug,
+                                                                                    size: item.size,
+                                                                                    color: item.color,
+                                                                                    sku: item.sku,
+                                                                                    unitPrice: item.unitPrice,
+                                                                                    imageUrl: item.primaryImageUrl
+                                                                                }, 1);
+                                                                            }
+                                                                        });
+                                                                        toast.success("Conjunto añadido al carrito");
                                                                     }}
                                                                 >
-                                                                    Añadir este y Ver el Otro
+                                                                    Añadir conjunto
                                                                 </Button>
+
+
                                                             </div>
                                                         </Flex>
                                                     </Space>
