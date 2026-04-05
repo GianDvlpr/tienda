@@ -14,6 +14,7 @@ const { Title, Text } = Typography;
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
+    'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
     'SHIPPED': { label: 'Enviado', color: 'cyan' },
     'DELIVERED': { label: 'Entregado', color: 'green' },

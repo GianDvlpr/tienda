@@ -121,7 +121,10 @@ model product {
   updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_updated_at")
   product_collection product_collection[]
   product_image      product_image[]
-  product_variant    product_variant[]
+  product_variant     product_variant[]
+  product_bom_supply  product_bom_supply[]
+  product_bom_service product_bom_service[]
+  production_lot      production_lot[]
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_product_active")
 }
@@ -254,4 +257,91 @@ model coupon {
   updated_at     DateTime @default(dbgenerated("sysutcdatetime()"))
 
   @@index([code, is_active])
+}
+
+model supply {
+  supply_id        String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  name             String   @db.NVarChar(200)
+  type             String   @db.NVarChar(50) // 'TELA', 'AVIO', 'EMPAQUE', etc
+  unit             String   @db.NVarChar(20) // 'MT', 'UND', 'KG'
+  unit_cost        Decimal  @db.Decimal(18, 4)
+  stock            Decimal  @default(0) @db.Decimal(18, 4)
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
+  updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
+  
+  product_bom_supply product_bom_supply[]
+}
+
+model service {
+  service_id       String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  name             String   @db.NVarChar(200)
+  unit_cost        Decimal  @db.Decimal(18, 2)
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
+  updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
+  
+  product_bom_service product_bom_service[]
+}
+
+model product_bom_supply {
+  id               String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  product_id       String   @db.UniqueIdentifier
+  supply_id        String   @db.UniqueIdentifier
+  size             String?  @db.NVarChar(50)  // If null, applies to all sizes
+  quantity         Decimal  @db.Decimal(18, 4)
+  varies_by_color  Boolean  @default(false)
+  
+  product          product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  supply           supply   @relation(fields: [supply_id], references: [supply_id], onDelete: Cascade)
+
+  @@index([product_id])
+}
+
+model product_bom_service {
+  id               String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  product_id       String   @db.UniqueIdentifier
+  service_id       String   @db.UniqueIdentifier
+  quantity         Decimal  @db.Decimal(18, 2)
+  
+  product          product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  service          service  @relation(fields: [service_id], references: [service_id], onDelete: Cascade)
+  
+  @@index([product_id])
+}
+
+model production_lot {
+  lot_id           String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  code             String   @unique @db.NVarChar(50)
+  product_id       String   @db.UniqueIdentifier
+  status           String   @db.NVarChar(30) // 'PENDIENTE', 'PRODUCIDO'
+  total_cost       Decimal  @default(0) @db.Decimal(18, 2)
+  notes            String?  @db.NVarChar(Max)
+  created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
+  updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
+  
+  product          product  @relation(fields: [product_id], references: [product_id], onDelete: NoAction)
+  items            production_lot_item[]
+  consumptions     production_lot_consumption[]
+}
+
+model production_lot_item {
+  item_id          String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  lot_id           String   @db.UniqueIdentifier
+  color            String   @db.NVarChar(80)
+  size             String   @db.NVarChar(50)
+  qty              Int
+  
+  lot              production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+}
+
+model production_lot_consumption {
+  consump_id       String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  lot_id           String   @db.UniqueIdentifier
+  supply_id        String   @db.UniqueIdentifier
+  color            String?  @db.NVarChar(80) // Optional, if the supply consumption is split by color
+  quantity         Decimal  @db.Decimal(18, 4)
+  unit_cost        Decimal  @db.Decimal(18, 4)
+  
+  lot              production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
 }

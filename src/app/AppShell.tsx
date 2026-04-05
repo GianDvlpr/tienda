@@ -12,10 +12,13 @@ const { Content } = Layout;
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isAdmin = pathname.startsWith('/admin');
+    const isTrack = pathname.startsWith('/track');
+
+    const showPublicShell = !isAdmin && !isTrack;
 
     return (
         <Layout style={{ minHeight: "100vh" }}>
-            {!isAdmin && (
+            {showPublicShell && (
                 <>
                     <Suspense fallback={<div style={{ height: 80 }} />}>
                         <ShopHeader />
@@ -28,7 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {children}
             </Content>
 
-            {!isAdmin && <ShopFooter />}
+            {showPublicShell && <ShopFooter />}
         </Layout>
     );
 }

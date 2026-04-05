@@ -13,6 +13,7 @@ import dayjs from 'dayjs';
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
+    'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
     'SHIPPED': { label: 'Enviado', color: 'cyan' },
     'DELIVERED': { label: 'Entregado', color: 'green' },
@@ -81,25 +82,52 @@ export default function OrderDetailPage() {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
+        // Extraer resumen de items para impresión
+        const itemsList = order.order_item?.map((item: any) => `<li>${item.qty}x ${item.product_name} (${item.variant_size})</li>`).join('') || '';
+
         const html = `
             <html>
                 <head>
-                    <title>Etiqueta - ${order.code}</title>
+                    <title>Etiqueta de Envio - ${order.code}</title>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                     <style>
-                        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #000; }
-                        .label { max-width: 400px; margin: 0 auto; border: 2px solid #000; padding: 30px; border-radius: 8px; }
-                        .header { text-align: center; margin-bottom: 20px; }
-                        .header h2 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; }
-                        .header p { margin: 5px 0 0 0; color: #666; }
-                        .divider { border-top: 2px dashed #000; margin: 20px 0; }
-                        .field { margin-bottom: 15px; }
-                        .field-label { font-size: 12px; color: #666; text-transform: uppercase; font-weight: bold; margin-bottom: 4px; }
-                        .field-value { font-size: 18px; font-weight: bold; }
-                        .field-value.large { font-size: 24px; }
-                        .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
+                        body { font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #000; margin: 0; background: #f0f0f0; }
+                        .label { 
+                            max-width: 10cm; 
+                            margin: 0 auto; 
+                            background: #fff; 
+                            border: 2px solid #000; 
+                            padding: 24px; 
+                            box-sizing: border-box; 
+                        }
+                        .header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px; }
+                        .header h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+                        .order-code { font-size: 16px; font-weight: bold; padding: 4px 8px; border: 1px solid #000; }
+                        
+                        .section-title { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; margin: 12px 0 2px 0; letter-spacing: 0.5px; }
+                        
+                        .sender-box { border: 1px solid #ddd; padding: 10px; font-size: 11px; margin-bottom: 16px; background: #fafafa; }
+                        .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
+                        
+                        .receiver-box { font-size: 14px; margin-bottom: 16px; }
+                        .receiver-box .name { font-size: 20px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; }
+                        .receiver-box .details { margin: 2px 0; }
+                        .receiver-box .address { font-size: 16px; font-weight: bold; margin-top: 8px; padding: 8px; background: #fff; border: 2px dashed #000; }
+                        
+                        .contents { border-top: 2px solid #000; padding-top: 12px; margin-top: 12px; font-size: 12px; }
+                        .contents ul { margin: 4px 0 0; padding-left: 16px; }
+                        
+                        .qr-section { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; border-top: 2px solid #000; padding-top: 16px; }
+                        .qr-code { width: 80px; height: 80px; }
+                        .qr-text { font-size: 11px; color: #333; text-align: right; max-width: 60%; }
+                        .qr-text strong { font-size: 14px; color: #000; display: block; margin-bottom: 4px; }
+
+                        .footer { margin-top: 24px; font-size: 12px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 12px; background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+                        .date { text-align: center; font-size: 10px; color: #666; margin-top: 8px; }
+                        
                         @media print {
-                            body { padding: 0; }
-                            .label { border: none; padding: 0; max-width: 100%; }
+                            body { padding: 0; background: #fff; }
+                            .label { border: none; padding: 0; width: 10cm; max-width: 10cm; height: 15cm; page-break-after: always; }
                         }
                     </style>
                 </head>
@@ -107,32 +135,57 @@ export default function OrderDetailPage() {
                     <div class="label">
                         <div class="header">
                             <h2>AURA BOUTIQUE</h2>
-                            <p>DOC DE ENVÍO</p>
+                            <div class="order-code">#${order.code}</div>
                         </div>
-                        <div class="divider"></div>
-                        <div class="field">
-                            <div class="field-label">Pedido</div>
-                            <div class="field-value">${order.code}</div>
+                        
+                        <div class="section-title">Remitente</div>
+                        <div class="sender-box">
+                            <strong>AURA BOUTIQUE (ALMACÉN PRINCIPAL)</strong>
+                            Taller y Despachos<br/>
+                            Lima, Perú
                         </div>
-                        <div class="field">
-                            <div class="field-label">Destinatario</div>
-                            <div class="field-value large">${order.shipping_name}</div>
+                        
+                        <div class="section-title">Destinatario / Entregar A:</div>
+                        <div class="receiver-box">
+                            <div class="name">${order.shipping_name}</div>
+                            <div class="details">📞 ${order.shipping_phone}</div>
+                            <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
+                                📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
+                            </div>
                         </div>
-                        <div class="field">
-                            <div class="field-label">Teléfono / Celular</div>
-                            <div class="field-value">${order.shipping_phone}</div>
+
+                        <div class="contents">
+                            <strong>CONTENIDO DEL PAQUETE (${order.order_item?.length || 0} items)</strong>
+                            <ul>${itemsList}</ul>
                         </div>
-                        <div class="field">
-                            <div class="field-label">Dirección de Entrega</div>
-                            <div class="field-value">${order.shipping_address || 'Consultar al cliente'}</div>
+                        
+                        <div class="qr-section">
+                            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
+                            <div class="qr-text">
+                                <strong>Rastrear Pedido</strong>
+                                Escanea este código o escribe este ID en la web:
+                                <br/><span style="font-family: monospace; font-size: 12px; margin-top: 4px; display:inline-block;">${order.code}</span>
+                            </div>
                         </div>
-                        <div class="divider"></div>
+
                         <div class="footer">
-                            Generado el ${dayjs().format('DD/MM/YYYY HH:mm')}
+                            <span style="display:inline-flex; align-items:center; gap:6px; margin-right: 16px;">
+                                <i class="fa-brands fa-instagram" style="font-size: 14px;"></i>
+                                @auraboutique
+                            </span>
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <i class="fa-brands fa-tiktok" style="font-size: 14px;"></i>
+                                @auraboutique
+                            </span>
+                        </div>
+                        <div class="date">
+                            Generado: ${dayjs().format('DD/MM/YYYY HH:mm')}
                         </div>
                     </div>
                     <script>
-                        window.onload = function() { window.print(); window.close(); }
+                        // Dynamically set QR based on print origin
+                        document.getElementById('dynamic-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(window.location.origin + '/track/${order.code}');
+                        window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
                     </script>
                 </body>
             </html>
@@ -228,6 +281,7 @@ export default function OrderDetailPage() {
                                 style={{ width: '100%' }}
                                 options={[
                                     { value: 'PENDING_WS', label: 'Pendiente WhatsApp' },
+                                    { value: 'PAID', label: 'Orden generada / Pagada' },
                                     { value: 'CONFIRMED', label: 'Confirmado / En Preparación' },
                                     { value: 'SHIPPED', label: 'Enviado / En Tránsito' },
                                     { value: 'DELIVERED', label: 'Entregado' },

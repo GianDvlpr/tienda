@@ -26,6 +26,7 @@ const statusMap: Record<string, { label: string, color: string }> = {
 export default function AdminDashboardPage() {
     const [visibleCharts, setVisibleCharts] = React.useState<string[]>(['revenueTrend', 'topProducts']);
     const { data, isLoading, error } = useSWR<any>('/api/admin/dashboard', fetcher);
+    const { data: supplyAlerts, isLoading: loadingAlerts } = useSWR<any[]>('/api/admin/dashboard/alerts', fetcher);
 
     if (error) {
         return <Alert title="Error al cargar analíticas" type="error" />;
@@ -291,7 +292,7 @@ export default function AdminDashboardPage() {
             </Row>
 
             <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
-                <Col xs={24} lg={16}>
+                <Col xs={24} lg={10}>
                     <Card title="Últimos Pedidos" variant="borderless" loading={isLoading} extra={<Link href="/admin/orders">Ver todos</Link>}>
                         <Table
                             columns={columns}
@@ -302,7 +303,7 @@ export default function AdminDashboardPage() {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} lg={8}>
+                <Col xs={24} lg={7}>
                     <Card 
                         title="Alertas de Stock" 
                         variant="borderless" 
@@ -327,6 +328,34 @@ export default function AdminDashboardPage() {
                                             ) : (
                                                 <Tag color="orange">Quedan {item.stock}</Tag>
                                             )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </Flex>
+                        )}
+                    </Card>
+                </Col>
+                <Col xs={24} lg={7}>
+                    <Card 
+                        title="Alertas de Taller" 
+                        variant="borderless" 
+                        loading={loadingAlerts}
+                        extra={<WarningOutlined style={{ color: 'red' }} />}
+                    >
+                        {!supplyAlerts || supplyAlerts.length === 0 ? (
+                            <Text type="secondary">Insumos en orden.</Text>
+                        ) : (
+                            <Flex vertical gap={12}>
+                                {supplyAlerts.map((item: any) => (
+                                    <div key={item.supply_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <Link href="/admin/supplies" style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <Text strong>{item.name}</Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>Unidad: {item.unit}</Text>
+                                            </Link>
+                                        </div>
+                                        <div>
+                                            <Tag color="red">{Number(item.stock)} / Min: {Number(item.min_stock)}</Tag>
                                         </div>
                                     </div>
                                 ))}

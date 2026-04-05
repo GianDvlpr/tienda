@@ -15,6 +15,8 @@ import {
   UserOutlined,
   ShoppingCartOutlined,
   TagOutlined,
+  ToolOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -70,6 +72,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       key: '/admin/collections',
       icon: <AppstoreOutlined />,
       label: <Link href="/admin/collections">Colecciones</Link>,
+    },
+    {
+      key: '/admin/supplies',
+      icon: <ToolOutlined />,
+      label: <Link href="/admin/supplies">Insumos y Taller</Link>,
+    },
+    {
+      key: '/admin/production',
+      icon: <ExperimentOutlined />,
+      label: <Link href="/admin/production">Fichas de Producción</Link>,
     },
     {
       key: '/admin/slider',
