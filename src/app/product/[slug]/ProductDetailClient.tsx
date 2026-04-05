@@ -139,9 +139,78 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
+    const [showStickyBar, setShowStickyBar] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 700) {
+                setShowStickyBar(true);
+            } else {
+                setShowStickyBar(false);
+            }
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24, paddingTop: 100 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: screens.xs ? '12px' : 24, paddingTop: screens.xs ? 20 : 100 }}>
+             {/* Sticky Barra Compra Móvil */}
+             {isMobile && showStickyBar && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    borderTop: '1px solid #f0f0f0',
+                    padding: '12px 16px',
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 -4px 12px rgba(0,0,0,0.05)',
+                    animation: 'slideUp 0.3s ease'
+                }}>
+                    <div style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                        <Text strong ellipsis style={{ display: 'block', fontSize: 13 }}>{initialData.product.name}</Text>
+                        <Text style={{ color: '#C89F53', fontWeight: 700 }}>{formatPEN(selectedVariant?.price ?? initialData.product.basePrice)}</Text>
+                    </div>
+                    <Space size="small">
+                        <Button 
+                            type="primary" 
+                            size="middle"
+                            icon={<ShoppingCartOutlined />}
+                            onClick={onAddToCart}
+                            disabled={!canAdd}
+                            style={{ 
+                                backgroundColor: '#C89F53', 
+                                borderColor: '#C89F53',
+                                borderRadius: '20px',
+                                fontWeight: 600
+                            }}
+                        >
+                            Añadir
+                        </Button>
+                        <Button 
+                            icon={<WhatsAppOutlined />} 
+                            onClick={handleWhatsAppConsult}
+                            style={{ borderRadius: '50%', width: 40, height: 40, padding: 0 }}
+                        />
+                    </Space>
+
+                    <style jsx>{`
+                        @keyframes slideUp {
+                            from { transform: translateY(100%); }
+                            to { transform: translateY(0); }
+                        }
+                    `}</style>
+                </div>
+            )}
+
             <div style={{ display: 'grid', gap: 16 }}>
+
                 <Card variant="borderless">
                     <Row gutter={[24, 24]}>
                         <Col xs={24} md={12}>
@@ -316,8 +385,16 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                             <div style={{ marginLeft: 'auto' }}>
                                                                 <Button 
                                                                     type="primary" 
-                                                                    ghost 
-                                                                    size="small"
+                                                                    size="middle"
+                                                                    icon={<ShoppingCartOutlined />}
+                                                                    style={{ 
+                                                                        backgroundColor: '#C89F53', 
+                                                                        borderColor: '#C89F53',
+                                                                        borderRadius: '20px',
+                                                                        padding: '0 24px',
+                                                                        fontWeight: 600,
+                                                                        boxShadow: '0 2px 8px rgba(200, 159, 83, 0.2)'
+                                                                    }}
                                                                     onClick={() => {
                                                                         // 1. Add current product (selected variant)
                                                                         if (selectedVariant) {
@@ -355,6 +432,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                 >
                                                                     Añadir conjunto
                                                                 </Button>
+
 
 
                                                             </div>

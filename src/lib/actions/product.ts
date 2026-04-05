@@ -96,12 +96,19 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                                     product_id: true,
                                     name: true,
                                     slug: true,
+                                    is_active: true,
+                                    base_price: true,
                                     product_image: {
                                         orderBy: { sort_order: 'asc' },
+                                        take: 1
+                                    },
+                                    product_variant: {
+                                        where: { is_active: true },
                                         take: 1
                                     }
                                 }
                             }
+
                         }
                     }
                 }

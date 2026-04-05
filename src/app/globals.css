@@ -40,3 +40,43 @@ a {
     color-scheme: dark;
   }
 }
+
+/* Custom Premium Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #C89F53 transparent;
+}
+
+/* Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #C89F53;
+  border-radius: 20px;
+  border: 3px solid transparent;
+}
+
+::selection {
+  background: rgba(200, 159, 83, 0.3);
+  color: inherit;
+}
+
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  scroll-behavior: smooth;
+}
+
+.boutique-font {
+  font-family: var(--font-great-vibes), cursive;
+}
+
+.montserrat-font {
+  font-family: var(--font-montserrat), sans-serif;
+}
+

@@ -1,7 +1,8 @@
 'use client';
 import { toast } from 'sonner';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+
 import { 
     Button, Drawer, Empty, InputNumber, List, Space, Typography, 
     Form, Input, Card, Result, Spin, Divider, Tag, theme, Flex 
@@ -39,10 +40,39 @@ export default function MiniCart({
     const shippingDataRef = useRef<any>(null);
     const processingRef = useRef(false);
 
-    // Coupon states
+    // Coupon and Bundle states
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
     const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+    const [activeBundles, setActiveBundles] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (open) {
+            fetch('/api/store/bundles')
+                .then(res => res.json())
+                .then(data => setActiveBundles(Array.isArray(data) ? data : []))
+                .catch(err => console.error("Error loading bundles", err));
+        }
+    }, [open]);
+
+    const bundleDiscount = useMemo(() => {
+        if (activeBundles.length === 0 || items.length === 0) return 0;
+        const cartProductStats: Record<string, number> = {};
+        items.forEach(item => {
+            cartProductStats[item.productId] = (cartProductStats[item.productId] || 0) + item.qty;
+        });
+
+        let totalSavings = 0;
+        activeBundles.forEach(bundle => {
+            const hasAll = bundle.requiredProductIds.every((id: string) => (cartProductStats[id] || 0) > 0);
+            if (hasAll) {
+                const possibleSets = Math.min(...bundle.requiredProductIds.map((id: string) => cartProductStats[id]));
+                totalSavings += possibleSets * bundle.discount_amount;
+            }
+        });
+        return totalSavings;
+    }, [items, activeBundles]);
+
 
     // Re-validate or clear coupon if subtotal changes (e.g. removed items)
     useEffect(() => {
@@ -84,7 +114,10 @@ export default function MiniCart({
             const res = await fetch('/api/store/coupons/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: couponCode, subtotal })
+                body: JSON.stringify({ 
+                    code: couponCode, 
+                    subtotal: subtotal - bundleDiscount // Usar base con descuento de conjunto
+                })
             });
             const data = await res.json();
             if (data.success) {
@@ -100,7 +133,8 @@ export default function MiniCart({
         }
     };
 
-    const finalTotal = subtotal - (appliedCoupon?.discountAmount || 0);
+    const finalTotal = Math.max(0, subtotal - bundleDiscount - (appliedCoupon?.discountAmount || 0));
+
 
     const handleCheckoutSubmit = (values: any) => {
         const frozenItems = useCartStore.getState().items;
@@ -294,14 +328,20 @@ export default function MiniCart({
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text strong>Subtotal: {formatPEN(subtotal)}</Text>
                         </div>
+                        {bundleDiscount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text type="success">Ahorro por Conjunto: -{formatPEN(bundleDiscount)}</Text>
+                            </div>
+                        )}
                         {appliedCoupon && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text type="success">Descuento ({appliedCoupon.code}): -{formatPEN(appliedCoupon.discountAmount)}</Text>
+                                <Text type="success">Cupón ({appliedCoupon.code}): -{formatPEN(appliedCoupon.discountAmount)}</Text>
                             </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text strong style={{ fontSize: 18 }}>Total: {formatPEN(finalTotal)}</Text>
+                            <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(finalTotal)}</Title>
                         </div>
+
                         <Button 
                             type="primary" 
                             onClick={() => setIsCheckoutView(true)}
@@ -378,6 +418,12 @@ export default function MiniCart({
                                 <Text>Productos ({items.length})</Text>
                                 <Text>{formatPEN(subtotal)}</Text>
                              </div>
+                             {bundleDiscount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <Text type="success">Descuento Conjunto</Text>
+                                    <Text type="success">-{formatPEN(bundleDiscount)}</Text>
+                                </div>
+                             )}
                              {appliedCoupon && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                                     <Text type="success"><TagOutlined /> Descuento ({appliedCoupon.code})</Text>
@@ -386,9 +432,10 @@ export default function MiniCart({
                              )}
                              <Divider style={{ margin: '8px 0' }} />
                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text strong style={{ fontSize: 16 }}>Total Final</Text>
-                                <Text strong style={{ fontSize: 16 }}>{formatPEN(finalTotal)}</Text>
+                                <Title level={4} style={{ margin: 0 }}>Total Final</Title>
+                                <Title level={4} style={{ margin: 0 }}>{formatPEN(finalTotal)}</Title>
                              </div>
+
                         </Card>
 
                         <Space orientation="vertical" style={{ width: '100%', marginTop: 16 }}>

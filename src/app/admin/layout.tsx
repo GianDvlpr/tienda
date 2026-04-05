@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layout, Menu, Button, theme, Switch, Space } from 'antd';
+import { Layout, Menu, Button, theme, Switch, Space, Grid } from 'antd';
+
 import {
   DashboardOutlined,
   ShoppingOutlined,
@@ -30,8 +31,11 @@ import OrderNotificationListener from '@/components/admin/OrderNotificationListe
 const { Header, Sider, Content } = Layout;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [collapsed, setCollapsed] = useState(false);
   const { token: { colorBgContainer, borderRadiusLG } } = theme.useToken();
+
   const router = useRouter();
   const pathname = usePathname();
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
@@ -66,9 +70,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       label: <Link href="/admin/products">Productos</Link>,
     },
     {
-      key: '/admin/coupons',
-      icon: <TagOutlined />,
-      label: <Link href="/admin/coupons">Cupones</Link>,
+      key: '/admin/bundles',
+      icon: <GiftOutlined />,
+      label: <Link href="/admin/bundles">Conjuntos / Packs</Link>,
     },
     {
       key: '/admin/collections',
@@ -86,6 +90,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       label: <Link href="/admin/production">Fichas de Producción</Link>,
     },
     {
+      key: '/admin/coupons',
+      icon: <TagOutlined />,
+      label: <Link href="/admin/coupons">Cupones</Link>,
+    },
+    {
       key: '/admin/slider',
       icon: <PictureOutlined />,
       label: <Link href="/admin/slider">Slider Principal</Link>,
@@ -95,12 +104,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: <UserOutlined />,
       label: <Link href="/admin/users">Usuarios</Link>,
     },
-    {
-      key: '/admin/bundles',
-      icon: <GiftOutlined />,
-      label: <Link href="/admin/bundles">Conjuntos / Packs</Link>,
-    },
   ];
+
 
 
   const filteredMenuItems = user?.role === 'SELLER' 
@@ -109,7 +114,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
+      <Sider 
+        trigger={null} 
+        collapsible 
+        collapsed={collapsed} 
+        theme="light"
+        breakpoint="md"
+        collapsedWidth={0}
+        onCollapse={(c) => setCollapsed(c)}
+        style={{ 
+          borderRight: '1px solid #f0f0f0',
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 1100,
+        }}
+      >
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #f0f0f0' }}>
           <strong style={{ fontSize: collapsed ? 14 : 18, color: '#C89F53', fontFamily: 'var(--font-montserrat)' }}>
             {collapsed ? 'AURA' : 'AURA ADMIN'}
@@ -119,34 +142,60 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           mode="inline"
           selectedKeys={[pathname === '/admin' ? '/admin' : pathname]}
           items={filteredMenuItems}
+          onClick={() => isMobile && setCollapsed(true)}
           style={{ borderRight: 0, marginTop: 16 }}
         />
       </Sider>
-      <Layout>
-        <Header style={{ padding: 0, background: colorBgContainer, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 24 }}>
+
+      <Layout style={{ 
+        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200), 
+        transition: 'all 0.2s',
+        minHeight: '100vh' 
+      }}>
+        <Header style={{ 
+          padding: isMobile ? '0 12px' : '0 24px', 
+          background: colorBgContainer, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+        }}>
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={() => setCollapsed(!collapsed)}
             style={{ fontSize: '16px', width: 64, height: 64 }}
           />
-          <Space size="large">
-            <Switch
-              checkedChildren={<BulbFilled />}
-              unCheckedChildren={<BulbOutlined />}
-              checked={isDarkMode}
-              onChange={toggleDarkMode}
-            />
-            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} danger>
-              Cerrar Sesión
+          <Space size={isMobile ? 'small' : 'large'}>
+            {!isMobile && (
+              <Switch
+                checkedChildren={<BulbFilled />}
+                unCheckedChildren={<BulbOutlined />}
+                checked={isDarkMode}
+                onChange={toggleDarkMode}
+              />
+            )}
+            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} danger size={isMobile ? 'small' : 'middle'}>
+              {isMobile ? '' : 'Cerrar Sesión'}
             </Button>
           </Space>
         </Header>
-        <Content style={{ margin: '24px 16px', padding: 24, minHeight: 280, background: colorBgContainer, borderRadius: borderRadiusLG }}>
+        <Content style={{ 
+          margin: isMobile ? '12px 8px' : '24px 16px', 
+          padding: isMobile ? 12 : 24, 
+          minHeight: 280, 
+          background: colorBgContainer, 
+          borderRadius: borderRadiusLG,
+          overflowX: 'hidden'
+        }}>
           <OrderNotificationListener />
           {children}
         </Content>
       </Layout>
+
     </Layout>
   );
 }
