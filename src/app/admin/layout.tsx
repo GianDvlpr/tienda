@@ -17,7 +17,9 @@ import {
   TagOutlined,
   ToolOutlined,
   ExperimentOutlined,
+  GiftOutlined,
 } from '@ant-design/icons';
+
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useThemeStore } from '@/store/theme.store';
@@ -93,7 +95,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: <UserOutlined />,
       label: <Link href="/admin/users">Usuarios</Link>,
     },
+    {
+      key: '/admin/bundles',
+      icon: <GiftOutlined />,
+      label: <Link href="/admin/bundles">Conjuntos / Packs</Link>,
+    },
   ];
+
 
   const filteredMenuItems = user?.role === 'SELLER' 
     ? menuItems.filter(m => m.key === '/admin' || m.key === '/admin/orders')

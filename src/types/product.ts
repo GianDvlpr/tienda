@@ -44,8 +44,24 @@ export interface ProductDetail {
     } | null;
 }
 
+export interface BundlePromotionItem {
+    productId: string;
+    name: string;
+    slug: string;
+    primaryImageUrl: string | null;
+}
+
+export interface BundlePromotion {
+    bundle_id: string;
+    name: string;
+    description: string | null;
+    discount_amount: number;
+    items: BundlePromotionItem[];
+}
+
 export interface ProductDetailResponse {
     product: ProductDetail;
     images: ProductImage[];
     variants: ProductVariant[];
-}
+    bundles?: BundlePromotion[];
+}

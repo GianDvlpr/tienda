@@ -125,6 +125,8 @@ model product {
   product_bom_supply  product_bom_supply[]
   product_bom_service product_bom_service[]
   production_lot      production_lot[]
+  bundle_items        bundle_promotion_item[]
+
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_product_active")
 }
@@ -379,3 +381,27 @@ model audit_log {
   
   admin_user  admin_user @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, onDelete: NoAction, map: "FK_audit_user")
 }
+
+model bundle_promotion {
+  bundle_id       String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  name            String   @db.NVarChar(200)
+  description     String?  @db.NVarChar(Max)
+  discount_amount Decimal  @db.Decimal(18, 2)
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(dbgenerated("sysutcdatetime()"))
+  updated_at      DateTime @default(dbgenerated("sysutcdatetime()"))
+  
+  items           bundle_promotion_item[]
+}
+
+model bundle_promotion_item {
+  id                String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  bundle_id         String   @db.UniqueIdentifier
+  product_id        String   @db.UniqueIdentifier
+  
+  bundle            bundle_promotion @relation(fields: [bundle_id], references: [bundle_id], onDelete: Cascade)
+  product           product          @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  
+  @@unique([bundle_id, product_id])
+}
+

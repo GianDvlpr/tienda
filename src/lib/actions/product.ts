@@ -79,7 +79,45 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 price: Number(r.price ?? 0),
                 stock: Number(r.stock ?? 0),
             })),
+            bundles: await (prisma as any).bundle_promotion.findMany({
+                where: {
+                    is_active: true,
+                    items: {
+                        some: { product_id: p.product_id }
+                    }
+                },
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                select: {
+                                    product_id: true,
+                                    name: true,
+                                    slug: true,
+                                    product_image: {
+                                        orderBy: { sort_order: 'asc' },
+                                        take: 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }).then((rows: any[]) => rows.map((b: any) => ({
+                bundle_id: b.bundle_id,
+                name: b.name,
+                description: b.description,
+                discount_amount: Number(b.discount_amount),
+                items: b.items.map((item: any) => ({
+                    productId: item.product.product_id,
+                    name: item.product.name,
+                    slug: item.product.slug,
+                    primaryImageUrl: item.product.product_image[0]?.url ?? null
+                }))
+            })))
+
         };
+
     } catch (e) {
         console.error('Error fetching product by slug:', e);
         return null;

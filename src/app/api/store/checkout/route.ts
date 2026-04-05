@@ -23,11 +23,55 @@ export async function POST(req: Request) {
 
         // Re-calculate total securely on the backend
         let serverSubtotal = 0;
+        const productCounts: Record<string, { qty: number, productId: string }> = {};
+
         for (const item of items) {
            serverSubtotal += item.unitPrice * item.qty;
+           
+           // Track product_ids for bundle detection (we need to know which product each variant belongs to)
+           // The client should send productId or we can fetch it. 
+           // Given current cart structure, let's fetch product_ids for these variants.
         }
 
-        let discount_total = 0;
+        // 1. Fetch variant details to get product_ids
+        const variantsInCart = await prisma.product_variant.findMany({
+            where: { variant_id: { in: items.map((i: any) => i.variantId) } },
+            select: { variant_id: true, product_id: true }
+        });
+
+        const cartProductStats: Record<string, number> = {};
+        for (const item of items) {
+            const variant = variantsInCart.find(v => v.variant_id === item.variantId);
+            if (variant) {
+                cartProductStats[variant.product_id] = (cartProductStats[variant.product_id] || 0) + item.qty;
+            }
+        }
+
+        // 2. Detect Bundles/Conjuntos
+        let bundle_discount_total = 0;
+        const activeBundles = await (prisma as any).bundle_promotion.findMany({
+            where: { is_active: true },
+            include: { items: true }
+        });
+
+        for (const bundle of activeBundles) {
+            const requiredProductIds = (bundle.items as any[]).map((bi: any) => bi.product_id);
+            
+            // Check if all required products are in cart
+            const hasAll = requiredProductIds.every((id: string) => (cartProductStats[id] || 0) > 0);
+            
+            if (hasAll) {
+                // How many sets can we form? 
+                // It's the minimum quantity among the required products.
+                const possibleSets = Math.min(...requiredProductIds.map((id: string) => cartProductStats[id]));
+                
+                const savings = possibleSets * Number(bundle.discount_amount);
+                bundle_discount_total += savings;
+            }
+        }
+
+
+        let discount_total = bundle_discount_total;
         let validated_coupon_code = null;
 
         if (coupon_code) {
@@ -37,23 +81,28 @@ export async function POST(req: Request) {
 
             if (coupon && coupon.is_active) {
                 const now = dayjs();
+                const currentAmountForCoupon = serverSubtotal - bundle_discount_total;
+                
                 const is_valid_date = (!coupon.starts_at || now.isAfter(dayjs(coupon.starts_at))) &&
                                      (!coupon.expires_at || now.isBefore(dayjs(coupon.expires_at)));
                 const has_usage = !coupon.usage_limit || coupon.usage_count < coupon.usage_limit;
-                const min_met = !coupon.min_purchase || serverSubtotal >= Number(coupon.min_purchase);
+                const min_met = !coupon.min_purchase || currentAmountForCoupon >= Number(coupon.min_purchase);
 
                 if (is_valid_date && has_usage && min_met) {
                     validated_coupon_code = coupon.code;
+                    let coupon_savings = 0;
                     if (coupon.discount_type === 'PERCENTAGE') {
-                        discount_total = serverSubtotal * (Number(coupon.discount_value) / 100);
+                        coupon_savings = currentAmountForCoupon * (Number(coupon.discount_value) / 100);
                     } else {
-                        discount_total = Number(coupon.discount_value);
+                        coupon_savings = Number(coupon.discount_value);
                     }
+                    discount_total += coupon_savings;
                 }
             }
         }
 
         const serverTotal = Math.max(0, serverSubtotal - discount_total);
+
 
         // 1. Process payment with Culqi (Only if CULQI method)
         if (method === 'CULQI') {

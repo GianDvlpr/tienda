@@ -3,7 +3,10 @@
 import { toast } from 'sonner';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
-import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
+import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined, GiftOutlined } from '@ant-design/icons';
+import Link from 'next/link';
+
+
 import ProductGallery from '@/components/shop/ProductGallery';
 import ProductDetailSkeleton from '@/components/shop/ProductDetailSkeleton';
 import type { ProductDetailResponse, ProductVariant } from '@/types/product';
@@ -253,10 +256,77 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         WhatsApp
                                     </Button>
                                 </Flex>
-
-                                {!canAdd ? (
+                                 {!canAdd ? (
                                     <Text type="secondary" style={{ color: 'red' }}>Selecciona una variante disponible para consultar.</Text>
                                 ) : null}
+
+                                {initialData.bundles && initialData.bundles.length > 0 && (
+                                    <div style={{ marginTop: 32 }}>
+                                        <Divider orientation="start">
+
+                                            <Space>
+                                                <GiftOutlined style={{ color: '#C89F53' }} />
+                                                <Text strong style={{ color: '#C89F53' }}>Combo Ahorro</Text>
+                                            </Space>
+                                        </Divider>
+                                        
+                                        {initialData.bundles.map(bundle => {
+                                            const otherItems = bundle.items.filter(i => i.productId !== initialData.product.productId);
+                                            return (
+                                                <Card 
+                                                    key={bundle.bundle_id} 
+                                                    size="small" 
+                                                    style={{ 
+                                                        borderColor: '#C89F53', 
+                                                        background: '#fffdf9',
+                                                        marginBottom: 16
+                                                    }}
+                                                >
+                                                    <Space direction="vertical" style={{ width: '100%', gap: 8 }}>
+                                                        <Text strong>{bundle.name}</Text>
+                                                        <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
+                                                            {bundle.description || `Lleva este producto junto a ${otherItems.map(i => i.name).join(', ')} y ahorra ${formatPEN(bundle.discount_amount)}.`}
+                                                        </Text>
+                                                        
+                                                        <Flex gap="small" wrap="wrap" align="center" style={{ marginTop: 8 }}>
+                                                            {otherItems.map(item => (
+                                                                <Link key={item.productId} href={`/product/${item.slug}`}>
+                                                                    <Card size="small" hoverable style={{ width: 120 }}>
+                                                                        <div style={{ textAlign: 'center' }}>
+                                                                            <img 
+                                                                                src={item.primaryImageUrl || '/placeholder.png'} 
+                                                                                style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 4 }} 
+                                                                                alt={item.name}
+                                                                            />
+                                                                            <Text ellipsis style={{ display: 'block', fontSize: 11, marginTop: 4 }}>
+                                                                                {item.name}
+                                                                            </Text>
+                                                                        </div>
+                                                                    </Card>
+                                                                </Link>
+                                                            ))}
+                                                            
+                                                            <div style={{ marginLeft: 'auto' }}>
+                                                                <Button 
+                                                                    type="primary" 
+                                                                    ghost 
+                                                                    size="small"
+                                                                    onClick={() => {
+                                                                       onAddToCart();
+                                                                       toast.info(`¡Genial! Solo añade el ${otherItems[0].name} para aplicar el descuento.`);
+                                                                    }}
+                                                                >
+                                                                    Añadir este y Ver el Otro
+                                                                </Button>
+                                                            </div>
+                                                        </Flex>
+                                                    </Space>
+                                                </Card>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+
                             </Space>
                         </Col>
                     </Row>
