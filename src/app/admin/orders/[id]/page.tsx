@@ -265,9 +265,29 @@ export default function OrderDetailPage() {
                             pagination={false}
                         />
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                            <Space orientation="vertical" align="end">
+                            <Space orientation="vertical" align="end" size={2}>
                                 <Text type="secondary">Subtotal: {formatPEN(Number(order.subtotal))}</Text>
-                                <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(Number(order.total))}</Title>
+                                
+                                {Number(order.bundle_discount || 0) > 0 && (
+                                    <Text type="success">
+                                        Descuento Conjunto: -{formatPEN(Number(order.bundle_discount))}
+                                    </Text>
+                                )}
+                                
+                                {order.coupon_code && (
+                                    <Text type="danger">
+                                        Cupón ({order.coupon_code}): -{formatPEN(Number(order.coupon_discount || 0))}
+                                    </Text>
+                                )}
+
+                                {/* Fallback para pedidos muy antiguos */}
+                                {!order.bundle_discount && !order.coupon_discount && Number(order.discount_total || 0) > 0 && !order.coupon_code && (
+                                     <Text type="danger">
+                                        Descuento General: -{formatPEN(Number(order.discount_total))}
+                                    </Text>
+                                )}
+
+                                <Title level={4} style={{ margin: 0, marginTop: 8 }}>Total: {formatPEN(Number(order.total))}</Title>
                             </Space>
                         </div>
                     </Card>

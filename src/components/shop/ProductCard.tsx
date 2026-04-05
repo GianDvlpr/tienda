@@ -99,13 +99,15 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                                 position: 'absolute',
                                 top: 12,
                                 left: 12,
-                                zIndex: 10,
-                                background: '#000',
+                                zIndex: 11,
+                                background: 'rgba(26, 26, 26, 0.8)',
                                 color: '#fff',
                                 padding: '4px 10px',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                letterSpacing: 1,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                backdropFilter: 'blur(4px)'
                             }}>
                                 AGOTADO
                             </div>
@@ -117,19 +119,20 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                                 position: 'absolute',
                                 top: 12,
                                 left: 12,
-                                zIndex: 10,
-                                background: '#fff',
-                                color: '#000',
+                                zIndex: 11,
+                                background: '#C89F53',
+                                color: '#fff',
                                 padding: '4px 10px',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                letterSpacing: 1,
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                fontSize: 10,
+                                fontWeight: 600,
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                boxShadow: '0 2px 8px rgba(200, 159, 83, 0.2)'
                             }}>
                                 NUEVO
                             </div>
                         )}
-
+ 
                         {/* Hover Overlay: Botón Favoritos (Corazón Rápido) */}
                         <div 
                             onClick={handleHeartClick}
@@ -137,57 +140,57 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                                 position: 'absolute',
                                 top: 12,
                                 right: 12,
-                                zIndex: 10,
-                                width: 36,
-                                height: 36,
+                                zIndex: 12,
+                                width: 34,
+                                height: 34,
                                 borderRadius: '50%',
-                                background: 'rgba(255,255,255,0.9)',
+                                background: 'rgba(255,255,255,0.95)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                                 opacity: isHovered || isWishlisted ? 1 : 0,
-                                transform: isHovered || isWishlisted ? 'scale(1)' : 'scale(0.8)',
-                                transition: 'all 0.2s',
+                                transform: isHovered || isWishlisted ? 'translateY(0)' : 'translateY(-10px)',
+                                transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                             }}
                         >
                             <Tooltip title={isWishlisted ? "En favoritos" : "Guardar en favoritos"}>
                                 {isWishlisted ? (
-                                    <HeartFilled style={{ color: '#ff4d4f', fontSize: 18 }} />
+                                    <HeartFilled style={{ color: '#ff4d4f', fontSize: 16 }} />
                                 ) : (
-                                    <HeartFilled style={{ color: 'rgba(0,0,0,0.15)', fontSize: 18 }} />
+                                    <HeartFilled style={{ color: 'rgba(0,0,0,0.15)', fontSize: 16 }} />
                                 )}
                             </Tooltip>
                         </div>
-
+ 
                         {/* Hover Overlay: Botón Vista Rápida (Ojo) */}
                         <div 
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); openQuickView(item.slug); }}
                             style={{
                                 position: 'absolute',
-                                top: 56, // Desplazado hacia abajo del corazón
+                                top: 54,
                                 right: 12,
-                                zIndex: 10,
-                                width: 36,
-                                height: 36,
+                                zIndex: 12,
+                                width: 34,
+                                height: 34,
                                 borderRadius: '50%',
-                                background: 'rgba(255,255,255,0.9)',
+                                background: 'rgba(255,255,255,0.95)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                                 opacity: isHovered ? 1 : 0,
-                                transform: isHovered ? 'scale(1)' : 'scale(0.8)',
-                                transition: 'all 0.2s',
+                                transform: isHovered ? 'translateY(0)' : 'translateY(-10px)',
+                                transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                             }}
                         >
                             <Tooltip title="Vista Rápida">
-                                <EyeFilled style={{ color: '#000', fontSize: 18 }} />
+                                <EyeFilled style={{ color: '#1a1a1a', fontSize: 16 }} />
                             </Tooltip>
                         </div>
-
-                        {item.primaryImageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
+ 
+                        {/* Imagen Principal */}
+                        {item.primaryImageUrl && (
                             <img
                                 src={item.primaryImageUrl}
                                 alt={item.name}
@@ -195,21 +198,56 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                                     width: '100%', 
                                     height: '100%', 
                                     objectFit: 'cover',
-                                    transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                                    transform: isHovered ? 'scale(1.08)' : 'scale(1)'
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    zIndex: 1,
+                                    opacity: isHovered && item.secondaryImageUrl ? 0 : 1,
+                                    transition: 'opacity 0.6s ease, transform 1.2s ease',
+                                    transform: isHovered && !item.secondaryImageUrl ? 'scale(1.08)' : 'scale(1)'
                                 }}
                             />
-                        ) : (
+                        )}
+ 
+                        {/* Imagen Secundaria (Efecto Peek) */}
+                        {item.secondaryImageUrl && (
+                            <img
+                                src={item.secondaryImageUrl}
+                                alt={`${item.name} vista alterna`}
+                                style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    zIndex: 2,
+                                    opacity: isHovered ? 1 : 0,
+                                    transition: 'opacity 0.6s ease, transform 1.2s ease',
+                                    transform: isHovered ? 'scale(1.05)' : 'scale(1.1)'
+                                }}
+                            />
+                        )}
+ 
+                        {!item.primaryImageUrl && !item.secondaryImageUrl && (
                             <div style={{ width: '100%', height: '100%', background: '#f5f5f5' }} />
                         )}
                     </div>
                 }
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <Text strong style={{ fontSize: 15, transition: 'color 0.2s', color: isHovered ? '#666' : '#000' }}>
+                    <Text style={{ 
+                        fontSize: 14, 
+                        transition: 'color 0.3s', 
+                        color: isHovered ? '#C89F53' : '#1a1a1a',
+                        fontWeight: 500,
+                        letterSpacing: '0.01em'
+                    }}>
                         {item.name}
                     </Text>
-                    <Text style={{ fontSize: 14 }}>{formatPrice(item.minPrice, item.maxPrice)}</Text>
+                    <Text style={{ fontSize: 14, color: '#666', fontWeight: 400 }}>
+                        {formatPrice(item.minPrice, item.maxPrice)}
+                    </Text>
                 </div>
             </Card>
         </Link>

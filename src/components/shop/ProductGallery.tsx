@@ -68,7 +68,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                             open: isPreviewOpen,
                             current: activeIndex,
                             onChange: (current) => setActiveIndex(current),
-                            onVisibleChange: (visible) => setIsPreviewOpen(visible),
+                            onOpenChange: (visible) => setIsPreviewOpen(visible),
                         }}
                     >
                         <div className="main-image-container" onClick={() => setIsPreviewOpen(true)}>
@@ -77,7 +77,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                                 src={sorted[activeIndex]?.url}
                                 alt="Vista ampliada del producto"
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                wrapperStyle={{ width: '100%', display: 'block' }}
+                                styles={{ root: { width: '100%', display: 'block' } }}
                                 placeholder={
                                     <div style={{ width: '100%', height: '100%', background: token.colorFillAlter }} />
                                 }

@@ -6,7 +6,9 @@ export interface ProductListItem {
     maxPrice: number;
     variantsInStock: number;
     primaryImageUrl: string | null;
+    secondaryImageUrl: string | null;
 }
+
 
 export interface ProductListResponse {
     items: ProductListItem[];

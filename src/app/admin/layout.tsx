@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
   const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
-  
+
   const { data: user } = useSWR<any>('/api/admin/me', fetcher);
 
   if (pathname === '/admin/login') {
@@ -72,7 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     {
       key: '/admin/bundles',
       icon: <GiftOutlined />,
-      label: <Link href="/admin/bundles">Conjuntos / Packs</Link>,
+      label: <Link href="/admin/bundles">Conjuntos</Link>,
     },
     {
       key: '/admin/collections',
@@ -108,21 +108,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 
 
-  const filteredMenuItems = user?.role === 'SELLER' 
+  const filteredMenuItems = user?.role === 'SELLER'
     ? menuItems.filter(m => m.key === '/admin' || m.key === '/admin/orders')
     : menuItems;
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed} 
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
         theme="light"
         breakpoint="md"
         collapsedWidth={0}
         onCollapse={(c) => setCollapsed(c)}
-        style={{ 
+        style={{
           borderRight: '1px solid #f0f0f0',
           overflow: 'auto',
           height: '100vh',
@@ -147,16 +147,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       </Sider>
 
-      <Layout style={{ 
-        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200), 
+      <Layout style={{
+        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
         transition: 'all 0.2s',
-        minHeight: '100vh' 
+        minHeight: '100vh'
       }}>
-        <Header style={{ 
-          padding: isMobile ? '0 12px' : '0 24px', 
-          background: colorBgContainer, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <Header style={{
+          padding: isMobile ? '0 12px' : '0 24px',
+          background: colorBgContainer,
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           position: 'sticky',
           top: 0,
@@ -183,11 +183,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
           </Space>
         </Header>
-        <Content style={{ 
-          margin: isMobile ? '12px 8px' : '24px 16px', 
-          padding: isMobile ? 12 : 24, 
-          minHeight: 280, 
-          background: colorBgContainer, 
+        <Content style={{
+          margin: isMobile ? '12px 8px' : '24px 16px',
+          padding: isMobile ? 12 : 24,
+          minHeight: 280,
+          background: colorBgContainer,
           borderRadius: borderRadiusLG,
           overflowX: 'hidden'
         }}>

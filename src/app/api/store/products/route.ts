@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
                 maxPrice: Number(r.max_price ?? 0),
                 variantsInStock: Number(r.variants_in_stock ?? 0),
                 primaryImageUrl: r.primary_image_url ?? null,
+                secondaryImageUrl: r.secondary_image_url ?? null,
             })),
             total,
             page: qp.page,

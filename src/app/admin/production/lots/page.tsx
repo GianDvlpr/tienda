@@ -84,8 +84,9 @@ export default function LotsHistoryPage() {
                 onCancel={() => setIsModalOpen(false)} 
                 footer={null}
                 width={800}
-                destroyOnClose
+                destroyOnHidden
             >
+
                 {selectedLot && (
                     <div id="print-area" style={{ padding: '20px' }}>
                         {/* Header */}

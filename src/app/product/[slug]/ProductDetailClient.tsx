@@ -219,6 +219,8 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
                         <Col xs={24} md={12}>
                             <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+
+
                                 <Title level={3} style={{ margin: 0 }}>
                                     {initialData.product.name}
                                 </Title>

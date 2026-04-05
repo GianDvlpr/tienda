@@ -2,8 +2,8 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Card } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, GiftOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Card, Flex } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, GiftOutlined, ReloadOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 
@@ -12,7 +12,10 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 export default function AdminBundlesPage() {
-    const { data: bundles, error, mutate, isLoading } = useSWR<any[]>('/api/admin/bundles', fetcher);
+    const { data: bundles, error, mutate, isLoading, isValidating } = useSWR<any[]>('/api/admin/bundles', fetcher, {
+        refreshInterval: 30000,
+        revalidateOnFocus: true
+    });
     const { data: products } = useSWR<any[]>('/api/admin/products', fetcher);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -141,9 +144,17 @@ export default function AdminBundlesPage() {
                     <PlusOutlined style={{ fontSize: 24, color: '#1890ff' }} />
                     <Title level={3} style={{ margin: 0 }}>Gestión de Conjuntos / Bundles</Title>
                 </div>
-                <Button type="primary" icon={<GiftOutlined />} onClick={openCreateModal}>
-                    Nueva Promoción de Conjunto
-                </Button>
+                <Space>
+                    <Button 
+                        icon={<ReloadOutlined spin={isValidating} />} 
+                        onClick={() => mutate()}
+                    >
+                        Actualizar
+                    </Button>
+                    <Button type="primary" icon={<GiftOutlined />} onClick={openCreateModal}>
+                        Nueva Promoción de Conjunto
+                    </Button>
+                </Space>
             </div>
 
             <Card variant="borderless">

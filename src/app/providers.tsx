@@ -21,10 +21,24 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             theme={{
                 algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
                 token: {
-                    borderRadius: 10,
+                    colorPrimary: '#C89F53',
+                    colorBgBase: isDarkMode ? '#1A1A1A' : '#FAF9F6',
+                    fontFamily: 'var(--font-montserrat), sans-serif',
+                    borderRadius: 4,
                 },
+                components: {
+                    Button: {
+                        borderRadius: 2,
+                        controlHeightLG: 48,
+                        fontWeight: 600,
+                    },
+                    Card: {
+                        borderRadiusLG: 0,
+                    }
+                }
             }}
         >
+
             <App>
                 {children}
             </App>

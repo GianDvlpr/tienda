@@ -1,0 +1,39 @@
+[2026-04-05T04:50:43.468Z] [CHECKOUT] Items in Cart: 3, Variants found: 3
+[2026-04-05T04:50:43.469Z] [CHECKOUT] Product Stats: {"aea1d949-f925-f111-9a49-6045bd3c0d9b":1,"0886210b-577c-4931-9e55-7e5eed7b1e03":1,"70cd6fbb-899e-4aff-b4ac-a08968b8ed22":1}
+[2026-04-05T04:50:43.779Z] [CHECKOUT] Active Bundles: 1
+[2026-04-05T04:50:43.780Z] [CHECKOUT] Checking bundle "Conjunto prueba": hasAll=true, requiredIds=["aea1d949-f925-f111-9a49-6045bd3c0d9b","0886210b-577c-4931-9e55-7e5eed7b1e03","70cd6fbb-899e-4aff-b4ac-a08968b8ed22"]
+[2026-04-05T04:50:43.780Z] [CHECKOUT] Bundle "Conjunto prueba" applied! Sets: 1, Savings: 15
+[2026-04-05T04:50:43.781Z] Order Calculation [235.8]: Bundles: 15, Coupon: 0, Total: 220.8
+[2026-04-05T04:55:26.182Z] [CHECKOUT] Items in Cart: 3, Variants found: 3
+[2026-04-05T04:55:26.193Z] [CHECKOUT] Product Stats: {"aea1d949-f925-f111-9a49-6045bd3c0d9b":1,"0886210b-577c-4931-9e55-7e5eed7b1e03":1,"70cd6fbb-899e-4aff-b4ac-a08968b8ed22":1}
+[2026-04-05T04:55:26.421Z] [CHECKOUT] Active Bundles: 1
+[2026-04-05T04:55:26.422Z] [CHECKOUT] Checking bundle "Conjunto prueba": hasAll=true, requiredIds=["aea1d949-f925-f111-9a49-6045bd3c0d9b","0886210b-577c-4931-9e55-7e5eed7b1e03","70cd6fbb-899e-4aff-b4ac-a08968b8ed22"]
+[2026-04-05T04:55:26.423Z] [CHECKOUT] Bundle "Conjunto prueba" applied! Sets: 1, Savings: 15
+[2026-04-05T04:55:26.423Z] [CHECKOUT] Incoming coupon_code: "BIENVENIDA"
+[2026-04-05T04:55:26.544Z] [CHECKOUT] Coupon found: "BIENVENIDA". ValidDate: true, HasUsage: true, MinMet: true (Amount: 220.8, Min: null)
+[2026-04-05T04:55:26.545Z] [CHECKOUT] Coupon "BIENVENIDA" applied! Savings: 33.12
+[2026-04-05T04:55:26.546Z] Order Calculation [235.8]: Bundles: 15, Coupon: 33.12, Total: 187.68
+[2026-04-05T04:56:16.341Z] [CHECKOUT] Items in Cart: 3, Variants found: 3
+[2026-04-05T04:56:16.342Z] [CHECKOUT] Product Stats: {"aea1d949-f925-f111-9a49-6045bd3c0d9b":1,"0886210b-577c-4931-9e55-7e5eed7b1e03":1,"70cd6fbb-899e-4aff-b4ac-a08968b8ed22":1}
+[2026-04-05T04:56:16.581Z] [CHECKOUT] Active Bundles: 1
+[2026-04-05T04:56:16.582Z] [CHECKOUT] Checking bundle "Conjunto prueba": hasAll=true, requiredIds=["aea1d949-f925-f111-9a49-6045bd3c0d9b","0886210b-577c-4931-9e55-7e5eed7b1e03","70cd6fbb-899e-4aff-b4ac-a08968b8ed22"]
+[2026-04-05T04:56:16.582Z] [CHECKOUT] Bundle "Conjunto prueba" applied! Sets: 1, Savings: 15
+[2026-04-05T04:56:16.582Z] [CHECKOUT] Incoming coupon_code: "BIENVENIDA"
+[2026-04-05T04:56:16.700Z] [CHECKOUT] Coupon found: "BIENVENIDA". ValidDate: true, HasUsage: true, MinMet: true (Amount: 220.8, Min: null)
+[2026-04-05T04:56:16.700Z] [CHECKOUT] Coupon "BIENVENIDA" applied! Savings: 33.12
+[2026-04-05T04:56:16.701Z] Order Calculation [235.8]: Bundles: 15, Coupon: 33.12, Total: 187.68
+[2026-04-05T05:00:26.766Z] [CHECKOUT] Items in Cart: 3, Variants found: 3
+[2026-04-05T05:00:26.766Z] [CHECKOUT] Product Stats: {"aea1d949-f925-f111-9a49-6045bd3c0d9b":1,"0886210b-577c-4931-9e55-7e5eed7b1e03":1,"70cd6fbb-899e-4aff-b4ac-a08968b8ed22":1}
+[2026-04-05T05:00:27.082Z] [CHECKOUT] Active Bundles: 1
+[2026-04-05T05:00:27.083Z] [CHECKOUT] Checking bundle "Conjunto prueba": hasAll=true, requiredIds=["aea1d949-f925-f111-9a49-6045bd3c0d9b","0886210b-577c-4931-9e55-7e5eed7b1e03","70cd6fbb-899e-4aff-b4ac-a08968b8ed22"]
+[2026-04-05T05:00:27.083Z] [CHECKOUT] Bundle "Conjunto prueba" applied! Sets: 1, Savings: 15
+[2026-04-05T05:00:27.084Z] [CHECKOUT] Incoming coupon_code: "null"
+[2026-04-05T05:00:27.084Z] Order Calculation [235.8]: Bundles: 15, Coupon: 0, Total: 220.8
+[2026-04-05T05:01:33.276Z] [CHECKOUT] Items in Cart: 1, Variants found: 1
+[2026-04-05T05:01:33.277Z] [CHECKOUT] Product Stats: {"aea1d949-f925-f111-9a49-6045bd3c0d9b":1}
+[2026-04-05T05:01:33.689Z] [CHECKOUT] Active Bundles: 1
+[2026-04-05T05:01:33.690Z] [CHECKOUT] Checking bundle "Conjunto prueba": hasAll=false, requiredIds=["aea1d949-f925-f111-9a49-6045bd3c0d9b","0886210b-577c-4931-9e55-7e5eed7b1e03","70cd6fbb-899e-4aff-b4ac-a08968b8ed22"]
+[2026-04-05T05:01:33.690Z] [CHECKOUT] Incoming coupon_code: "BIENVENIDA"
+[2026-04-05T05:01:33.892Z] [CHECKOUT] Coupon found: "BIENVENIDA". ValidDate: true, HasUsage: true, MinMet: true (Amount: 26, Min: null)
+[2026-04-05T05:01:33.893Z] [CHECKOUT] Coupon "BIENVENIDA" applied! Savings: 3.9
+[2026-04-05T05:01:33.893Z] Order Calculation [26]: Bundles: 0, Coupon: 3.9, Total: 22.1

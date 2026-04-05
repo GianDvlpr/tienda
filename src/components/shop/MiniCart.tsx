@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 import { 
-    Button, Drawer, Empty, InputNumber, List, Space, Typography, 
-    Form, Input, Card, Result, Spin, Divider, Tag, theme, Flex 
+    Button, Drawer, Empty, InputNumber, Space, Typography, 
+    Form, Input, Card, Result, Divider, theme, Flex 
 } from 'antd';
 import confetti from 'canvas-confetti';
 import { 
@@ -45,6 +45,11 @@ export default function MiniCart({
     const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
     const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
     const [activeBundles, setActiveBundles] = useState<any[]>([]);
+    const appliedCouponRef = useRef<any>(null);
+
+    useEffect(() => {
+        appliedCouponRef.current = appliedCoupon;
+    }, [appliedCoupon]);
 
     useEffect(() => {
         if (open) {
@@ -72,7 +77,6 @@ export default function MiniCart({
         });
         return totalSavings;
     }, [items, activeBundles]);
-
 
     // Re-validate or clear coupon if subtotal changes (e.g. removed items)
     useEffect(() => {
@@ -116,7 +120,7 @@ export default function MiniCart({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     code: couponCode, 
-                    subtotal: subtotal - bundleDiscount // Usar base con descuento de conjunto
+                    subtotal: subtotal - bundleDiscount 
                 })
             });
             const data = await res.json();
@@ -134,7 +138,6 @@ export default function MiniCart({
     };
 
     const finalTotal = Math.max(0, subtotal - bundleDiscount - (appliedCoupon?.discountAmount || 0));
-
 
     const handleCheckoutSubmit = (values: any) => {
         const frozenItems = useCartStore.getState().items;
@@ -162,7 +165,7 @@ export default function MiniCart({
         Culqi.settings({
             title: 'Aura Boutique',
             currency: 'PEN',
-            amount: Math.round(finalTotal * 100), // Usar total FINAL con descuento
+            amount: Math.round(finalTotal * 100),
         });
         Culqi.options({
             lang: 'auto',
@@ -206,7 +209,6 @@ export default function MiniCart({
             const data = await res.json();
             const orderCode = data.orderCode;
 
-            // Generate WhatsApp message
             let text = `¡Hola! Quiero hacer el pedido *${orderCode}*:\n\n`;
             payload.items.forEach((item: any) => {
                 text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color}) - ${formatPEN(item.unitPrice * item.qty)}\n`;
@@ -248,6 +250,7 @@ export default function MiniCart({
     const processBackendCheckout = async (tokenId: string, email: string) => {
         setIsSubmitting(true);
         const payload = shippingDataRef.current;
+        const currentCoupon = appliedCouponRef.current;
 
         try {
             const res = await fetch('/api/store/checkout', {
@@ -259,8 +262,8 @@ export default function MiniCart({
                     shipping_address: payload.shipping_address,
                     items: payload.items,
                     subtotal: payload.subtotal,
-                    coupon_code: appliedCoupon?.code || null,
-                    discount_total: appliedCoupon?.discountAmount || 0,
+                    coupon_code: currentCoupon?.code || null,
+                    discount_total: currentCoupon?.discountAmount || 0,
                     total: finalTotal,
                     culqi_token: tokenId,
                     email: email,
@@ -307,211 +310,247 @@ export default function MiniCart({
         onClose();
     };
 
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+
     return (
         <Drawer
             title={
-                isProcessingPayment ? "Procesando..." :
-                orderSuccess ? "Pedido Completado" : 
-                isCheckoutView ? (
-                    <Space>
-                        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setIsCheckoutView(false)} />
-                        <span>Completar Pedido</span>
-                    </Space>
-                ) : "Mi Carrito"
+                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 600 }}>
+                    {isProcessingPayment ? "Procesando..." :
+                     orderSuccess ? "Pedido Completado" : 
+                     isCheckoutView ? "Completar Pedido" : "Mi Carrito"}
+                </div>
             }
+            extra={isCheckoutView && !orderSuccess && !isProcessingPayment && (
+                <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setIsCheckoutView(false)}>Volver</Button>
+            )}
             open={open}
             onClose={handleClose}
-            size={isCheckoutView || orderSuccess || isProcessingPayment ? 380 : 420}
+            width={isMobile ? '100%' : 420}
+            styles={{ 
+                body: { padding: '24px 20px' },
+                footer: { padding: '24px 20px' }
+            }}
             footer={
-                !isCheckoutView && !orderSuccess && !isProcessingPayment && items.length > 0 && (
+                (orderSuccess || isProcessingPayment || items.length === 0 || isCheckoutView) ? null : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text strong>Subtotal: {formatPEN(subtotal)}</Text>
+                            <Text style={{ color: '#666' }}>Subtotal</Text>
+                            <Text strong>{formatPEN(subtotal)}</Text>
                         </div>
                         {bundleDiscount > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text type="success">Ahorro por Conjunto: -{formatPEN(bundleDiscount)}</Text>
+                                <Text type="success">Descuento Conjunto</Text>
+                                <Text type="success">-{formatPEN(bundleDiscount)}</Text>
                             </div>
                         )}
-                        {appliedCoupon && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text type="success">Cupón ({appliedCoupon.code}): -{formatPEN(appliedCoupon.discountAmount)}</Text>
-                            </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(finalTotal)}</Title>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                            <Title level={4} style={{ margin: 0, fontFamily: 'Playfair Display, serif' }}>Total: {formatPEN(finalTotal)}</Title>
                         </div>
-
                         <Button 
                             type="primary" 
+                            size="large"
                             onClick={() => setIsCheckoutView(true)}
-                            style={{ width: '100%', height: 40, fontSize: 16 }}
+                            style={{ 
+                                width: '100%', 
+                                height: 50, 
+                                fontSize: 15, 
+                                fontWeight: 600, 
+                                letterSpacing: '0.05em',
+                                marginTop: 8,
+                                borderRadius: 4
+                            }}
                         >
-                            Proceder al Checkout
+                            PROCEDER AL PAGO
                         </Button>
                     </div>
                 )
             }
+
         >
             {isProcessingPayment ? (
                 <Result
-                    icon={<LoadingOutlined style={{ color: token.colorPrimary, fontSize: 72 }} spin />}
-                    title="Procesando tu pago..."
-                    subTitle="Por favor, no cierres esta ventana. Estamos validando la transacción de forma segura con tu banco, esto puede tomar unos segundos."
+                    icon={<LoadingOutlined style={{ color: '#C89F53', fontSize: 72 }} spin />}
+                    title={<div style={{ fontFamily: 'Playfair Display, serif' }}>Procesando tu pago...</div>}
+                    subTitle="Por favor, no cierres esta ventana. Estamos validando la transacción de forma segura."
                 />
             ) : orderSuccess ? (
                 <Result
                     status="success"
-                    title="¡Pago Exitoso!"
+                    title={<div style={{ fontFamily: 'Playfair Display, serif', fontSize: 24 }}>¡Pedido Confirmado!</div>}
                     subTitle={
-                        <>
+                        <Text type="secondary">
                             Tu pedido <Text strong>{orderSuccess}</Text> ha sido procesado correctamente.
                             <br />
-                            Nos pondremos en contacto contigo en breve para coordinar el envío.
-                        </>
+                            Pronto coordinaremos el envío contigo.
+                        </Text>
                     }
                     extra={[
-                        <Button type="primary" key="console" onClick={handleClose} style={{ height: 44, width: '100%', fontSize: 16 }}>
-                            Seguir Comprando
+                        <Button type="primary" key="shop" onClick={handleClose} style={{ height: 48, width: '100%', borderRadius: 4 }}>
+                            SEGUIR COMPRANDO
                         </Button>
                     ]}
                 />
-            ) : isCheckoutView ? (
-                <div>
-                    <Typography.Paragraph type="secondary">
-                        Ingresa tus datos para registrar el pedido antes de coordinar por WhatsApp.
-                    </Typography.Paragraph>
-                    <Form layout="vertical" form={form} onFinish={handleCheckoutSubmit}>
-                        <Form.Item label="Nombre Completo" name="shipping_name" rules={[{ required: true, message: 'Ingresa tu nombre' }]}>
-                            <Input placeholder="Ej. Ana Pérez" size="large" />
-                        </Form.Item>
-                        <Form.Item label="Celular / WhatsApp" name="shipping_phone" rules={[{ required: true, message: 'Ingresa tu celular' }]}>
-                            <Input placeholder="Ej. 999 888 777" size="large" />
-                        </Form.Item>
-                        <Form.Item label="Dirección de envío (Opcional)" name="shipping_address">
-                            <Input.TextArea placeholder="Añade referencias si deseas delivery" rows={3} />
-                        </Form.Item>
-
-                        <Card size="small" style={{ marginTop: 24, marginBottom: 24, backgroundColor: token.colorFillAlter }}>
-                             {/* Sección de Cupón */}
-                             <div style={{ marginBottom: 12 }}>
-                                <Text strong style={{ display: 'block', marginBottom: 8 }}>¿Tienes un cupón?</Text>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <Input 
-                                        placeholder="Código" 
-                                        value={couponCode} 
-                                        onChange={e => setCouponCode(e.target.value)} 
-                                        disabled={!!appliedCoupon}
-                                        style={{ textTransform: 'uppercase' }}
-                                    />
-                                    {appliedCoupon ? (
-                                        <Button danger onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}>Quitar</Button>
-                                    ) : (
-                                        <Button type="primary" onClick={handleApplyCoupon} loading={isValidatingCoupon}>Aplicar</Button>
-                                    )}
-                                </div>
-                             </div>
-                             
-                             <Divider style={{ margin: '12px 0' }} />
-
-                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <Text>Productos ({items.length})</Text>
-                                <Text>{formatPEN(subtotal)}</Text>
-                             </div>
-                             {bundleDiscount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text type="success">Descuento Conjunto</Text>
-                                    <Text type="success">-{formatPEN(bundleDiscount)}</Text>
-                                </div>
-                             )}
-                             {appliedCoupon && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text type="success"><TagOutlined /> Descuento ({appliedCoupon.code})</Text>
-                                    <Text type="success">-{formatPEN(appliedCoupon.discountAmount)}</Text>
-                                </div>
-                             )}
-                             <Divider style={{ margin: '8px 0' }} />
-                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Title level={4} style={{ margin: 0 }}>Total Final</Title>
-                                <Title level={4} style={{ margin: 0 }}>{formatPEN(finalTotal)}</Title>
-                             </div>
-
-                        </Card>
-
-                        <Space orientation="vertical" style={{ width: '100%', marginTop: 16 }}>
-                            <Button 
-                                type="primary" 
-                                htmlType="submit"
-                                onClick={() => setPaymentMethod('CULQI')}
-                                loading={isSubmitting && paymentMethod === 'CULQI'}
-                                style={{ width: '100%', height: 44, fontSize: 16 }}
-                            >
-                                Pagar con Tarjeta (Culqi)
-                            </Button>
-                            <Button 
-                                htmlType="submit"
-                                onClick={() => setPaymentMethod('WHATSAPP')}
-                                loading={isSubmitting && paymentMethod === 'WHATSAPP'}
-                                icon={<WhatsAppOutlined />}
-                                style={{ width: '100%', height: 44, fontSize: 16, borderColor: '#25D366', color: '#25D366' }}
-                            >
-                                Pedir por WhatsApp
-                            </Button>
-                        </Space>
-                    </Form>
-                </div>
-            ) : items.length === 0 ? (
-                <Empty description="Tu carrito está vacío" />
             ) : (
-                <Flex vertical gap={12}>
-                    {items.map((item, index) => (
-                        <Card key={item.variantId} size="small" variant="borderless" style={{ background: token.colorFillAlter }}>
-                            <Flex align="start" gap={12}>
-                                <div style={{ width: 56, height: 56, overflow: 'hidden', borderRadius: 8, flexShrink: 0 }}>
-                                    {item.imageUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                            src={item.imageUrl}
-                                            alt={item.name}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                <>
+                    <div style={{ display: isCheckoutView ? 'none' : 'block' }}>
+                        {items.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                                <Empty description={<Text type="secondary">Tu carrito está vacío</Text>} />
+                            </div>
+                        ) : (
+                            <Flex vertical gap={16}>
+                                {items.map((item) => (
+                                    <div key={item.variantId} style={{ paddingBottom: 16, borderBottom: `1px solid ${token.colorFillSecondary}` }}>
+                                        <Flex align="start" gap={16}>
+                                            <div style={{ width: 80, height: 100, overflow: 'hidden', borderRadius: 0, flexShrink: 0, backgroundColor: '#f9f9f9' }}>
+                                                {item.imageUrl ? (
+                                                    <img
+                                                        src={item.imageUrl}
+                                                        alt={item.name}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                ) : null}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <Flex justify="space-between" align="start">
+                                                    <div style={{ flex: 1, paddingRight: 8 }}>
+                                                        <Link href={`/product/${item.slug}`} onClick={onClose} style={{ display: 'block' }}>
+                                                            <Text strong style={{ fontSize: 14, color: '#1a1a1a' }}>{item.name}</Text>
+                                                        </Link>
+                                                        <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                                            {`${item.size} / ${item.color}`}
+                                                        </Text>
+                                                    </div>
+                                                    <Button
+                                                        type="text"
+                                                        size="small"
+                                                        icon={<DeleteFilled style={{ fontSize: 14, color: '#ccc' }} />}
+                                                        onClick={() => removeItem(item.variantId)}
+                                                    />
+                                                </Flex>
+                                                
+                                                <Flex align="center" justify="space-between" style={{ marginTop: 12 }}>
+                                                    <InputNumber
+                                                        min={1}
+                                                        variant="borderless"
+                                                        size="small"
+                                                        value={item.qty}
+                                                        onChange={(v) => setQty(item.variantId, Number(v ?? 1))}
+                                                        style={{ width: 50, borderBottom: '1px solid #eee', borderRadius: 0 }}
+                                                    />
+                                                    <Text style={{ fontWeight: 500 }}>{formatPEN(item.unitPrice * item.qty)}</Text>
+                                                </Flex>
+                                            </div>
+                                        </Flex>
+                                    </div>
+                                ))}
+                            </Flex>
+                        )}
+                    </div>
+
+                    <div style={{ display: isCheckoutView ? 'block' : 'none' }}>
+                        <div style={{ marginBottom: 24, textAlign: 'center' }}>
+                            <Text type="secondary" style={{ fontSize: 13 }}>Finaliza tu compra de forma segura</Text>
+                        </div>
+                        
+                        <Form layout="vertical" form={form} onFinish={handleCheckoutSubmit} requiredMark={false}>
+                            <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Completo</Text>} name="shipping_name" rules={[{ required: true, message: 'Requerido' }]}>
+                                <Input variant="filled" placeholder="Tu nombre" size="large" style={{ borderRadius: 4 }} />
+                            </Form.Item>
+                            
+                            <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp</Text>} name="shipping_phone" rules={[{ required: true, message: 'Requerido' }]}>
+                                <Input variant="filled" placeholder="999 999 999" size="large" style={{ borderRadius: 4 }} />
+                            </Form.Item>
+                            
+                            <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dirección de Envío</Text>} name="shipping_address">
+                                <Input.TextArea variant="filled" placeholder="Dirección y referencias" rows={2} style={{ borderRadius: 4 }} />
+                            </Form.Item>
+
+                            <Card size="small" style={{ marginTop: 24, background: token.colorFillAlter, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8 }}>
+                                <div style={{ padding: '12px 8px' }}>
+                                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                                        <Input 
+                                            placeholder="Cupón" 
+                                            variant="outlined"
+                                            value={couponCode} 
+                                            onChange={e => setCouponCode(e.target.value)} 
+                                            disabled={!!appliedCoupon}
+                                            style={{ textTransform: 'uppercase', borderRadius: 4 }}
                                         />
-                                    ) : null}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <Link href={`/product/${item.slug}`} onClick={onClose} style={{ display: 'block', marginBottom: 4 }}>
-                                        <Text strong>{item.name}</Text>
-                                    </Link>
-                                    <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>{`${item.size} · ${item.color}`}</Text>
+                                        {appliedCoupon ? (
+                                            <Button danger onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}>Quitar</Button>
+                                        ) : (
+                                            <Button onClick={handleApplyCoupon} loading={isValidatingCoupon}>Ok</Button>
+                                        )}
+                                    </div>
                                     
-                                    <Flex align="center" justify="space-between" style={{ marginTop: 8 }}>
-                                        <Space vertical size={0}>
-                                            <Text>{formatPEN(item.unitPrice)}</Text>
-                                            <Text type="secondary" style={{ fontSize: 11 }}>
-                                                Total: {formatPEN(item.unitPrice * item.qty)}
-                                            </Text>
-                                        </Space>
-                                        <Space>
-                                            <InputNumber
-                                                min={1}
-                                                size="small"
-                                                value={item.qty}
-                                                onChange={(v) => setQty(item.variantId, Number(v ?? 1))}
-                                                style={{ width: 60 }}
-                                            />
-                                            <Button
-                                                type="text"
-                                                danger
-                                                size="small"
-                                                icon={<DeleteFilled />}
-                                                onClick={() => removeItem(item.variantId)}
-                                            />
-                                        </Space>
+                                    <Divider style={{ margin: '12px 0' }} />
+
+                                    <Flex vertical gap={6} style={{ marginBottom: 4 }}>
+                                        <Flex justify="space-between">
+                                            <Text type="secondary">Subtotal</Text>
+                                            <Text>{formatPEN(subtotal)}</Text>
+                                        </Flex>
+                                        {bundleDiscount > 0 && (
+                                            <Flex justify="space-between">
+                                                <Text type="success">Descuento Conjunto</Text>
+                                                <Text type="success">-{formatPEN(bundleDiscount)}</Text>
+                                            </Flex>
+                                        )}
+                                        {appliedCoupon && (
+                                            <Flex justify="space-between">
+                                                <Text type="success">Cupón ({appliedCoupon.code})</Text>
+                                                <Text type="success">-{formatPEN(appliedCoupon.discountAmount)}</Text>
+                                            </Flex>
+                                        )}
+                                    </Flex>
+                                    <Divider style={{ margin: '12px 0' }} />
+                                    <Flex justify="space-between" align="center">
+                                        <Title level={4} style={{ margin: 0, fontFamily: 'Playfair Display, serif' }}>Total Final</Title>
+                                        <Title level={4} style={{ margin: 0, fontFamily: 'Playfair Display, serif' }}>{formatPEN(finalTotal)}</Title>
                                     </Flex>
                                 </div>
-                            </Flex>
-                        </Card>
-                    ))}
-                </Flex>
+                            </Card>
+
+
+                            <Space orientation="vertical" size="large" style={{ width: '100%', marginTop: 24 }}>
+                                <Button 
+                                    type="primary" 
+                                    htmlType="submit"
+                                    onClick={() => setPaymentMethod('CULQI')}
+                                    loading={isSubmitting && paymentMethod === 'CULQI'}
+                                    style={{ width: '100%', height: 50, fontSize: 14, fontWeight: 600, letterSpacing: '0.05em', borderRadius: 4 }}
+                                >
+                                    PAGAR CON TARJETA
+                                </Button>
+                                <Button 
+                                    htmlType="submit"
+                                    onClick={() => setPaymentMethod('WHATSAPP')}
+                                    loading={isSubmitting && paymentMethod === 'WHATSAPP'}
+                                    icon={<WhatsAppOutlined />}
+                                    style={{ 
+                                        width: '100%', 
+                                        height: 50, 
+                                        fontSize: 14, 
+                                        fontWeight: 600, 
+                                        borderRadius: 4,
+                                        borderColor: '#25D366', 
+                                        color: '#25D366'
+                                    }}
+                                >
+                                    PEDIR POR WHATSAPP
+                                </Button>
+                            </Space>
+                            
+                            <div style={{ textAlign: 'center', marginTop: 16 }}>
+                                <Text type="secondary" style={{ fontSize: 10 }}>🔒 Tus datos están seguros con nosotros</Text>
+                            </div>
+                        </Form>
+                    </div>
+
+                </>
             )}
         </Drawer>
     );

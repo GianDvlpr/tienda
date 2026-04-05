@@ -70,6 +70,8 @@ model order_header {
   subtotal           Decimal              @db.Decimal(18, 2)
   shipping_cost      Decimal              @default(0, map: "DF_order_shipping_cost") @db.Decimal(18, 2)
   discount_total     Decimal              @default(0, map: "DF_order_discount_total") @db.Decimal(18, 2)
+  bundle_discount    Decimal?             @default(0, map: "DF_order_bundle_discount") @db.Decimal(18, 2)
+  coupon_discount    Decimal?             @default(0, map: "DF_order_coupon_discount") @db.Decimal(18, 2)
   coupon_code        String?              @db.NVarChar(50)
   total              Decimal              @db.Decimal(18, 2)
   currency           String               @default("PEN", map: "DF_order_currency") @db.Char(3)

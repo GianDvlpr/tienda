@@ -2,8 +2,8 @@
 import { toast } from 'sonner';
 
 import React from 'react';
-import { Table, Button, Space, Typography, Tag, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Typography, Tag, Popconfirm, Flex } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import Link from 'next/link';
@@ -13,7 +13,10 @@ import { useRouter } from 'next/navigation';
 const { Title, Text } = Typography;
 
 export default function AdminProductsPage() {
-    const { data: products, error, mutate, isLoading } = useSWR<any[]>('/api/admin/products', fetcher);
+    const { data: products, error, mutate, isLoading, isValidating } = useSWR<any[]>('/api/admin/products', fetcher, {
+        refreshInterval: 30000,
+        revalidateOnFocus: true
+    });
     const router = useRouter();
 
     const handleDelete = async (product_id: string) => {
@@ -104,11 +107,19 @@ export default function AdminProductsPage() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <Title level={3} style={{ margin: 0 }}>Catálogo de Productos</Title>
-                <Link href="/admin/products/new">
-                    <Button type="primary" icon={<PlusOutlined />}>
-                        Nuevo Producto
+                <Space>
+                    <Button 
+                        icon={<ReloadOutlined spin={isValidating} />} 
+                        onClick={() => mutate()}
+                    >
+                        Actualizar
                     </Button>
-                </Link>
+                    <Link href="/admin/products/new">
+                        <Button type="primary" icon={<PlusOutlined />}>
+                            Nuevo Producto
+                        </Button>
+                    </Link>
+                </Space>
             </div>
 
             <Table 

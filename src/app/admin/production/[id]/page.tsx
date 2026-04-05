@@ -401,10 +401,11 @@ const TechPackModal = ({ open, onClose, product, bomData }: any) => {
             footer={null} 
             width={750} 
             centered 
-            destroyOnClose
+            destroyOnHidden
             closable={false}
-            bodyStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
         >
+
             {generatePrintStyle()}
             
             <div className="hide-on-print" style={{ padding: '16px', backgroundColor: '#f0f2f5', display: 'flex', justifyContent: 'flex-end', gap: 12, borderBottom: '1px solid #d9d9d9' }}>

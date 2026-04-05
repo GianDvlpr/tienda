@@ -1,28 +1,28 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #FAF9F6; /* Blanco Crema Boutique */
+  --foreground: #1A1A1A; /* Texto Negro Lujo */
+  --accent-gold: #C89F53; /* Dorado Aura */
+  --accent-gold-soft: rgba(200, 159, 83, 0.1);
+  --border-color: #E5E4E2;
 }
 
 html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-body {
+  background-color: var(--background);
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-montserrat), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-playfair), serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
 
 * {
   box-sizing: border-box;
@@ -35,13 +35,24 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+.reveal-section {
+  animation: fadeInUp 0.8s ease forwards;
+}
+
 /* Custom Premium Styles */
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #C89F53 transparent;

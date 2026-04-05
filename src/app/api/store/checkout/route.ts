@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
+import fs from 'fs';
+import path from 'path';
+
+const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
+
+function logToFile(msg: string) {
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`);
+}
 
 export async function POST(req: Request) {
     try {
@@ -39,13 +48,22 @@ export async function POST(req: Request) {
             select: { variant_id: true, product_id: true }
         });
 
+        logToFile(`[CHECKOUT] Items in Cart: ${items.length}, Variants found: ${variantsInCart.length}`);
+
         const cartProductStats: Record<string, number> = {};
         for (const item of items) {
-            const variant = variantsInCart.find(v => v.variant_id === item.variantId);
+            const variant = variantsInCart.find(v => 
+                v.variant_id.toString().toLowerCase().trim() === item.variantId.toString().toLowerCase().trim()
+            );
             if (variant) {
-                cartProductStats[variant.product_id] = (cartProductStats[variant.product_id] || 0) + item.qty;
+                const pId = variant.product_id.toString().toLowerCase().trim();
+                cartProductStats[pId] = (cartProductStats[pId] || 0) + item.qty;
+            } else {
+                logToFile(`[CHECKOUT] Variant NOT found in DB: ${item.variantId}`);
             }
         }
+
+        logToFile(`[CHECKOUT] Product Stats: ${JSON.stringify(cartProductStats)}`);
 
         // 2. Detect Bundles/Conjuntos
         let bundle_discount_total = 0;
@@ -54,25 +72,28 @@ export async function POST(req: Request) {
             include: { items: true }
         });
 
+        logToFile(`[CHECKOUT] Active Bundles: ${activeBundles.length}`);
+
         for (const bundle of activeBundles) {
-            const requiredProductIds = (bundle.items as any[]).map((bi: any) => bi.product_id);
+            const requiredProductIds = (bundle.items as any[]).map((bi: any) => 
+                bi.product_id.toString().toLowerCase().trim()
+            );
             
-            // Check if all required products are in cart
             const hasAll = requiredProductIds.every((id: string) => (cartProductStats[id] || 0) > 0);
+            logToFile(`[CHECKOUT] Checking bundle "${bundle.name}": hasAll=${hasAll}, requiredIds=${JSON.stringify(requiredProductIds)}`);
             
             if (hasAll) {
-                // How many sets can we form? 
-                // It's the minimum quantity among the required products.
-                const possibleSets = Math.min(...requiredProductIds.map((id: string) => cartProductStats[id]));
-                
+                const possibleSets = Math.min(...requiredProductIds.map((id: string) => cartProductStats[id] || 0));
                 const savings = possibleSets * Number(bundle.discount_amount);
                 bundle_discount_total += savings;
+                logToFile(`[CHECKOUT] Bundle "${bundle.name}" applied! Sets: ${possibleSets}, Savings: ${savings}`);
             }
         }
 
-
-        let discount_total = bundle_discount_total;
+        let coupon_savings = 0;
         let validated_coupon_code = null;
+
+        logToFile(`[CHECKOUT] Incoming coupon_code: "${coupon_code}"`);
 
         if (coupon_code) {
             const coupon = await prisma.coupon.findUnique({
@@ -81,27 +102,33 @@ export async function POST(req: Request) {
 
             if (coupon && coupon.is_active) {
                 const now = dayjs();
-                const currentAmountForCoupon = serverSubtotal - bundle_discount_total;
+                const amountForValidation = serverSubtotal - bundle_discount_total;
                 
                 const is_valid_date = (!coupon.starts_at || now.isAfter(dayjs(coupon.starts_at))) &&
                                      (!coupon.expires_at || now.isBefore(dayjs(coupon.expires_at)));
                 const has_usage = !coupon.usage_limit || coupon.usage_count < coupon.usage_limit;
-                const min_met = !coupon.min_purchase || currentAmountForCoupon >= Number(coupon.min_purchase);
+                const min_met = !coupon.min_purchase || amountForValidation >= Number(coupon.min_purchase);
+
+                logToFile(`[CHECKOUT] Coupon found: "${coupon.code}". ValidDate: ${is_valid_date}, HasUsage: ${has_usage}, MinMet: ${min_met} (Amount: ${amountForValidation}, Min: ${coupon.min_purchase})`);
 
                 if (is_valid_date && has_usage && min_met) {
                     validated_coupon_code = coupon.code;
-                    let coupon_savings = 0;
                     if (coupon.discount_type === 'PERCENTAGE') {
-                        coupon_savings = currentAmountForCoupon * (Number(coupon.discount_value) / 100);
+                        coupon_savings = amountForValidation * (Number(coupon.discount_value) / 100);
                     } else {
                         coupon_savings = Number(coupon.discount_value);
                     }
-                    discount_total += coupon_savings;
+                    logToFile(`[CHECKOUT] Coupon "${coupon.code}" applied! Savings: ${coupon_savings}`);
                 }
+            } else {
+                logToFile(`[CHECKOUT] Coupon NOT found or NOT active: "${coupon_code}"`);
             }
         }
 
+        const discount_total = bundle_discount_total + coupon_savings;
         const serverTotal = Math.max(0, serverSubtotal - discount_total);
+
+        logToFile(`Order Calculation [${serverSubtotal}]: Bundles: ${bundle_discount_total}, Coupon: ${coupon_savings}, Total: ${serverTotal}`);
 
 
         // 1. Process payment with Culqi (Only if CULQI method)
@@ -143,6 +170,8 @@ export async function POST(req: Request) {
                     shipping_address: shipping_address || 'Por confirmar',
                     subtotal: serverSubtotal,
                     discount_total: discount_total,
+                    bundle_discount: bundle_discount_total,
+                    coupon_discount: coupon_savings,
                     coupon_code: validated_coupon_code,
                     total: serverTotal,
                     currency: 'PEN',
@@ -192,6 +221,9 @@ export async function POST(req: Request) {
             }
 
             return header;
+        }, {
+            maxWait: 5000, // default is 2000
+            timeout: 10000 // default is 5000
         });
 
         // 3. Trigger Pusher Notification for Admin
