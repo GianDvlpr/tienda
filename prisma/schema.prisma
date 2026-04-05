@@ -215,6 +215,7 @@ model admin_user {
   is_active     Boolean  @default(true, map: "DF_admin_is_active")
   created_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_created_at")
   updated_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_updated_at")
+  audit_log     audit_log[]
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_admin_active")
 }
@@ -266,11 +267,13 @@ model supply {
   unit             String   @db.NVarChar(20) // 'MT', 'UND', 'KG'
   unit_cost        Decimal  @db.Decimal(18, 4)
   stock            Decimal  @default(0) @db.Decimal(18, 4)
+  min_stock        Decimal  @default(0) @db.Decimal(18, 4)
   is_active        Boolean  @default(true)
   created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
   updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
   
   product_bom_supply product_bom_supply[]
+  supply_movement    supply_movement[]
 }
 
 model service {
@@ -323,6 +326,7 @@ model production_lot {
   product          product  @relation(fields: [product_id], references: [product_id], onDelete: NoAction)
   items            production_lot_item[]
   consumptions     production_lot_consumption[]
+  supply_movement  supply_movement[]
 }
 
 model production_lot_item {
@@ -344,4 +348,34 @@ model production_lot_consumption {
   unit_cost        Decimal  @db.Decimal(18, 4)
   
   lot              production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+}
+
+model supply_movement {
+  movement_id     String          @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  supply_id       String          @db.UniqueIdentifier
+  movement_type   String          @db.NVarChar(20) // 'IN', 'OUT'
+  qty             Decimal         @db.Decimal(18, 4)
+  stock_before    Decimal         @db.Decimal(18, 4)
+  stock_after     Decimal         @db.Decimal(18, 4)
+  reason          String?         @db.NVarChar(250)
+  lot_id          String?         @db.UniqueIdentifier
+  created_at      DateTime        @default(dbgenerated("sysutcdatetime()"))
+  
+  supply          supply          @relation(fields: [supply_id], references: [supply_id], onDelete: NoAction)
+  lot             production_lot? @relation(fields: [lot_id], references: [lot_id], onDelete: NoAction)
+  
+  @@index([supply_id, created_at(sort: Desc)])
+}
+
+model audit_log {
+  log_id      String   @id @default(dbgenerated("newsequentialid()"), map: "DF_audit_log_id") @db.UniqueIdentifier
+  user_id     String   @db.UniqueIdentifier
+  action      String   @db.NVarChar(50)   // 'CREATE', 'UPDATE', 'DELETE'
+  entity_type String   @db.NVarChar(100)  // 'product', 'order', 'supply', etc.
+  entity_id   String   @db.NVarChar(100)
+  old_values  String?  @db.NVarChar(Max)  // JSON state BEFORE
+  new_values  String?  @db.NVarChar(Max)  // JSON state AFTER
+  created_at  DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_audit_log_created_at")
+  
+  admin_user  admin_user @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, onDelete: NoAction, map: "FK_audit_user")
 }

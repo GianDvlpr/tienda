@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -33,6 +34,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         // Validar slug
         const existing = await prisma.product.findFirst({ where: { slug, NOT: { product_id: id } }});
         if (existing) return NextResponse.json({ error: 'El URL (slug) ya está en uso' }, { status: 400 });
+
+        // Auditoría: Capturar estado anterior
+        const oldData = await prisma.product.findUnique({
+            where: { product_id: id },
+            include: { product_variant: true, product_collection: true }
+        });
 
         // Prisma $transaction is necessary for complex nested updates that require deletions
         const updated = await prisma.$transaction(async (tx) => {
@@ -96,6 +103,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             timeout: 20000
         });
 
+        // Registrar Auditoría
+        await recordAudit({
+            action: 'UPDATE',
+            entityType: 'product',
+            entityId: id,
+            oldData,
+            newData: updated
+        });
+
         return NextResponse.json({ success: true, product: updated });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
@@ -106,6 +122,12 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
         const resolvedParams = await params;
         const id = resolvedParams.id;
+
+        // Auditoría: Capturar antes de borrar
+        const oldData = await prisma.product.findUnique({
+            where: { product_id: id },
+            include: { product_variant: true }
+        });
         
         // Safety check: Don't allow deletion if variants have associated orders
         const usageCount = await prisma.order_item.count({
@@ -132,6 +154,15 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             prisma.product_variant.deleteMany({ where: { product_id: id } }),
             prisma.product.delete({ where: { product_id: id } }),
         ]);
+
+        // Registrar Auditoría de eliminación
+        await recordAudit({
+            action: 'DELETE',
+            entityType: 'product',
+            entityId: id,
+            oldData,
+            newData: { deleted: true }
+        });
 
         return NextResponse.json({ success: true });
     } catch (e: any) {

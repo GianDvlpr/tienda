@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { trackerPusherServer } from '@/lib/pusher';
+import { recordAudit } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 
@@ -34,6 +35,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         
         const { status, notes } = body;
 
+        // Auditoría: Capturar estado anterior
+        const oldData = await prisma.order_header.findUnique({
+            where: { order_id: id }
+        });
+
         const updated = await prisma.order_header.update({
             where: { order_id: id },
             data: {
@@ -41,6 +47,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 notes: notes !== undefined ? notes : undefined,
                 updated_at: new Date()
             }
+        });
+
+        // Registrar Auditoría
+        await recordAudit({
+            action: 'UPDATE',
+            entityType: 'order',
+            entityId: id,
+            oldData,
+            newData: updated
         });
 
         // Trigger Real-time update to the public tracker

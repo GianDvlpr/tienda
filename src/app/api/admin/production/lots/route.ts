@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET() {
     try {
-        const lots = await prisma.production_lot.findMany({
+        const lots = await (prisma as any).production_lot.findMany({
             orderBy: { created_at: 'desc' },
             include: {
                 product: { select: { name: true, slug: true } },
@@ -11,6 +12,7 @@ export async function GET() {
                 consumptions: { include: { supply: true } }
             }
         });
+
         return NextResponse.json(lots);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
@@ -27,8 +29,9 @@ export async function POST(req: Request) {
         }
 
         // We run the exact same calculation here to persist the snapshot
-        const bomSupplies = await prisma.product_bom_supply.findMany({ where: { product_id }, include: { supply: true } });
-        const bomServices = await prisma.product_bom_service.findMany({ where: { product_id }, include: { service: true } });
+        const bomSupplies = await (prisma as any).product_bom_supply.findMany({ where: { product_id }, include: { supply: true } });
+        const bomServices = await (prisma as any).product_bom_service.findMany({ where: { product_id }, include: { service: true } });
+
 
         let totalSupplyCost = 0;
         let totalServiceCost = 0;
@@ -79,8 +82,8 @@ export async function POST(req: Request) {
         const lotCode = `LOT-${Date.now().toString().slice(-6)}`;
 
         // Transaction to create the lot and its snapshot
-        await prisma.$transaction(async (tx) => {
-            const lot = await tx.production_lot.create({
+        const lotResult = await prisma.$transaction(async (tx) => {
+            const lot = await (tx as any).production_lot.create({
                 data: {
                     code: lotCode,
                     product_id,
@@ -105,22 +108,23 @@ export async function POST(req: Request) {
                 }
             });
 
+
             // If it is immediately marked as produced, we deduct inventory
             if (lot.status === 'PRODUCIDO') {
                 for (const sn of supplyNeeds) {
-                    const currentSupply = await tx.supply.findUnique({ where: { supply_id: sn.supply_id } });
+                    const currentSupply = await (tx as any).supply.findUnique({ where: { supply_id: sn.supply_id } });
                     if (!currentSupply) continue;
                     
                     const q = Number(sn.quantity);
                     const stockBefore = Number(currentSupply.stock);
                     const stockAfter = stockBefore - q;
 
-                    await tx.supply.update({
+                    await (tx as any).supply.update({
                         where: { supply_id: sn.supply_id },
                         data: { stock: stockAfter }
                     });
 
-                    await tx.supply_movement.create({
+                    await (tx as any).supply_movement.create({
                         data: {
                             supply_id: sn.supply_id,
                             movement_type: 'OUT',
@@ -132,12 +136,23 @@ export async function POST(req: Request) {
                         }
                     });
                 }
+
             }
+            return lot;
         });
 
-        return NextResponse.json({ success: true, message: 'Lote registrado con éxito' });
+        // Registrar Auditoría
+        await recordAudit({
+            action: 'CREATE',
+            entityType: 'production_lot',
+            entityId: lotResult.lot_id,
+            newData: lotResult
+        });
+
+        return NextResponse.json({ success: true, message: 'Lote registrado con éxito', lot: lotResult });
 
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+

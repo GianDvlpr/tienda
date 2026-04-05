@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET() {
     try {
@@ -58,8 +59,17 @@ export async function POST(req: Request) {
             }
         });
 
+        // Registrar Auditoría
+        await recordAudit({
+            action: 'CREATE',
+            entityType: 'product',
+            entityId: newProduct.product_id,
+            newData: newProduct
+        });
+
         return NextResponse.json(newProduct);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+

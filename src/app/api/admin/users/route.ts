@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET() {
     try {
@@ -47,8 +48,18 @@ export async function POST(req: Request) {
             }
         });
 
+        // Registrar Auditoría (omitimos password_hash por seguridad)
+        const { password_hash: _, ...safeUser } = newUser as any;
+        await recordAudit({
+            action: 'CREATE',
+            entityType: 'admin_user',
+            entityId: newUser.user_id,
+            newData: safeUser
+        });
+
         return NextResponse.json(newUser);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
+
