@@ -44,7 +44,7 @@ export default function WishlistDrawer({
             title="Mis Favoritos"
             open={open}
             onClose={onClose}
-            size={420}
+            size="default"
         >
             {items.length === 0 ? (
                 <Empty description="No tienes artículos favoritos" />

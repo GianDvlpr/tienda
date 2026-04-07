@@ -327,7 +327,7 @@ export default function MiniCart({
             )}
             open={open}
             onClose={handleClose}
-            width={isMobile ? '100%' : 420}
+            size={isMobile ? 'large' : 'default'}
             styles={{ 
                 body: { padding: '24px 20px' },
                 footer: { padding: '24px 20px' }
