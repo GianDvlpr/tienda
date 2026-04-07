@@ -79,7 +79,7 @@ export default function ReclamacionesClient() {
     return (
         <div style={{ maxWidth: 900, margin: '120px auto', padding: '0 24px' }}>
             <Card variant="borderless" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                     <div style={{ textAlign: 'center' }}>
                         <BookFilled style={{ fontSize: 48, color: '#C89F53', marginBottom: 16 }} />
                         <Title level={2}>Libro de Reclamaciones</Title>
@@ -92,7 +92,7 @@ export default function ReclamacionesClient() {
                         form={form}
                         layout="vertical"
                         onFinish={onFinish}
-                        requiredMark="optional"
+                        requiredMark={true}
                     >
                         <Divider>1. Identificación del Consumidor</Divider>
                         <Row gutter={16}>
@@ -112,7 +112,7 @@ export default function ReclamacionesClient() {
                                 </Form.Item>
                             </Col>
                             <Col xs={24} md={12}>
-                                <Form.Item name="documentType" label="Tipo de Documento" initialValue="DNI">
+                                <Form.Item name="documentType" label="Tipo de Documento" initialValue="DNI" rules={[{ required: true, message: 'Selecciona un tipo' }]}>
                                     <Select size="large">
                                         <Option value="DNI">DNI</Option>
                                         <Option value="CE">Carnet de Extranjería</Option>

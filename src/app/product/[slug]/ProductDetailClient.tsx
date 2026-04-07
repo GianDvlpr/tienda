@@ -360,7 +360,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                     }}
                                                 >
 
-                                                    <Space direction="vertical" style={{ width: '100%', gap: 8 }}>
+                                                    <Space orientation="vertical" style={{ width: '100%', gap: 8 }}>
                                                         <Text strong>{bundle.name}</Text>
                                                         <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
                                                             {bundle.description || `Lleva este producto junto a ${otherItems.map(i => i.name).join(', ')} y ahorra ${formatPEN(bundle.discount_amount)}.`}

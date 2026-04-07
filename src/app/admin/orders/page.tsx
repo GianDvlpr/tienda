@@ -61,7 +61,7 @@ export default function AdminOrdersPage() {
                 if (totalDiscount === 0) return <Text type="secondary">-</Text>;
 
                 return (
-                    <Space size={2} direction="vertical" style={{ minWidth: 100 }}>
+                    <Space size={2} orientation="vertical" style={{ minWidth: 100 }}>
                         {bundleDiscount > 0 && (
                             <Text type="success" style={{ fontSize: 11 }}>
                                 Conjunto: -{formatPEN(bundleDiscount)}
