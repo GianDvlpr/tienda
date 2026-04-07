@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Great_Vibes, Montserrat } from "next/font/google";
+import { Playfair_Display, Alex_Brush, Montserrat } from "next/font/google";
 import "./globals.css";
 
 import { AntdRegistry } from "@ant-design/nextjs-registry";
@@ -13,10 +13,10 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
 });
 
-const greatVibes = Great_Vibes({
+const alexBrush = Alex_Brush({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-great-vibes",
+  variable: "--font-alex-brush",
 });
 
 const montserrat = Montserrat({
@@ -58,7 +58,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={`${playfair.variable} ${greatVibes.variable} ${montserrat.variable}`}>
+      <body className={`${playfair.variable} ${alexBrush.variable} ${montserrat.variable}`}>
 
         <AntdRegistry>
           <Providers>

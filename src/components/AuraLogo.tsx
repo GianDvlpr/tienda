@@ -14,8 +14,8 @@ export default function AuraLogo({ size = 'default' }: { size?: 'small' | 'defau
         >
             <span 
                 style={{ 
-                    fontFamily: 'var(--font-great-vibes), cursive', 
-                    fontSize: 40, 
+                    fontFamily: 'var(--font-alex-brush), cursive', 
+                    fontSize: 44, 
                     color: '#C89F53', 
                     marginBottom: -8,
                     fontWeight: 400
