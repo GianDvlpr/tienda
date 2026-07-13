@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Card, Flex, Image, theme } from 'antd';
+import { Card, Flex, theme } from 'antd';
 import type { ProductImage } from '@/types/product';
+import Zoom from 'react-medium-image-zoom';
+import 'react-medium-image-zoom/dist/styles.css';
 
 export default function ProductGallery({ images }: { images: ProductImage[] }) {
     const { token } = theme.useToken();
     // Sort images by sort_order
     const sorted = useMemo(() => [...images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), [images]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     if (sorted.length === 0) {
         return (
@@ -62,28 +63,15 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                         border: `1px solid ${token.colorBorderSecondary}`
                     }}
                 >
-                    <Image.PreviewGroup
-                        items={sorted.map(img => img.url)}
-                        preview={{
-                            open: isPreviewOpen,
-                            current: activeIndex,
-                            onChange: (current) => setActiveIndex(current),
-                            onOpenChange: (visible) => setIsPreviewOpen(visible),
-                        }}
-                    >
-                        <div className="main-image-container" onClick={() => setIsPreviewOpen(true)}>
-                            <Image
-                                preview={false}
+                    <div className="main-image-container">
+                        <Zoom>
+                            <img
                                 src={sorted[activeIndex]?.url}
                                 alt="Vista ampliada del producto"
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                styles={{ root: { width: '100%', display: 'block' } }}
-                                placeholder={
-                                    <div style={{ width: '100%', height: '100%', background: token.colorFillAlter }} />
-                                }
+                                style={{ width: '100%', display: 'block', aspectRatio: '3 / 4', objectFit: 'cover' }}
                             />
-                        </div>
-                    </Image.PreviewGroup>
+                        </Zoom>
+                    </div>
                 </Card>
 
                 {/* --- Thumbnails Rail (Mobile: Bottom) --- */}
