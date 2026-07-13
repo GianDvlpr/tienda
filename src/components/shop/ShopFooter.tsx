@@ -37,9 +37,9 @@ export default function ShopFooter() {
     const borderColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f0f0f0';
     const bgFooter = isDarkMode ? '#000' : '#fff';
     const iconColor = isDarkMode ? '#fff' : '#000';
-    
+
     const rawWaNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51907360760';
-    const displayWaNumber = rawWaNumber.startsWith('51') 
+    const displayWaNumber = rawWaNumber.startsWith('51')
         ? `+51 ${rawWaNumber.slice(2, 5)} ${rawWaNumber.slice(5, 8)} ${rawWaNumber.slice(8)}`
         : rawWaNumber;
 
@@ -127,7 +127,7 @@ export default function ShopFooter() {
                         </Space>
                         <Space align="start">
                             <MailFilled style={{ marginTop: 4, color: secondaryColor }} />
-                            <Text style={{ color: secondaryColor }}>admin@auraboutique.me</Text>
+                            <Text style={{ color: secondaryColor }}>hello@auraboutique.me</Text>
                         </Space>
                         <Space size="middle" style={{ marginTop: 16 }}>
                             {/* Facebook */}

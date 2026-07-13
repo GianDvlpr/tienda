@@ -4,6 +4,7 @@ import { Layout, Badge, Button, Switch, Space, Input, Grid } from "antd";
 import { HeartFilled, HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined, ShoppingFilled } from "@ant-design/icons";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
 import { useWishlistStore } from "@/store/wishlist.store";
@@ -162,6 +163,11 @@ export default function ShopHeader() {
                                 style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 8px" }}
                             />
                         </Badge>
+                        <motion.div
+                            key={totalCartItems}
+                            animate={{ scale: [1, 1.35, 1] }}
+                            transition={{ duration: 0.35, ease: 'easeInOut' }}
+                        >
                         <Badge count={totalCartItems} size="small" overflowCount={99}>
                             <Button
                                 type="text"
@@ -171,6 +177,7 @@ export default function ShopHeader() {
                                 style={{ color: 'white', padding: isMobile ? "0 4px" : "4px 8px" }}
                             />
                         </Badge>
+                        </motion.div>
                     </Space>
                 </Space>
             </Header>

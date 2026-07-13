@@ -21,6 +21,7 @@
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
+    "framer-motion": "^12.42.2",
     "next": "16.1.6",
     "next-cloudinary": "^6.17.5",
     "prisma": "^6.19.2",
@@ -38,6 +39,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "typescript": "^5"

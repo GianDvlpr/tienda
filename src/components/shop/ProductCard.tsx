@@ -5,6 +5,7 @@ import { Card, Typography, Tooltip } from 'antd';
 import { HeartFilled, EyeFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import type { ProductListItem } from '@/types/product';
 import { useWishlistStore } from '@/store/wishlist.store';
@@ -81,6 +82,11 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
 
     return (
         <Link href={`/product/${item.slug}`} style={{ textDecoration: 'none' }}>
+            <motion.div
+                whileHover={{ y: -4, boxShadow: '0 12px 28px rgba(0,0,0,0.08)' }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                style={{ borderRadius: 8 }}
+            >
             <Card
                 hoverable
                 variant="borderless"
@@ -250,6 +256,7 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                     </Text>
                 </div>
             </Card>
+            </motion.div>
         </Link>
     );
 }
