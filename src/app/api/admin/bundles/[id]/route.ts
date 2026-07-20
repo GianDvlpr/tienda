@@ -2,11 +2,24 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
 
+function parseOptionalPrice(value: unknown) {
+    const number = Number(value || 0);
+    return Number.isFinite(number) && number > 0 ? number : null;
+}
+
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
         const body = await req.json();
-        const { name, description, discount_amount, is_active, product_ids } = body;
+        const { name, description, discount_amount, bundle_price, tier_2_price, tier_3_price, is_active, product_ids } = body;
+        const discountAmount = Number(discount_amount || 0);
+        const bundlePrice = parseOptionalPrice(bundle_price);
+        const tier2Price = parseOptionalPrice(tier_2_price);
+        const tier3Price = parseOptionalPrice(tier_3_price);
+
+        if (!name || !product_ids || product_ids.length < 2 || (discountAmount <= 0 && !bundlePrice && !tier2Price && !tier3Price)) {
+            return NextResponse.json({ error: 'Faltan datos obligatorios o se requieren al menos 2 productos' }, { status: 400 });
+        }
 
         // Capturar estado anterior para auditoría
         const oldBundle = await (prisma as any).bundle_promotion.findUnique({
@@ -16,15 +29,21 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
         const updated = await prisma.$transaction(async (tx: any) => {
             // Actualizar datos básicos
-            const bundle = await tx.bundle_promotion.update({
+            await tx.bundle_promotion.update({
                 where: { bundle_id: id },
                 data: {
                     name,
                     description,
-                    discount_amount: Number(discount_amount),
+                    discount_amount: discountAmount,
                     is_active: is_active ?? true,
                 }
             });
+
+            await tx.$executeRaw`
+                UPDATE dbo.bundle_promotion
+                SET bundle_price = ${bundlePrice}, tier_2_price = ${tier2Price}, tier_3_price = ${tier3Price}
+                WHERE bundle_id = ${id};
+            `;
 
             // Si se pasaron product_ids nuevos, regenerar items
             if (product_ids) {
@@ -41,10 +60,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 });
             }
 
-            return tx.bundle_promotion.findUnique({
+            const updatedBundle = await tx.bundle_promotion.findUnique({
                 where: { bundle_id: id },
                 include: { items: true }
             });
+
+            return { ...updatedBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price };
         });
 
 

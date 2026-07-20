@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 
 import ProductGallery from '@/components/shop/ProductGallery';
-import type { ProductDetailResponse, ProductVariant } from '@/types/product';
+import type { BundlePromotion, ProductDetailResponse, ProductVariant } from '@/types/product';
 import { formatPEN } from '@/lib/money';
 import { useCartStore } from '@/store/cart.store';
 import { useWishlistStore } from '@/store/wishlist.store';
@@ -19,6 +19,19 @@ const { Title, Text, Paragraph } = Typography;
 
 function normalizeColor(color?: string | null) {
     return String(color || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function getBundleDescription(bundle: BundlePromotion, otherItemNames: string[]) {
+    if (bundle.description) return bundle.description;
+
+    const offers: string[] = [];
+    if (Number(bundle.bundle_price || 0) > 0) offers.push(`conjunto por ${formatPEN(bundle.bundle_price!)}`);
+    if (!Number(bundle.bundle_price || 0) && Number(bundle.discount_amount || 0) > 0) offers.push(`ahorra ${formatPEN(bundle.discount_amount)}`);
+    if (Number(bundle.tier_2_price || 0) > 0) offers.push(`2 conjuntos por ${formatPEN(bundle.tier_2_price!)}`);
+    if (Number(bundle.tier_3_price || 0) > 0) offers.push(`3 conjuntos por ${formatPEN(bundle.tier_3_price!)}`);
+
+    if (offers.length > 0) return `Lleva este producto junto a ${otherItemNames.join(', ')}: ${offers.join(' · ')}.`;
+    return `Lleva este producto junto a ${otherItemNames.join(', ')} y arma tu conjunto.`;
 }
 
 interface ProductDetailClientProps {
@@ -372,7 +385,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                     <Space orientation="vertical" style={{ width: '100%', gap: 8 }}>
                                                         <Text strong>{bundle.name}</Text>
                                                         <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
-                                                            {bundle.description || `Lleva este producto junto a ${otherItems.map(i => i.name).join(', ')} y ahorra ${formatPEN(bundle.discount_amount)}.`}
+                                                            {getBundleDescription(bundle, otherItems.map(i => i.name))}
                                                         </Text>
                                                         
                                                         <Flex gap="small" wrap="wrap" align="center" style={{ marginTop: 8 }}>

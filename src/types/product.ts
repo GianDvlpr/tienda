@@ -54,6 +54,11 @@ export interface BundlePromotionItem {
     name: string;
     slug: string;
     primaryImageUrl: string | null;
+    variantId?: string;
+    unitPrice?: number;
+    size?: string;
+    color?: string;
+    sku?: string;
 }
 
 export interface BundlePromotion {
@@ -61,6 +66,9 @@ export interface BundlePromotion {
     name: string;
     description: string | null;
     discount_amount: number;
+    bundle_price?: number | null;
+    tier_2_price?: number | null;
+    tier_3_price?: number | null;
     items: BundlePromotionItem[];
 }
 
