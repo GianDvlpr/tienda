@@ -17,18 +17,21 @@ export default function ProductGallery({ images, selectedColor }: { images: Prod
     const [manualSelection, setManualSelection] = useState<{ color: string; index: number } | null>(null);
 
     const selectedColorKey = normalizeColor(selectedColor);
-    const preferredIndex = useMemo(() => {
-        if (!selectedColorKey) return 0;
+    const displayImages = useMemo(() => {
+        if (!selectedColorKey) return sorted;
 
-        const matchingIndex = sorted.findIndex((img) => normalizeColor(img.color) === selectedColorKey);
-        return matchingIndex >= 0 ? matchingIndex : 0;
+        const colorImages = sorted.filter((img) => normalizeColor(img.color) === selectedColorKey);
+        if (colorImages.length > 0) return colorImages;
+
+        const genericImages = sorted.filter((img) => !normalizeColor(img.color));
+        return genericImages.length > 0 ? genericImages : sorted.slice(0, 1);
     }, [selectedColorKey, sorted]);
 
-    const activeIndex = manualSelection?.color === selectedColorKey && manualSelection.index < sorted.length
+    const activeIndex = manualSelection?.color === selectedColorKey && manualSelection.index < displayImages.length
         ? manualSelection.index
-        : preferredIndex;
+        : 0;
 
-    if (sorted.length === 0) {
+    if (displayImages.length === 0) {
         return (
             <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden' }}>
                 <div style={{ width: '100%', aspectRatio: '3 / 4', background: token.colorFillAlter }} />
@@ -39,10 +42,10 @@ export default function ProductGallery({ images, selectedColor }: { images: Prod
     return (
         <Flex gap={16} vertical={false} style={{ width: '100%' }} align="start">
             {/* --- Thumbnails Rail (Desktop: Left) --- */}
-            {sorted.length > 1 && (
+            {displayImages.length > 1 && (
                 <div className="gallery-thumbs-rail-desktop">
                     <Flex vertical gap={12} style={{ width: 80, flexShrink: 0 }}>
-                        {sorted.map((img, idx) => (
+                        {displayImages.map((img, idx) => (
                             <div 
                                 key={img.imageId || idx} 
                                 onClick={() => setManualSelection({ color: selectedColorKey, index: idx })}
@@ -82,7 +85,7 @@ export default function ProductGallery({ images, selectedColor }: { images: Prod
                     <div className="main-image-container">
                         <Zoom>
                             <img
-                                src={sorted[activeIndex]?.url}
+                                src={displayImages[activeIndex]?.url}
                                 alt="Vista ampliada del producto"
                                 style={{ width: '100%', display: 'block', aspectRatio: '3 / 4', objectFit: 'cover' }}
                             />
@@ -91,10 +94,10 @@ export default function ProductGallery({ images, selectedColor }: { images: Prod
                 </Card>
 
                 {/* --- Thumbnails Rail (Mobile: Bottom) --- */}
-                {sorted.length > 1 && (
+                {displayImages.length > 1 && (
                     <div className="gallery-thumbs-rail-mobile">
                         <Flex gap={10} style={{ overflowX: 'auto', padding: '12px 2px', scrollbarWidth: 'none' }}>
-                            {sorted.map((img, idx) => (
+                            {displayImages.map((img, idx) => (
                                 <div 
                                     key={img.imageId || idx} 
                                     onClick={() => setManualSelection({ color: selectedColorKey, index: idx })}

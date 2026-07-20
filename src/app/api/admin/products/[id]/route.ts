@@ -9,13 +9,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         const product = await prisma.product.findUnique({
             where: { product_id: id },
             include: {
-                product_image: { orderBy: { sort_order: 'asc' } },
                 product_variant: true,
                 product_collection: true
             }
         });
         if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
-        return NextResponse.json(product);
+
+        const images = await prisma.$queryRaw<any[]>`
+            SELECT image_id, product_id, url, public_id, color, sort_order, created_at
+            FROM dbo.product_image
+            WHERE product_id = ${id}
+            ORDER BY sort_order ASC, created_at DESC;
+        `;
+
+        return NextResponse.json({ ...product, product_image: images });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -61,15 +68,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             // 3. Sync Images (Delete all, re-insert. Not ideal for performance but fine for MVP)
             if (images) {
                 await tx.product_image.deleteMany({ where: { product_id: id } });
-                await tx.product_image.createMany({
-                    data: images.map((img: any, idx: number) => ({
-                        product_id: id,
-                        url: img.url,
-                        public_id: img.public_id || `img_${Date.now()}_${idx}`,
-                        color: String(img.color || '').trim() || null,
-                        sort_order: img.sort_order ?? idx
-                    }))
-                });
+                for (const [idx, img] of images.entries()) {
+                    await tx.$executeRaw`
+                        INSERT INTO dbo.product_image (product_id, url, public_id, color, sort_order)
+                        VALUES (
+                            ${id},
+                            ${img.url},
+                            ${img.public_id || `img_${Date.now()}_${idx}`},
+                            ${String(img.color || '').trim() || null},
+                            ${img.sort_order ?? idx}
+                        );
+                    `;
+                }
             }
 
             // 4. Upsert Variants

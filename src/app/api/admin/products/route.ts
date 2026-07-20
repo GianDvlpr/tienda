@@ -32,34 +32,43 @@ export async function POST(req: Request) {
 
         if (!name || !slug) return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
 
-        const newProduct = await (prisma as any).product.create({
-            data: {
-                name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
+        const newProduct = await prisma.$transaction(async (tx: any) => {
+            const product = await tx.product.create({
+                data: {
+                    name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
 
 
-                product_collection: {
-                    create: collections?.map((c_id: string) => ({ collection_id: c_id })) || []
-                },
-                product_image: {
-                    create: images?.map((img: any, idx: number) => ({
-                        url: img.url,
-                        public_id: img.public_id || `img_${Date.now()}_${idx}`,
-                        color: String(img.color || '').trim() || null,
-                        sort_order: img.sort_order ?? idx
-                    })) || []
-                },
-                product_variant: {
-                    create: variants?.map((v: any) => ({
-                        sku: v.sku,
-                        size: v.size,
-                        color: v.color,
-                        price: v.price || base_price,
-                        cost: v.cost || base_cost,
-                        stock: v.stock || 0,
-                        is_active: v.is_active ?? true
-                    })) || []
+                    product_collection: {
+                        create: collections?.map((c_id: string) => ({ collection_id: c_id })) || []
+                    },
+                    product_variant: {
+                        create: variants?.map((v: any) => ({
+                            sku: v.sku,
+                            size: v.size,
+                            color: v.color,
+                            price: v.price || base_price,
+                            cost: v.cost || base_cost,
+                            stock: v.stock || 0,
+                            is_active: v.is_active ?? true
+                        })) || []
+                    }
                 }
+            });
+
+            for (const [idx, img] of (images || []).entries()) {
+                await tx.$executeRaw`
+                    INSERT INTO dbo.product_image (product_id, url, public_id, color, sort_order)
+                    VALUES (
+                        ${product.product_id},
+                        ${img.url},
+                        ${img.public_id || `img_${Date.now()}_${idx}`},
+                        ${String(img.color || '').trim() || null},
+                        ${img.sort_order ?? idx}
+                    );
+                `;
             }
+
+            return product;
         });
 
         // Registrar Auditoría

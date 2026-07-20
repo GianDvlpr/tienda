@@ -8,9 +8,10 @@ import { UploadOutlined } from '@ant-design/icons';
 interface ImageUploaderProps {
     onUploadSuccess: (url: string, publicId: string) => void;
     buttonText?: string;
+    multiple?: boolean;
 }
 
-export default function ImageUploader({ onUploadSuccess, buttonText = "Subir Imagen" }: ImageUploaderProps) {
+export default function ImageUploader({ onUploadSuccess, buttonText = "Subir Imagen", multiple = false }: ImageUploaderProps) {
     return (
         <CldUploadWidget
             signatureEndpoint="/api/cloudinary/sign"
@@ -20,7 +21,7 @@ export default function ImageUploader({ onUploadSuccess, buttonText = "Subir Ima
                 }
             }}
             options={{
-                multiple: false,
+                multiple,
                 resourceType: "image",
                 clientAllowedFormats: ["png", "jpeg", "jpg", "webp", "jfif"],
             }}

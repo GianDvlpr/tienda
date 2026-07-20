@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Divider, Image, AutoComplete } from 'antd';
-import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -22,11 +22,11 @@ export default function NewProductPage() {
     const [uploadedImages, setUploadedImages] = useState<any[]>([]);
 
     const { data: collections } = useSWR<any[]>('/api/admin/collections', fetcher);
-    const watchedVariants = Form.useWatch('variants', form) || [];
+    const watchedVariants = Form.useWatch('variants', form);
 
     const imageColorOptions = useMemo(() => {
         const colors = new Map<string, string>();
-        [...watchedVariants, ...uploadedImages].forEach((item: any) => {
+        [...(watchedVariants || []), ...uploadedImages].forEach((item: any) => {
             const color = String(item?.color || '').trim();
             if (color) colors.set(color.toLowerCase(), color);
         });
@@ -119,7 +119,7 @@ export default function NewProductPage() {
                     color,
                     stock: values.bulk_stock ?? 0,
                     price: values.bulk_price ?? null,
-                    cost: values.bulk_cost ?? null,
+                    cost: values.bulk_cost ?? values.base_cost ?? null,
                     is_active: values.bulk_is_active ?? true,
                 });
             });
@@ -173,12 +173,25 @@ export default function NewProductPage() {
         }
     };
 
+    const normalizeImageOrder = (images: any[]) => images.map((img, idx) => ({ ...img, sort_order: idx }));
+
     const handleUploadSuccess = (url: string, public_id: string) => {
-        setUploadedImages(prev => [...prev, { url, public_id, color: null, sort_order: prev.length }]);
+        setUploadedImages(prev => normalizeImageOrder([...prev, { url, public_id, color: null }]));
     };
 
     const removeImage = (indexToRemove: number) => {
-        setUploadedImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+        setUploadedImages(prev => normalizeImageOrder(prev.filter((_, idx) => idx !== indexToRemove)));
+    };
+
+    const moveImage = (indexToMove: number, direction: -1 | 1) => {
+        setUploadedImages(prev => {
+            const targetIndex = indexToMove + direction;
+            if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+            const next = [...prev];
+            [next[indexToMove], next[targetIndex]] = [next[targetIndex], next[indexToMove]];
+            return normalizeImageOrder(next);
+        });
     };
 
     const updateImageColor = (indexToUpdate: number, color: string) => {
@@ -195,7 +208,7 @@ export default function NewProductPage() {
             // Prepare payload
             const payload = {
                 ...values,
-                images: uploadedImages
+                images: normalizeImageOrder(uploadedImages)
             };
 
             const res = await fetch('/api/admin/products', {
@@ -272,7 +285,7 @@ export default function NewProductPage() {
                 {/* --- SECCIÓN IMÁGENES --- */}
                 <Card title="Imágenes del Producto" variant="borderless" style={{ marginBottom: 24 }}>
                     <div style={{ marginBottom: 16 }}>
-                        <ImageUploader onUploadSuccess={handleUploadSuccess} buttonText="Añadir Foto" />
+                        <ImageUploader onUploadSuccess={handleUploadSuccess} buttonText="Añadir Fotos" multiple />
                     </div>
                     
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -296,6 +309,23 @@ export default function NewProductPage() {
                                     placeholder="Color de foto"
                                     style={{ width: 120, marginTop: 8 }}
                                 />
+                                <Space.Compact style={{ width: 120, marginTop: 8 }}>
+                                    <Button
+                                        icon={<ArrowUpOutlined />}
+                                        disabled={idx === 0}
+                                        onClick={() => moveImage(idx, -1)}
+                                        style={{ width: 40 }}
+                                    />
+                                    <Button disabled style={{ width: 40, color: 'rgba(0,0,0,0.65)' }}>
+                                        {idx + 1}
+                                    </Button>
+                                    <Button
+                                        icon={<ArrowDownOutlined />}
+                                        disabled={idx === uploadedImages.length - 1}
+                                        onClick={() => moveImage(idx, 1)}
+                                        style={{ width: 40 }}
+                                    />
+                                </Space.Compact>
                             </div>
                         ))}
                         {uploadedImages.length === 0 && (
@@ -352,7 +382,7 @@ export default function NewProductPage() {
                 <Card title="Variantes (Tallas y Colores)" variant="borderless" style={{ marginBottom: 24 }}>
                     <Card size="small" title="Generador rápido" style={{ marginBottom: 16 }}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                            Escribe tallas y colores separados por coma o salto de línea. Se generará una variante por cada combinación.
+                            Escribe tallas y colores separados por coma o salto de línea. Se generará una variante por cada combinación. El costo usará el costo base salvo que indiques un costo común distinto.
                         </Text>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                             <Form.Item name="bulk_sizes" label="Tallas">
@@ -367,8 +397,8 @@ export default function NewProductPage() {
                             <Form.Item name="bulk_price" label="Precio ref. opcional">
                                 <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} placeholder="Usa el base" />
                             </Form.Item>
-                            <Form.Item name="bulk_cost" label="Costo opcional">
-                                <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} placeholder="Usa el base" />
+                            <Form.Item name="bulk_cost" label="Costo común opcional">
+                                <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} placeholder="Usa el costo base" />
                             </Form.Item>
                             <Form.Item name="bulk_is_active" label="Activas" valuePropName="checked">
                                 <Switch checkedChildren="Sí" unCheckedChildren="No" />
@@ -382,7 +412,7 @@ export default function NewProductPage() {
                     <Form.List name="variants">
                         {(fields, { add, remove }) => (
                             <>
-                                {fields.map(({ key, name, ...restField }, index) => (
+                                {fields.map(({ key, name, ...restField }) => (
                                     <Card key={key} size="small" style={{ marginBottom: 16 }}>
                                         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                                             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
@@ -401,6 +431,9 @@ export default function NewProductPage() {
                                                 <Form.Item {...restField} name={[name, 'price']} label="Precio Ref. (Opcional)">
                                                     <InputNumber style={{ width: '100%' }} min={0} step={0.01} placeholder="Usa el Base si es vacío" />
                                                 </Form.Item>
+                                                <Form.Item {...restField} name={[name, 'cost']} label="Costo Ref. (Opcional)">
+                                                    <InputNumber style={{ width: '100%' }} min={0} step={0.01} placeholder="Usa el Costo Base" />
+                                                </Form.Item>
                                                 <Form.Item {...restField} name={[name, 'is_active']} label="Activa" valuePropName="checked">
                                                     <Switch checkedChildren="Sí" unCheckedChildren="No" />
                                                 </Form.Item>
@@ -411,7 +444,7 @@ export default function NewProductPage() {
                                         </div>
                                     </Card>
                                 ))}
-                                <Button type="dashed" onClick={() => add({ size: 'Única', color: 'Unicolor', is_active: true, stock: 0 })} block icon={<PlusOutlined />}>
+                                <Button type="dashed" onClick={() => add({ size: 'Única', color: 'Unicolor', is_active: true, stock: 0, cost: form.getFieldValue('base_cost') ?? null })} block icon={<PlusOutlined />}>
                                     Añadir otra variante
                                 </Button>
                             </>
