@@ -14,6 +14,10 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const { Title, Text } = Typography;
 
+function normalizeColor(color?: string | null) {
+    return String(color || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 function formatPEN(amount: number) {
     return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 }
@@ -30,13 +34,11 @@ export default function QuickViewDrawer() {
         fetcher
     );
 
-    // Reset local state when drawer closes or slug changes
-    React.useEffect(() => {
-        if (!isQuickViewOpen) {
-            setSelectedSize(null);
-            setSelectedColor(null);
-        }
-    }, [isQuickViewOpen, quickViewProductSlug]);
+    const handleClose = () => {
+        setSelectedSize(null);
+        setSelectedColor(null);
+        closeQuickView();
+    };
 
     const uniqueSizes = useMemo(() => {
         if (!data) return [];
@@ -49,9 +51,28 @@ export default function QuickViewDrawer() {
     }, [data]);
 
     const selectedVariant = useMemo(() => {
-        if (!data || !selectedSize || !selectedColor) return null;
-        return data.variants.find((v) => v.size === selectedSize && v.color === selectedColor) || null;
+        if (!data) return null;
+
+        const matchingInStock = data.variants.find((v) => (
+            (!selectedSize || v.size === selectedSize)
+            && (!selectedColor || v.color === selectedColor)
+            && v.stock > 0
+        ));
+        const matching = data.variants.find((v) => (
+            (!selectedSize || v.size === selectedSize)
+            && (!selectedColor || v.color === selectedColor)
+        ));
+        return matchingInStock || matching || data.variants.find((v) => v.stock > 0) || data.variants[0] || null;
     }, [data, selectedSize, selectedColor]);
+
+    const effectiveSelectedSize = selectedSize ?? selectedVariant?.size ?? null;
+    const effectiveSelectedColor = selectedColor ?? selectedVariant?.color ?? null;
+
+    const selectedImage = useMemo(() => {
+        if (!data) return null;
+        if (!effectiveSelectedColor) return data.images[0] ?? null;
+        return data.images.find((img) => normalizeColor(img.color) === normalizeColor(effectiveSelectedColor)) ?? data.images[0] ?? null;
+    }, [data, effectiveSelectedColor]);
 
     const canAdd = selectedVariant && selectedVariant.stock > 0;
 
@@ -65,18 +86,18 @@ export default function QuickViewDrawer() {
             size: selectedVariant.size,
             color: selectedVariant.color,
             sku: selectedVariant.sku,
-            imageUrl: data.images[0]?.url || undefined,
+            imageUrl: selectedImage?.url || undefined,
             unitPrice: selectedVariant.price,
         }, 1);
         toast.success(`Agregado al carrito: ${data.product.name}`);
-        closeQuickView();
+        handleClose();
     };
 
     return (
         <Drawer
             title="Vista Rápida"
             placement="right"
-            onClose={closeQuickView}
+            onClose={handleClose}
             open={isQuickViewOpen}
             size="default" // Reemplaza width={400} (default es 378px aprox)
             destroyOnClose
@@ -92,9 +113,9 @@ export default function QuickViewDrawer() {
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 24 }}>
                         {/* Image */}
-                        {data.images.length > 0 && (
+                        {selectedImage && (
                             <img
-                                src={data.images[0].url}
+                                src={selectedImage.url}
                                 alt={data.product.name}
                                 style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover', borderRadius: 8, marginBottom: 16 }}
                             />
@@ -112,7 +133,7 @@ export default function QuickViewDrawer() {
                             {/* Colors */}
                             <div>
                                 <Text strong style={{ display: 'block', marginBottom: 8 }}>COLOR</Text>
-                                <Radio.Group value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
+                                <Radio.Group value={effectiveSelectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
                                     <Space wrap>
                                         {uniqueColors.map((color) => {
                                             const isAvailable = data.variants.some((v) => v.color === color && v.stock > 0);
@@ -129,10 +150,10 @@ export default function QuickViewDrawer() {
                             {/* Sizes */}
                             <div>
                                 <Text strong style={{ display: 'block', marginBottom: 8 }}>TALLA</Text>
-                                <Radio.Group value={selectedSize} onChange={(e) => setSelectedSize(e.target.value)}>
+                                <Radio.Group value={effectiveSelectedSize} onChange={(e) => setSelectedSize(e.target.value)}>
                                     <Space wrap>
                                         {uniqueSizes.map((size) => {
-                                            const isAvailable = data.variants.some((v) => v.size === size && v.stock > 0 && (!selectedColor || v.color === selectedColor));
+                                            const isAvailable = data.variants.some((v) => v.size === size && v.stock > 0 && (!effectiveSelectedColor || v.color === effectiveSelectedColor));
                                             return (
                                                 <Radio.Button key={size} value={size} disabled={!isAvailable}>
                                                     {size}

@@ -32,7 +32,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
 
         // 2) Images
         const images = await prisma.$queryRaw<any[]>`
-            SELECT image_id, url, public_id, sort_order
+            SELECT image_id, url, public_id, color, sort_order
             FROM dbo.product_image
             WHERE product_id = ${p.product_id}
             ORDER BY sort_order ASC, created_at DESC;
@@ -71,6 +71,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 imageId: r.image_id,
                 url: r.url,
                 publicId: r.public_id,
+                color: r.color ?? null,
                 sortOrder: Number(r.sort_order ?? 0),
             })),
             variants: (variants ?? []).map((r: any) => ({

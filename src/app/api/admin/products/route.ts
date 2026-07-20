@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         const { 
             name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
             collections, // array of collection_id strings
-            images,      // array of { url, public_id, sort_order }
+            images,      // array of { url, public_id, color, sort_order }
             variants     // array of { sku, size, color, price, cost, stock }
         } = body;
 
@@ -44,6 +44,7 @@ export async function POST(req: Request) {
                     create: images?.map((img: any, idx: number) => ({
                         url: img.url,
                         public_id: img.public_id || `img_${Date.now()}_${idx}`,
+                        color: String(img.color || '').trim() || null,
                         sort_order: img.sort_order ?? idx
                     })) || []
                 },

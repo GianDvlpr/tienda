@@ -21,6 +21,7 @@ export interface ProductImage {
     imageId: string;
     url: string;
     publicId: string;
+    color?: string | null;
     sortOrder: number;
 }
 
@@ -68,4 +69,4 @@ export interface ProductDetailResponse {
     images: ProductImage[];
     variants: ProductVariant[];
     bundles?: BundlePromotion[];
-}
+}

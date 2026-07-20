@@ -1,8 +1,8 @@
 'use client';
 import { toast } from 'sonner';
 
-import React, { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin, Divider } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin, Divider, AutoComplete } from 'antd';
 
 import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter, useParams } from 'next/navigation';
@@ -27,6 +27,16 @@ export default function EditProductPage() {
 
     const { data: collections } = useSWR<any[]>('/api/admin/collections', fetcher);
     const { data: product, isLoading, error } = useSWR<any>(id ? `/api/admin/products/${id}` : null, fetcher);
+    const watchedVariants = Form.useWatch('variants', form) || [];
+
+    const imageColorOptions = useMemo(() => {
+        const colors = new Map<string, string>();
+        [...watchedVariants, ...uploadedImages].forEach((item: any) => {
+            const color = String(item?.color || '').trim();
+            if (color) colors.set(color.toLowerCase(), color);
+        });
+        return Array.from(colors.values()).map((color) => ({ value: color }));
+    }, [watchedVariants, uploadedImages]);
 
     const [manualSkuIndices, setManualSkuIndices] = useState<Set<number>>(new Set());
 
@@ -41,6 +51,8 @@ export default function EditProductPage() {
                 is_active: product.is_active,
                 size_guide_url: product.size_guide_url,
                 size_guide_json: product.size_guide_json,
+                bulk_stock: 0,
+                bulk_is_active: true,
                 collections: product.product_collection?.map((pc: any) => pc.collection_id) || [],
 
                 variants: product.product_variant?.map((v: any) => ({
@@ -61,6 +73,7 @@ export default function EditProductPage() {
                 setUploadedImages(product.product_image.map((img: any) => ({
                     url: img.url,
                     public_id: img.public_id,
+                    color: img.color || null,
                     sort_order: img.sort_order
                 })));
             }
@@ -74,6 +87,83 @@ export default function EditProductPage() {
         
         if (!namePart && !colorPart && !sizePart) return '';
         return `${namePart}-${colorPart}-${sizePart}`.replace(/-+$/, '').replace(/-$/, '');
+    };
+
+    const normalizeList = (value: string) => String(value || '')
+        .split(/[\n,;]+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+    const normalizeComparable = (value: string) => String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+    const variantKey = (size: string, color: string) => `${normalizeComparable(size)}|${normalizeComparable(color)}`;
+
+    const isDefaultPlaceholderVariant = (variant: any) => {
+        const normalizedSize = normalizeComparable(variant?.size);
+        const normalizedColor = normalizeComparable(variant?.color);
+        return !variant?.variant_id
+            && normalizedSize === 'unica'
+            && normalizedColor === 'unicolor'
+            && Number(variant?.stock || 0) === 0
+            && !variant?.price
+            && !variant?.cost;
+    };
+
+    const getUniqueSku = (baseSku: string, usedSkus: Set<string>) => {
+        const base = baseSku || `VAR-${usedSkus.size + 1}`;
+        let sku = base;
+        let counter = 2;
+
+        while (usedSkus.has(sku.toUpperCase())) {
+            sku = `${base}-${counter}`;
+            counter += 1;
+        }
+
+        usedSkus.add(sku.toUpperCase());
+        return sku;
+    };
+
+    const addGeneratedVariants = () => {
+        const values = form.getFieldsValue();
+        const sizes = normalizeList(values.bulk_sizes);
+        const colors = normalizeList(values.bulk_colors);
+
+        if (sizes.length === 0 || colors.length === 0) {
+            toast.warning('Ingresa al menos una talla y un color para generar variantes');
+            return;
+        }
+
+        const rawVariants = [...(values.variants || [])];
+        const currentVariants = rawVariants.length === 1 && isDefaultPlaceholderVariant(rawVariants[0]) ? [] : rawVariants;
+        const existingKeys = new Set(currentVariants.map((v: any) => variantKey(v.size, v.color)));
+        const usedSkus = new Set(currentVariants.map((v: any) => String(v.sku || '').toUpperCase()).filter(Boolean));
+        const generated: any[] = [];
+
+        sizes.forEach((size) => {
+            colors.forEach((color) => {
+                const key = variantKey(size, color);
+                if (existingKeys.has(key)) return;
+
+                existingKeys.add(key);
+                generated.push({
+                    sku: getUniqueSku(generateSKU(values.name, color, size), usedSkus),
+                    size,
+                    color,
+                    stock: values.bulk_stock ?? 0,
+                    price: values.bulk_price ?? null,
+                    cost: values.bulk_cost ?? null,
+                    is_active: values.bulk_is_active ?? true,
+                });
+            });
+        });
+
+        if (generated.length === 0) {
+            toast.info('Todas esas combinaciones ya existen');
+            return;
+        }
+
+        form.setFieldsValue({ variants: [...currentVariants, ...generated] });
+        toast.success(`${generated.length} variantes generadas`);
     };
 
     const handleValuesChange = (changedValues: any, allValues: any) => {
@@ -117,11 +207,17 @@ export default function EditProductPage() {
 
 
     const handleUploadSuccess = (url: string, public_id: string) => {
-        setUploadedImages(prev => [...prev, { url, public_id, sort_order: prev.length }]);
+        setUploadedImages(prev => [...prev, { url, public_id, color: null, sort_order: prev.length }]);
     };
 
     const removeImage = (indexToRemove: number) => {
         setUploadedImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    };
+
+    const updateImageColor = (indexToUpdate: number, color: string) => {
+        setUploadedImages(prev => prev.map((img, idx) => (
+            idx === indexToUpdate ? { ...img, color: color.trim() || null } : img
+        )));
     };
 
     const onFinish = async (values: any) => {
@@ -214,7 +310,7 @@ export default function EditProductPage() {
                     
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                         {uploadedImages.map((img, idx) => (
-                            <div key={idx} style={{ position: 'relative', width: 120, height: 160 }}>
+                            <div key={idx} style={{ position: 'relative', width: 120 }}>
                                 <Image src={img.url} alt={`img-${idx}`} width={120} height={160} style={{ objectFit: 'cover', borderRadius: '8px' }} />
                                 <Button 
                                     danger 
@@ -224,6 +320,14 @@ export default function EditProductPage() {
                                     size="small"
                                     style={{ position: 'absolute', top: -8, right: -8, zIndex: 10 }}
                                     onClick={() => removeImage(idx)}
+                                />
+                                <AutoComplete
+                                    allowClear
+                                    value={img.color || ''}
+                                    options={imageColorOptions}
+                                    onChange={(value) => updateImageColor(idx, value)}
+                                    placeholder="Color de foto"
+                                    style={{ width: 120, marginTop: 8 }}
                                 />
                             </div>
                         ))}
@@ -275,6 +379,35 @@ export default function EditProductPage() {
 
 
                 <Card title="Variantes (Tallas y Colores)" variant="borderless" style={{ marginBottom: 24 }}>
+                    <Card size="small" title="Generador rápido" style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                            Escribe tallas y colores separados por coma o salto de línea. Se generará una variante por cada combinación faltante.
+                        </Text>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+                            <Form.Item name="bulk_sizes" label="Tallas">
+                                <TextArea rows={2} placeholder="S, M, L" />
+                            </Form.Item>
+                            <Form.Item name="bulk_colors" label="Colores">
+                                <TextArea rows={2} placeholder="Negro, Marrón, Vino, Perla" />
+                            </Form.Item>
+                            <Form.Item name="bulk_stock" label="Stock inicial">
+                                <InputNumber style={{ width: '100%' }} min={0} />
+                            </Form.Item>
+                            <Form.Item name="bulk_price" label="Precio ref. opcional">
+                                <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} placeholder="Usa el base" />
+                            </Form.Item>
+                            <Form.Item name="bulk_cost" label="Costo opcional">
+                                <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} placeholder="Usa el base" />
+                            </Form.Item>
+                            <Form.Item name="bulk_is_active" label="Activas" valuePropName="checked">
+                                <Switch checkedChildren="Sí" unCheckedChildren="No" />
+                            </Form.Item>
+                        </div>
+                        <Button type="primary" ghost onClick={addGeneratedVariants} icon={<PlusOutlined />}>
+                            Generar variantes faltantes
+                        </Button>
+                    </Card>
+
                     <Form.List name="variants">
                         {(fields, { add, remove }) => (
                             <>

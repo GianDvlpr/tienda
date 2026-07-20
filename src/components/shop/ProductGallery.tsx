@@ -6,11 +6,27 @@ import type { ProductImage } from '@/types/product';
 import Zoom from 'react-medium-image-zoom';
 import 'react-medium-image-zoom/dist/styles.css';
 
-export default function ProductGallery({ images }: { images: ProductImage[] }) {
+function normalizeColor(color?: string | null) {
+    return String(color || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+export default function ProductGallery({ images, selectedColor }: { images: ProductImage[]; selectedColor?: string | null }) {
     const { token } = theme.useToken();
     // Sort images by sort_order
     const sorted = useMemo(() => [...images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), [images]);
-    const [activeIndex, setActiveIndex] = useState(0);
+    const [manualSelection, setManualSelection] = useState<{ color: string; index: number } | null>(null);
+
+    const selectedColorKey = normalizeColor(selectedColor);
+    const preferredIndex = useMemo(() => {
+        if (!selectedColorKey) return 0;
+
+        const matchingIndex = sorted.findIndex((img) => normalizeColor(img.color) === selectedColorKey);
+        return matchingIndex >= 0 ? matchingIndex : 0;
+    }, [selectedColorKey, sorted]);
+
+    const activeIndex = manualSelection?.color === selectedColorKey && manualSelection.index < sorted.length
+        ? manualSelection.index
+        : preferredIndex;
 
     if (sorted.length === 0) {
         return (
@@ -29,7 +45,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                         {sorted.map((img, idx) => (
                             <div 
                                 key={img.imageId || idx} 
-                                onClick={() => setActiveIndex(idx)}
+                                onClick={() => setManualSelection({ color: selectedColorKey, index: idx })}
                                 style={{ 
                                     cursor: 'pointer',
                                     borderRadius: 8,
@@ -81,7 +97,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                             {sorted.map((img, idx) => (
                                 <div 
                                     key={img.imageId || idx} 
-                                    onClick={() => setActiveIndex(idx)}
+                                    onClick={() => setManualSelection({ color: selectedColorKey, index: idx })}
                                     style={{ 
                                         width: 64,
                                         flexShrink: 0,

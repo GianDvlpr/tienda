@@ -66,6 +66,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                         product_id: id,
                         url: img.url,
                         public_id: img.public_id || `img_${Date.now()}_${idx}`,
+                        color: String(img.color || '').trim() || null,
                         sort_order: img.sort_order ?? idx
                     }))
                 });
@@ -85,14 +86,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     if (v.variant_id) {
                         await tx.product_variant.update({
                             where: { variant_id: v.variant_id },
-                            data: { sku: v.sku, size: v.size, color: v.color, price: v.price, stock: v.stock }
+                            data: { sku: v.sku, size: v.size, color: v.color, price: v.price, cost: v.cost, stock: v.stock, is_active: v.is_active ?? true }
                         });
                     } else {
                         await tx.product_variant.create({
                             data: {
                                 product_id: id,
                                 sku: v.sku, size: v.size, color: v.color, price: v.price || prod.base_price,
-                                stock: v.stock || 0
+                                cost: v.cost || prod.base_cost,
+                                stock: v.stock || 0,
+                                is_active: v.is_active ?? true
                             }
                         });
                     }

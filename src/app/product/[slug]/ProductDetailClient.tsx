@@ -2,13 +2,12 @@
 
 import { toast } from 'sonner';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
-import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined, GiftOutlined } from '@ant-design/icons';
+import { Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
+import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 
 
 import ProductGallery from '@/components/shop/ProductGallery';
-import ProductDetailSkeleton from '@/components/shop/ProductDetailSkeleton';
 import type { ProductDetailResponse, ProductVariant } from '@/types/product';
 import { formatPEN } from '@/lib/money';
 import { useCartStore } from '@/store/cart.store';
@@ -17,6 +16,10 @@ import { sortSizes } from '@/lib/sizes';
 
 
 const { Title, Text, Paragraph } = Typography;
+
+function normalizeColor(color?: string | null) {
+    return String(color || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
 
 interface ProductDetailClientProps {
     initialData: ProductDetailResponse;
@@ -83,6 +86,12 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         return variants.find((v) => v.size === selectedSize && v.color === selectedColor) ?? null;
     }, [variants, selectedSize, selectedColor]);
 
+    const selectedImage = useMemo(() => {
+        const images = initialData.images ?? [];
+        if (!selectedColor) return images[0] ?? null;
+        return images.find((img) => normalizeColor(img.color) === normalizeColor(selectedColor)) ?? images[0] ?? null;
+    }, [initialData.images, selectedColor]);
+
     const canAdd = !!selectedVariant && selectedVariant.stock > 0;
     const isWishlisted = selectedVariant ? isInWishlist(selectedVariant.variantId) : false;
 
@@ -102,7 +111,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             size: selectedVariant.size,
             color: selectedVariant.color,
             sku: selectedVariant.sku,
-            imageUrl: initialData.images?.[0]?.url ?? null,
+            imageUrl: selectedImage?.url ?? null,
             unitPrice: selectedVariant.price,
         }, 1);
 
@@ -124,7 +133,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 size: selectedVariant.size,
                 color: selectedVariant.color,
                 sku: selectedVariant.sku,
-                imageUrl: initialData.images?.[0]?.url ?? null,
+                imageUrl: selectedImage?.url ?? null,
                 unitPrice: selectedVariant.price,
             });
             toast.success('Agregado a tus favoritos');
@@ -214,7 +223,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 <Card variant="borderless">
                     <Row gutter={[24, 24]}>
                         <Col xs={24} md={12}>
-                            <ProductGallery images={initialData.images ?? []} />
+                            <ProductGallery images={initialData.images ?? []} selectedColor={selectedColor} />
                         </Col>
 
                         <Col xs={24} md={12}>
@@ -409,7 +418,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                                 color: selectedVariant.color,
                                                                                 sku: selectedVariant.sku,
                                                                                 unitPrice: Number(selectedVariant.price),
-                                                                                imageUrl: initialData.images[0]?.url
+                                                                                imageUrl: selectedImage?.url
                                                                             }, 1);
                                                                         }
 
