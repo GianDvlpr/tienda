@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { getTemporaryVariantSku, prepareVariantsWithUniqueSkus } from '@/lib/product-variant-sku';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -86,13 +87,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             // To be safe with external foreign keys (like order_item), we UPSERT instead of delete/create
             if (variants && variants.length > 0) {
                 const incomingIds = variants.map((v:any) => v.variant_id).filter(Boolean);
+                const preparedVariants = await prepareVariantsWithUniqueSkus(tx, variants, name, incomingIds);
                 // Mark missing ones as inactive instead of deleting to avoid FK errors
                 await tx.product_variant.updateMany({
                     where: { product_id: id, variant_id: { notIn: incomingIds } },
                     data: { is_active: false }
                 });
 
-                for (const v of variants) {
+                for (const [idx, v] of preparedVariants.entries()) {
+                    if (!v.variant_id) continue;
+
+                    await tx.product_variant.update({
+                        where: { variant_id: v.variant_id },
+                        data: { sku: getTemporaryVariantSku(v.variant_id, idx) }
+                    });
+                }
+
+                for (const v of preparedVariants) {
                     if (v.variant_id) {
                         await tx.product_variant.update({
                             where: { variant_id: v.variant_id },
@@ -128,7 +139,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
         return NextResponse.json({ success: true, product: updated });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        const status = String(e.message || '').startsWith('Variante duplicada') ? 400 : 500;
+        return NextResponse.json({ error: e.message }, { status });
     }
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { prepareVariantsWithUniqueSkus } from '@/lib/product-variant-sku';
 
 export async function GET() {
     try {
@@ -33,6 +34,8 @@ export async function POST(req: Request) {
         if (!name || !slug) return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
 
         const newProduct = await prisma.$transaction(async (tx: any) => {
+            const preparedVariants = await prepareVariantsWithUniqueSkus(tx, variants, name);
+
             const product = await tx.product.create({
                 data: {
                     name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
                         create: collections?.map((c_id: string) => ({ collection_id: c_id })) || []
                     },
                     product_variant: {
-                        create: variants?.map((v: any) => ({
+                        create: preparedVariants.map((v: any) => ({
                             sku: v.sku,
                             size: v.size,
                             color: v.color,
@@ -81,7 +84,8 @@ export async function POST(req: Request) {
 
         return NextResponse.json(newProduct);
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        const status = String(e.message || '').startsWith('Variante duplicada') ? 400 : 500;
+        return NextResponse.json({ error: e.message }, { status });
     }
 }
 
