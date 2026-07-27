@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
 import fs from 'fs';
-import { calculateBundleDiscount } from '@/lib/bundle-discount';
+import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 
 const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
 
@@ -33,19 +33,23 @@ type CheckoutBody = {
     payment_method?: string;
 };
 
+type DbNumeric = number | string | { toString(): string } | null;
+
+type BundleTierRow = {
+    bundle_id: string | number | { toString(): string };
+    bundle_price: DbNumeric;
+    tier_2_price: DbNumeric;
+    tier_3_price: DbNumeric;
+};
+
 function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Error inesperado';
 }
 
 export async function POST(req: Request) {
     try {
-<<<<<<< HEAD
         const body = await req.json() as CheckoutBody;
         const { shipping_name, shipping_phone, shipping_address, items = [], coupon_code, culqi_token, email, payment_method } = body;
-=======
-        const body = await req.json();
-        const { shipping_name, shipping_phone, shipping_address, items, coupon_code, culqi_token, email, payment_method } = body;
->>>>>>> f5d018e8dbc51883cfd84d969520b277ddada00b
         const method = payment_method || 'CULQI'; // Default to Culqi for older clients
 
         if (!shipping_name || !shipping_phone || !items || items.length === 0) {
@@ -109,7 +113,7 @@ export async function POST(req: Request) {
             include: { items: true }
         });
 
-        const tierRows = await prisma.$queryRaw<any[]>`
+        const tierRows = await prisma.$queryRaw<BundleTierRow[]>`
             SELECT bundle_id, bundle_price, tier_2_price, tier_3_price
             FROM dbo.bundle_promotion
             WHERE is_active = 1;
@@ -125,32 +129,20 @@ export async function POST(req: Request) {
 
         logToFile(`[CHECKOUT] Active Bundles: ${activeBundles.length}`);
 
-<<<<<<< HEAD
-        for (const bundle of activeBundles) {
-            const requiredProductIds = bundle.items.map((bi) => 
-                bi.product_id.toString().toLowerCase().trim()
-            );
-            
-            const hasAll = requiredProductIds.every((id: string) => (cartProductStats[id] || 0) > 0);
-            logToFile(`[CHECKOUT] Checking bundle "${bundle.name}": hasAll=${hasAll}, requiredIds=${JSON.stringify(requiredProductIds)}`);
-            
-            if (hasAll) {
-                const possibleSets = Math.min(...requiredProductIds.map((id: string) => cartProductStats[id] || 0));
-                const savings = possibleSets * Number(bundle.discount_amount);
-                bundle_discount_total += savings;
-                logToFile(`[CHECKOUT] Bundle "${bundle.name}" applied! Sets: ${possibleSets}, Savings: ${savings}`);
-            }
-        }
-=======
-        bundle_discount_total = calculateBundleDiscount(serverBundleItems, activeBundles.map((bundle: any) => ({
-            requiredProductIds: (bundle.items as any[]).map((bi: any) => bi.product_id.toString().toLowerCase().trim()),
-            discount_amount: Number(bundle.discount_amount || 0),
-            bundle_price: tiersByBundleId.get(String(bundle.bundle_id))?.bundle_price ?? null,
-            tier_2_price: tiersByBundleId.get(String(bundle.bundle_id))?.tier_2_price ?? null,
-            tier_3_price: tiersByBundleId.get(String(bundle.bundle_id))?.tier_3_price ?? null,
-        })));
+        const bundlePromotions: BundleDiscountPromotion[] = activeBundles.map((bundle) => {
+            const tiers = tiersByBundleId.get(String(bundle.bundle_id));
+
+            return {
+                requiredProductIds: bundle.items.map((bi) => bi.product_id.toString().toLowerCase().trim()),
+                discount_amount: Number(bundle.discount_amount || 0),
+                bundle_price: tiers?.bundle_price ?? null,
+                tier_2_price: tiers?.tier_2_price ?? null,
+                tier_3_price: tiers?.tier_3_price ?? null,
+            };
+        });
+
+        bundle_discount_total = calculateBundleDiscount(serverBundleItems, bundlePromotions);
         logToFile(`[CHECKOUT] Bundle discount total: ${bundle_discount_total}`);
->>>>>>> f5d018e8dbc51883cfd84d969520b277ddada00b
 
         let coupon_savings = 0;
         let validated_coupon_code: string | null = null;
