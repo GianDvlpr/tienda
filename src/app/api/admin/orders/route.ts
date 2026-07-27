@@ -140,8 +140,8 @@ export async function POST(req: Request) {
             let subtotal = 0;
             const preparedItems = items.map(item => {
                 const variant = variantMap.get(item.variantId);
-                if (!variant || !variant.is_active || !variant.product.is_active) {
-                    throw new Error('Uno de los productos seleccionados no está disponible');
+                if (!variant) {
+                    throw new Error('Uno de los productos seleccionados no existe');
                 }
 
                 if (variant.stock < item.qty) {

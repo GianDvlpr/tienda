@@ -89,11 +89,12 @@ export default function NewAdminOrderPage() {
     const variantOptions = (products || []).flatMap(product =>
         (product.product_variant || []).map(variant => {
             const price = Number(variant.price ?? product.base_price ?? 0);
-            const label = `${product.name} - ${variant.size} / ${variant.color} | ${variant.sku} | Stock: ${variant.stock}`;
+            const inactiveLabel = !product.is_active || !variant.is_active ? ' | Inactivo' : '';
+            const label = `${product.name} - ${variant.size} / ${variant.color} | ${variant.sku} | Stock: ${variant.stock}${inactiveLabel}`;
             return {
                 value: variant.variant_id,
                 label,
-                disabled: !product.is_active || !variant.is_active || variant.stock <= 0,
+                disabled: variant.stock <= 0,
                 product,
                 variant,
                 price,

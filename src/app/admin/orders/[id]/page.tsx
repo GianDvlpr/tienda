@@ -148,10 +148,11 @@ export default function OrderDetailPage() {
         (product.product_variant || []).map(variant => {
             const price = Number(variant.price ?? product.base_price ?? 0);
             const availableStock = variant.stock + (originalQtyByVariant.get(variant.variant_id) || 0);
+            const inactiveLabel = !product.is_active || !variant.is_active ? ' | Inactivo' : '';
             return {
                 value: variant.variant_id,
-                label: `${product.name} - ${variant.size} / ${variant.color} | ${variant.sku} | Disponible: ${availableStock}`,
-                disabled: !product.is_active || !variant.is_active || availableStock <= 0,
+                label: `${product.name} - ${variant.size} / ${variant.color} | ${variant.sku} | Disponible: ${availableStock}${inactiveLabel}`,
+                disabled: availableStock <= 0,
                 product,
                 variant,
                 price,
