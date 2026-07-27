@@ -77,6 +77,8 @@ model order_header {
   currency           String               @default("PEN", map: "DF_order_currency") @db.Char(3)
   payment_method     String?              @db.NVarChar(30)
   payment_reference  String?              @db.NVarChar(120)
+  sales_channel      String               @default("SHOP", map: "DF_order_sales_channel") @db.NVarChar(30)
+  external_reference String?              @db.NVarChar(200)
   paid_at            DateTime?
   created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_created_at")
   updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_updated_at")
@@ -86,6 +88,7 @@ model order_header {
   stock_reservation  stock_reservation[]
 
   @@index([customer_id, created_at(sort: Desc)], map: "IX_order_customer")
+  @@index([sales_channel, created_at(sort: Desc)], map: "IX_order_sales_channel_created")
   @@index([status, created_at(sort: Desc)], map: "IX_order_status_created")
 }
 

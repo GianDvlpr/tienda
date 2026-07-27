@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
 import fs from 'fs';
-import path from 'path';
 
 const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
 
@@ -11,10 +10,36 @@ function logToFile(msg: string) {
     fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`);
 }
 
+type CheckoutItem = {
+    variantId: string;
+    qty: number;
+    unitPrice: number;
+    name: string;
+    size: string;
+    color: string;
+    sku?: string | null;
+    imageUrl?: string | null;
+};
+
+type CheckoutBody = {
+    shipping_name?: string;
+    shipping_phone?: string;
+    shipping_address?: string;
+    items?: CheckoutItem[];
+    coupon_code?: string | null;
+    culqi_token?: string;
+    email?: string;
+    payment_method?: string;
+};
+
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : 'Error inesperado';
+}
+
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
-        const { shipping_name, shipping_phone, shipping_address, items, subtotal, coupon_code, culqi_token, email, payment_method } = body;
+        const body = await req.json() as CheckoutBody;
+        const { shipping_name, shipping_phone, shipping_address, items = [], coupon_code, culqi_token, email, payment_method } = body;
         const method = payment_method || 'CULQI'; // Default to Culqi for older clients
 
         if (!shipping_name || !shipping_phone || !items || items.length === 0) {
@@ -32,7 +57,6 @@ export async function POST(req: Request) {
 
         // Re-calculate total securely on the backend
         let serverSubtotal = 0;
-        const productCounts: Record<string, { qty: number, productId: string }> = {};
 
         for (const item of items) {
            serverSubtotal += item.unitPrice * item.qty;
@@ -44,7 +68,7 @@ export async function POST(req: Request) {
 
         // 1. Fetch variant details to get product_ids
         const variantsInCart = await prisma.product_variant.findMany({
-            where: { variant_id: { in: items.map((i: any) => i.variantId) } },
+            where: { variant_id: { in: items.map((i) => i.variantId) } },
             select: { variant_id: true, product_id: true }
         });
 
@@ -67,7 +91,7 @@ export async function POST(req: Request) {
 
         // 2. Detect Bundles/Conjuntos
         let bundle_discount_total = 0;
-        const activeBundles = await (prisma as any).bundle_promotion.findMany({
+        const activeBundles = await prisma.bundle_promotion.findMany({
             where: { is_active: true },
             include: { items: true }
         });
@@ -75,7 +99,7 @@ export async function POST(req: Request) {
         logToFile(`[CHECKOUT] Active Bundles: ${activeBundles.length}`);
 
         for (const bundle of activeBundles) {
-            const requiredProductIds = (bundle.items as any[]).map((bi: any) => 
+            const requiredProductIds = bundle.items.map((bi) => 
                 bi.product_id.toString().toLowerCase().trim()
             );
             
@@ -91,7 +115,7 @@ export async function POST(req: Request) {
         }
 
         let coupon_savings = 0;
-        let validated_coupon_code = null;
+        let validated_coupon_code: string | null = null;
 
         logToFile(`[CHECKOUT] Incoming coupon_code: "${coupon_code}"`);
 
@@ -131,9 +155,10 @@ export async function POST(req: Request) {
         logToFile(`Order Calculation [${serverSubtotal}]: Bundles: ${bundle_discount_total}, Coupon: ${coupon_savings}, Total: ${serverTotal}`);
 
 
+        let paymentReference: string | null = null;
+
         // 1. Process payment with Culqi (Only if CULQI method)
         if (method === 'CULQI') {
-            const amountCents = Math.round(serverSubtotal * 100);
             const culqiResponse = await fetch('https://api.culqi.com/v2/charges', {
                 method: 'POST',
                 headers: {
@@ -148,18 +173,25 @@ export async function POST(req: Request) {
                 })
             });
 
-            const culqiData = await culqiResponse.json();
+            const culqiData = await culqiResponse.json() as {
+                object?: string;
+                user_message?: string;
+                merchant_message?: string;
+                id?: string;
+            };
 
             if (!culqiResponse.ok || culqiData.object === 'error') {
                 const errorMsg = culqiData.user_message || culqiData.merchant_message || 'Transacción denegada por el banco.';
                 return NextResponse.json({ error: errorMsg }, { status: 400 });
             }
+
+            paymentReference = culqiData.id || null;
         }
 
         // Generate a random Code like ORD-XXXX
         const code = `ORD-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
 
-        const newOrder: any = await prisma.$transaction(async (tx) => {
+        const newOrder = await prisma.$transaction(async (tx) => {
             // 2. Create order header
             const header = await tx.order_header.create({
                 data: {
@@ -175,6 +207,10 @@ export async function POST(req: Request) {
                     coupon_code: validated_coupon_code,
                     total: serverTotal,
                     currency: 'PEN',
+                    payment_method: method,
+                    payment_reference: paymentReference,
+                    paid_at: method === 'CULQI' ? new Date() : null,
+                    sales_channel: method === 'WHATSAPP' ? 'WHATSAPP' : 'SHOP',
                 }
             });
 
@@ -242,7 +278,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ success: true, orderCode: newOrder.code });
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });
     }
 }

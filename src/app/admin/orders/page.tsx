@@ -3,12 +3,13 @@ import { toast } from 'sonner';
 
 import React from 'react';
 import { Card, Table, Typography, Tag, Button, Space, Flex } from 'antd';
-import { EyeOutlined, TagOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, TagOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import dayjs from 'dayjs';
+import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
 
@@ -21,13 +22,38 @@ export const statusMap: Record<string, { label: string, color: string }> = {
     'CANCELLED': { label: 'Cancelado', color: 'red' },
 };
 
+const salesChannelMap: Record<string, { label: string, color: string }> = {
+    SHOP: { label: 'Shop', color: 'blue' },
+    WHATSAPP: { label: 'WhatsApp', color: 'green' },
+    TIKTOK: { label: 'TikTok', color: 'purple' },
+    INSTAGRAM: { label: 'Instagram', color: 'magenta' },
+    FACEBOOK: { label: 'Facebook', color: 'geekblue' },
+    OTHER: { label: 'Otro', color: 'default' },
+};
+
+type AdminOrder = {
+    order_id: string;
+    code: string;
+    created_at: string;
+    shipping_name: string;
+    shipping_phone: string;
+    sales_channel?: string | null;
+    external_reference?: string | null;
+    discount_total?: number | string | null;
+    bundle_discount?: number | string | null;
+    coupon_discount?: number | string | null;
+    coupon_code?: string | null;
+    total: number | string;
+    status: string;
+};
+
 export default function AdminOrdersPage() {
-    const { data: orders, error, isLoading, mutate, isValidating } = useSWR<any[]>('/api/admin/orders', fetcher, {
+    const { data: orders, error, isLoading, mutate, isValidating } = useSWR<AdminOrder[]>('/api/admin/orders', fetcher, {
         refreshInterval: 30000, // Cada 30 segundos
         revalidateOnFocus: true
     });
 
-    const columns = [
+    const columns: ColumnsType<AdminOrder> = [
         {
             title: 'Código',
             dataIndex: 'code',
@@ -51,9 +77,25 @@ export default function AdminOrdersPage() {
             key: 'shipping_phone',
         },
         {
+            title: 'Canal',
+            dataIndex: 'sales_channel',
+            key: 'sales_channel',
+            render: (channel: string | null | undefined, record) => {
+                const conf = salesChannelMap[channel || 'SHOP'] || { label: channel || 'Shop', color: 'default' };
+                return (
+                    <Space orientation="vertical" size={2}>
+                        <Tag color={conf.color}>{conf.label}</Tag>
+                        {record.external_reference && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>{record.external_reference}</Text>
+                        )}
+                    </Space>
+                );
+            },
+        },
+        {
             title: 'Descuento',
             key: 'discount',
-            render: (_: any, record: any) => {
+            render: (_value, record) => {
                 const totalDiscount = Number(record.discount_total || 0);
                 const bundleDiscount = Number(record.bundle_discount || 0);
                 const couponDiscount = Number(record.coupon_discount || 0);
@@ -90,7 +132,7 @@ export default function AdminOrdersPage() {
             title: 'Total',
             dataIndex: 'total',
             key: 'total',
-            render: (val: number) => formatPEN(Number(val)),
+            render: (val: number | string) => formatPEN(Number(val)),
         },
         {
             title: 'Estado',
@@ -104,7 +146,7 @@ export default function AdminOrdersPage() {
         {
             title: 'Acciones',
             key: 'actions',
-            render: (_: any, record: any) => (
+            render: (_value, record) => (
                 <Space>
                     <Link href={`/admin/orders/${record.order_id}`}>
                         <Button type="primary" size="small" icon={<EyeOutlined />}>
@@ -126,13 +168,20 @@ export default function AdminOrdersPage() {
             title={
                 <Flex justify="space-between" align="center">
                     <Title level={4} style={{ margin: 0 }}>Gestión de Pedidos</Title>
-                    <Button 
-                        icon={<ReloadOutlined spin={isValidating} />} 
-                        onClick={() => mutate()}
-                        type="text"
-                    >
-                        Actualizar
-                    </Button>
+                    <Space>
+                        <Link href="/admin/orders/new">
+                            <Button type="primary" icon={<PlusOutlined />}>
+                                Nueva venta
+                            </Button>
+                        </Link>
+                        <Button 
+                            icon={<ReloadOutlined spin={isValidating} />} 
+                            onClick={() => mutate()}
+                            type="text"
+                        >
+                            Actualizar
+                        </Button>
+                    </Space>
                 </Flex>
             }
         >

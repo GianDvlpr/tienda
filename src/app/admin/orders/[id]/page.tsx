@@ -5,11 +5,12 @@ import React, { useState } from 'react';
 import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert } from 'antd';
 import { LeftOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import Link from 'next/link';
 import dayjs from 'dayjs';
+import type { ColumnsType } from 'antd/es/table';
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
@@ -20,14 +21,59 @@ export const statusMap: Record<string, { label: string, color: string }> = {
     'CANCELLED': { label: 'Cancelado', color: 'red' },
 };
 
+const salesChannelMap: Record<string, { label: string, color: string }> = {
+    SHOP: { label: 'Shop', color: 'blue' },
+    WHATSAPP: { label: 'WhatsApp', color: 'green' },
+    TIKTOK: { label: 'TikTok', color: 'purple' },
+    INSTAGRAM: { label: 'Instagram', color: 'magenta' },
+    FACEBOOK: { label: 'Facebook', color: 'geekblue' },
+    OTHER: { label: 'Otro', color: 'default' },
+};
+
 const { Title, Text } = Typography;
+
+type OrderItem = {
+    order_item_id: string;
+    qty: number;
+    unit_price: number | string;
+    line_total: number | string;
+    product_name: string;
+    variant_size: string;
+    variant_color: string;
+    sku: string;
+};
+
+type AdminOrderDetail = {
+    order_id: string;
+    code: string;
+    status: string;
+    shipping_name: string;
+    shipping_phone: string;
+    shipping_address?: string | null;
+    subtotal: number | string;
+    discount_total?: number | string | null;
+    bundle_discount?: number | string | null;
+    coupon_discount?: number | string | null;
+    coupon_code?: string | null;
+    total: number | string;
+    notes?: string | null;
+    created_at: string;
+    sales_channel?: string | null;
+    external_reference?: string | null;
+    payment_method?: string | null;
+    payment_reference?: string | null;
+    order_item?: OrderItem[];
+};
+
+function getErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : 'Error al actualizar pedido';
+}
 
 export default function OrderDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const id = params.id as string;
 
-    const { data: order, isLoading, mutate } = useSWR<any>(id ? `/api/admin/orders/${id}` : null, fetcher);
+    const { data: order, isLoading, mutate } = useSWR<AdminOrderDetail>(id ? `/api/admin/orders/${id}` : null, fetcher);
 
     const [status, setStatus] = useState<string | null>(null);
     const [notes, setNotes] = useState<string>('');
@@ -57,8 +103,8 @@ export default function OrderDetailPage() {
 
             toast.success('Pedido actualizado con éxito');
             mutate();
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
         } finally {
             setIsSaving(false);
         }
@@ -83,7 +129,7 @@ export default function OrderDetailPage() {
         if (!printWindow) return;
 
         // Extraer resumen de items para impresión
-        const itemsList = order.order_item?.map((item: any) => `<li>${item.qty}x ${item.product_name} (${item.variant_size})</li>`).join('') || '';
+        const itemsList = order.order_item?.map((item) => `<li>${item.qty}x ${item.product_name} (${item.variant_size})</li>`).join('') || '';
 
         const html = `
             <html>
@@ -202,11 +248,13 @@ export default function OrderDetailPage() {
         return <Card><Alert type="error" title="Pedido no encontrado" /></Card>;
     }
 
-    const itemsColumns = [
+    const salesChannel = salesChannelMap[order.sales_channel || 'SHOP'] || { label: order.sales_channel || 'Shop', color: 'default' };
+
+    const itemsColumns: ColumnsType<OrderItem> = [
         {
             title: 'Producto / Variante',
             key: 'product',
-            render: (_: any, record: any) => (
+            render: (_value, record) => (
                 <Space orientation="vertical" size={2}>
                     <Text strong>{record.product_name}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>SKU: {record.sku}</Text>
@@ -244,6 +292,7 @@ export default function OrderDetailPage() {
                     <Tag color={statusMap[order.status]?.color || 'default'}>
                         {statusMap[order.status]?.label || order.status}
                     </Tag>
+                    <Tag color={salesChannel.color}>{salesChannel.label}</Tag>
                 </Space>
                 <Space>
                     <Button icon={<PrinterOutlined />} onClick={handlePrint}>
@@ -324,6 +373,16 @@ export default function OrderDetailPage() {
                     <Card title="Detalles del Cliente" variant="borderless" style={{ marginBottom: 24 }}>
                         <Descriptions column={1} size="small">
                             <Descriptions.Item label="Fecha">{dayjs(order.created_at).format('DD MMM YYYY, HH:mm')}</Descriptions.Item>
+                            <Descriptions.Item label="Canal">{salesChannel.label}</Descriptions.Item>
+                            {order.external_reference && (
+                                <Descriptions.Item label="Referencia canal">{order.external_reference}</Descriptions.Item>
+                            )}
+                            {order.payment_method && (
+                                <Descriptions.Item label="Método de pago">{order.payment_method}</Descriptions.Item>
+                            )}
+                            {order.payment_reference && (
+                                <Descriptions.Item label="Referencia pago">{order.payment_reference}</Descriptions.Item>
+                            )}
                             <Descriptions.Item label="Nombre">{order.shipping_name}</Descriptions.Item>
                             <Descriptions.Item label="Teléfono / WS">{order.shipping_phone}</Descriptions.Item>
                             <Descriptions.Item label="Dirección">{order.shipping_address || '-'}</Descriptions.Item>
