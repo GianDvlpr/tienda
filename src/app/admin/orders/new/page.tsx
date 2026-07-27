@@ -306,6 +306,17 @@ export default function NewAdminOrderPage() {
                                 <Input placeholder="Nombre completo" />
                             </Form.Item>
 
+                            <Form.Item
+                                name="shipping_dni"
+                                label="DNI"
+                                rules={[
+                                    { required: true, message: 'Ingresa el DNI del cliente' },
+                                    { pattern: /^\d{8}$/, message: 'El DNI debe tener 8 dígitos' },
+                                ]}
+                            >
+                                <Input placeholder="Ej. 12345678" maxLength={8} inputMode="numeric" />
+                            </Form.Item>
+
                             <Form.Item name="shipping_phone" label="Celular / WhatsApp" rules={[{ required: true, message: 'Ingresa el celular' }]}>
                                 <Input placeholder="Ej. 987654321" />
                             </Form.Item>

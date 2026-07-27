@@ -29,6 +29,7 @@ type ManualOrderItemInput = {
 
 type ManualOrderRequest = {
     shipping_name?: string;
+    shipping_dni?: string;
     shipping_phone?: string;
     shipping_address?: string;
     shipping_city?: string;
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
     try {
         const body = await req.json() as ManualOrderRequest;
         const shippingName = normalizeText(body.shipping_name);
+        const shippingDni = normalizeText(body.shipping_dni);
         const shippingPhone = normalizeText(body.shipping_phone);
         const shippingAddress = normalizeText(body.shipping_address) || 'Venta por canal externo';
         const shippingCity = normalizeText(body.shipping_city) || null;
@@ -74,8 +76,12 @@ export async function POST(req: Request) {
         const status = normalizeText(body.status).toUpperCase() || 'PAID';
         const rawItems: ManualOrderItemInput[] = Array.isArray(body.items) ? body.items : [];
 
-        if (!shippingName || !shippingPhone) {
-            return NextResponse.json({ error: 'Nombre y celular del cliente son obligatorios' }, { status: 400 });
+        if (!shippingName || !shippingDni || !shippingPhone) {
+            return NextResponse.json({ error: 'Nombre, DNI y celular del cliente son obligatorios' }, { status: 400 });
+        }
+
+        if (!/^\d{8}$/.test(shippingDni)) {
+            return NextResponse.json({ error: 'El DNI debe tener 8 dígitos' }, { status: 400 });
         }
 
         if (!validSalesChannels.has(salesChannel)) {
@@ -154,6 +160,7 @@ export async function POST(req: Request) {
                     code,
                     status,
                     shipping_name: shippingName,
+                    shipping_dni: shippingDni,
                     shipping_phone: shippingPhone,
                     shipping_address: shippingAddress,
                     shipping_city: shippingCity,

@@ -24,6 +24,7 @@ type CheckoutItem = {
 
 type CheckoutBody = {
     shipping_name?: string;
+    shipping_dni?: string;
     shipping_phone?: string;
     shipping_address?: string;
     items?: CheckoutItem[];
@@ -46,14 +47,23 @@ function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Error inesperado';
 }
 
+function normalizeText(value: unknown) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json() as CheckoutBody;
-        const { shipping_name, shipping_phone, shipping_address, items = [], coupon_code, culqi_token, email, payment_method } = body;
+        const { shipping_name, shipping_dni, shipping_phone, shipping_address, items = [], coupon_code, culqi_token, email, payment_method } = body;
+        const shippingDni = normalizeText(shipping_dni);
         const method = payment_method || 'CULQI'; // Default to Culqi for older clients
 
-        if (!shipping_name || !shipping_phone || !items || items.length === 0) {
+        if (!shipping_name || !shippingDni || !shipping_phone || !items || items.length === 0) {
             return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
+        }
+
+        if (!/^\d{8}$/.test(shippingDni)) {
+            return NextResponse.json({ error: 'El DNI debe tener 8 dígitos' }, { status: 400 });
         }
 
         if (method === 'CULQI' && !culqi_token) {
@@ -228,6 +238,7 @@ export async function POST(req: Request) {
                     code,
                     status: method === 'WHATSAPP' ? 'PENDING_WS' : 'PAID',
                     shipping_name,
+                    shipping_dni: shippingDni,
                     shipping_phone,
                     shipping_address: shipping_address || 'Por confirmar',
                     subtotal: serverSubtotal,

@@ -13,11 +13,53 @@ import {
     LoadingOutlined 
 } from '@ant-design/icons';
 import Link from 'next/link';
-import { useCartStore } from '@/store/cart.store';
+import { useCartStore, type CartItem } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
-import { calculateBundleDiscount } from '@/lib/bundle-discount';
+import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 
 const { Text, Title } = Typography;
+
+type CouponValidation = {
+    success: true;
+    code: string;
+    discountAmount: number;
+    min_purchase?: number | string | null;
+};
+
+type CouponValidationResponse = CouponValidation | { success?: false; error?: string };
+
+type CheckoutFormValues = {
+    shipping_name: string;
+    shipping_dni: string;
+    shipping_phone: string;
+    shipping_address?: string;
+};
+
+type CheckoutPayload = CheckoutFormValues & {
+    items: CartItem[];
+    subtotal: number;
+};
+
+type CulqiInstance = {
+    publicKey?: string;
+    token?: { id: string; email?: string };
+    error?: { user_message?: string };
+    close?: () => void;
+    settings: (settings: { title: string; currency: string; amount: number }) => void;
+    options: (options: {
+        lang: string;
+        installments: boolean;
+        paymentMethods: Record<string, boolean>;
+    }) => void;
+    open: () => void;
+};
+
+declare global {
+    interface Window {
+        culqi?: () => Promise<void>;
+        Culqi?: CulqiInstance;
+    }
+}
 
 export default function MiniCart({
     open,
@@ -38,15 +80,15 @@ export default function MiniCart({
     const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<'CULQI' | 'WHATSAPP'>('CULQI');
     const [form] = Form.useForm();
-    const shippingDataRef = useRef<any>(null);
+    const shippingDataRef = useRef<CheckoutPayload | null>(null);
     const processingRef = useRef(false);
 
     // Coupon and Bundle states
     const [couponCode, setCouponCode] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<CouponValidation | null>(null);
     const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
-    const [activeBundles, setActiveBundles] = useState<any[]>([]);
-    const appliedCouponRef = useRef<any>(null);
+    const [activeBundles, setActiveBundles] = useState<BundleDiscountPromotion[]>([]);
+    const appliedCouponRef = useRef<CouponValidation | null>(null);
 
     useEffect(() => {
         appliedCouponRef.current = appliedCoupon;
@@ -76,9 +118,10 @@ export default function MiniCart({
 
     // Global callback required by Culqi documentation
     useEffect(() => {
-        (window as any).culqi = async () => {
+        window.culqi = async () => {
             if (processingRef.current) return; // Prevent double firing
-            const Culqi = (window as any).Culqi;
+            const Culqi = window.Culqi;
+            if (!Culqi) return;
             
             if (Culqi.token) {
                 processingRef.current = true;
@@ -109,7 +152,7 @@ export default function MiniCart({
                     subtotal: subtotal - bundleDiscount 
                 })
             });
-            const data = await res.json();
+            const data = await res.json() as CouponValidationResponse;
             if (data.success) {
                 setAppliedCoupon(data);
                 toast.success(`Cupón aplicado: -${formatPEN(data.discountAmount)}`);
@@ -125,7 +168,7 @@ export default function MiniCart({
 
     const finalTotal = Math.max(0, subtotal - bundleDiscount - (appliedCoupon?.discountAmount || 0));
 
-    const handleCheckoutSubmit = (values: any) => {
+    const handleCheckoutSubmit = (values: CheckoutFormValues) => {
         const frozenItems = useCartStore.getState().items;
         const frozenSubtotal = useCartStore.getState().subtotal();
         
@@ -140,7 +183,7 @@ export default function MiniCart({
             return;
         }
 
-        const Culqi = (window as any).Culqi;
+        const Culqi = window.Culqi;
         if (!Culqi) {
             toast.error('Culqi no está cargado. Revisa tu conexión a internet.');
             return;
@@ -168,7 +211,7 @@ export default function MiniCart({
         Culqi.open();
     };
 
-    const processWhatsAppCheckout = async (payload: any) => {
+    const processWhatsAppCheckout = async (payload: CheckoutPayload) => {
         setIsSubmitting(true);
         try {
             const res = await fetch('/api/store/checkout', {
@@ -176,6 +219,7 @@ export default function MiniCart({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     shipping_name: payload.shipping_name,
+                    shipping_dni: payload.shipping_dni,
                     shipping_phone: payload.shipping_phone,
                     shipping_address: payload.shipping_address,
                     items: payload.items,
@@ -196,7 +240,7 @@ export default function MiniCart({
             const orderCode = data.orderCode;
 
             let text = `¡Hola! Quiero hacer el pedido *${orderCode}*:\n\n`;
-            payload.items.forEach((item: any) => {
+            payload.items.forEach((item) => {
                 text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color}) - ${formatPEN(item.unitPrice * item.qty)}\n`;
             });
 
@@ -215,6 +259,7 @@ export default function MiniCart({
 
             text += `*Mis datos:*\n`;
             text += `Nombre: ${payload.shipping_name}\n`;
+            text += `DNI: ${payload.shipping_dni}\n`;
             if (payload.shipping_address) {
                 text += `Dirección: ${payload.shipping_address}\n`;
             }
@@ -231,8 +276,8 @@ export default function MiniCart({
             const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51907360760';
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
             window.open(waUrl, '_blank');
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Ocurrió un error al procesar el pedido');
         } finally {
             setIsSubmitting(false);
         }
@@ -243,12 +288,21 @@ export default function MiniCart({
         const payload = shippingDataRef.current;
         const currentCoupon = appliedCouponRef.current;
 
+        if (!payload) {
+            toast.error('Completa tus datos de envío antes de pagar');
+            setIsSubmitting(false);
+            setIsProcessingPayment(false);
+            processingRef.current = false;
+            return;
+        }
+
         try {
             const res = await fetch('/api/store/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     shipping_name: payload.shipping_name,
+                    shipping_dni: payload.shipping_dni,
                     shipping_phone: payload.shipping_phone,
                     shipping_address: payload.shipping_address,
                     items: payload.items,
@@ -283,8 +337,8 @@ export default function MiniCart({
                 zIndex: 9999
             });
             
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Ocurrió un error al procesar el pedido');
         } finally {
             setIsSubmitting(false);
             setIsProcessingPayment(false);
@@ -450,7 +504,18 @@ export default function MiniCart({
                             <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Completo</Text>} name="shipping_name" rules={[{ required: true, message: 'Requerido' }]}>
                                 <Input variant="filled" placeholder="Tu nombre" size="large" style={{ borderRadius: 4 }} />
                             </Form.Item>
-                            
+
+                            <Form.Item
+                                label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>DNI</Text>}
+                                name="shipping_dni"
+                                rules={[
+                                    { required: true, message: 'Requerido para el envío' },
+                                    { pattern: /^\d{8}$/, message: 'El DNI debe tener 8 dígitos' },
+                                ]}
+                            >
+                                <Input variant="filled" placeholder="12345678" size="large" maxLength={8} inputMode="numeric" style={{ borderRadius: 4 }} />
+                            </Form.Item>
+
                             <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp</Text>} name="shipping_phone" rules={[{ required: true, message: 'Requerido' }]}>
                                 <Input variant="filled" placeholder="999 999 999" size="large" style={{ borderRadius: 4 }} />
                             </Form.Item>

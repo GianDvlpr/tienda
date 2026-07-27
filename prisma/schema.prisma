@@ -62,6 +62,7 @@ model order_header {
   status             String               @db.NVarChar(30)
   customer_id        String?              @db.UniqueIdentifier
   shipping_name      String               @db.NVarChar(200)
+  shipping_dni       String?              @db.NVarChar(20)
   shipping_phone     String               @db.NVarChar(30)
   shipping_address   String               @db.NVarChar(500)
   shipping_city      String?              @db.NVarChar(120)
