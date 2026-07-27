@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
 import fs from 'fs';
+<<<<<<< HEAD
+=======
+import { calculateBundleDiscount } from '@/lib/bundle-discount';
+>>>>>>> f5d018e8dbc51883cfd84d969520b277ddada00b
 
 const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
 
@@ -38,8 +42,13 @@ function getErrorMessage(error: unknown) {
 
 export async function POST(req: Request) {
     try {
+<<<<<<< HEAD
         const body = await req.json() as CheckoutBody;
         const { shipping_name, shipping_phone, shipping_address, items = [], coupon_code, culqi_token, email, payment_method } = body;
+=======
+        const body = await req.json();
+        const { shipping_name, shipping_phone, shipping_address, items, coupon_code, culqi_token, email, payment_method } = body;
+>>>>>>> f5d018e8dbc51883cfd84d969520b277ddada00b
         const method = payment_method || 'CULQI'; // Default to Culqi for older clients
 
         if (!shipping_name || !shipping_phone || !items || items.length === 0) {
@@ -75,6 +84,8 @@ export async function POST(req: Request) {
         logToFile(`[CHECKOUT] Items in Cart: ${items.length}, Variants found: ${variantsInCart.length}`);
 
         const cartProductStats: Record<string, number> = {};
+        const serverBundleItems: { productId: string; qty: number; unitPrice: number }[] = [];
+
         for (const item of items) {
             const variant = variantsInCart.find(v => 
                 v.variant_id.toString().toLowerCase().trim() === item.variantId.toString().toLowerCase().trim()
@@ -82,6 +93,11 @@ export async function POST(req: Request) {
             if (variant) {
                 const pId = variant.product_id.toString().toLowerCase().trim();
                 cartProductStats[pId] = (cartProductStats[pId] || 0) + item.qty;
+                serverBundleItems.push({
+                    productId: pId,
+                    qty: item.qty,
+                    unitPrice: item.unitPrice,
+                });
             } else {
                 logToFile(`[CHECKOUT] Variant NOT found in DB: ${item.variantId}`);
             }
@@ -96,8 +112,23 @@ export async function POST(req: Request) {
             include: { items: true }
         });
 
+        const tierRows = await prisma.$queryRaw<any[]>`
+            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price
+            FROM dbo.bundle_promotion
+            WHERE is_active = 1;
+        `;
+        const tiersByBundleId = new Map(tierRows.map((row) => [
+            String(row.bundle_id),
+            {
+                bundle_price: row.bundle_price === null ? null : Number(row.bundle_price),
+                tier_2_price: row.tier_2_price === null ? null : Number(row.tier_2_price),
+                tier_3_price: row.tier_3_price === null ? null : Number(row.tier_3_price),
+            }
+        ]));
+
         logToFile(`[CHECKOUT] Active Bundles: ${activeBundles.length}`);
 
+<<<<<<< HEAD
         for (const bundle of activeBundles) {
             const requiredProductIds = bundle.items.map((bi) => 
                 bi.product_id.toString().toLowerCase().trim()
@@ -113,6 +144,16 @@ export async function POST(req: Request) {
                 logToFile(`[CHECKOUT] Bundle "${bundle.name}" applied! Sets: ${possibleSets}, Savings: ${savings}`);
             }
         }
+=======
+        bundle_discount_total = calculateBundleDiscount(serverBundleItems, activeBundles.map((bundle: any) => ({
+            requiredProductIds: (bundle.items as any[]).map((bi: any) => bi.product_id.toString().toLowerCase().trim()),
+            discount_amount: Number(bundle.discount_amount || 0),
+            bundle_price: tiersByBundleId.get(String(bundle.bundle_id))?.bundle_price ?? null,
+            tier_2_price: tiersByBundleId.get(String(bundle.bundle_id))?.tier_2_price ?? null,
+            tier_3_price: tiersByBundleId.get(String(bundle.bundle_id))?.tier_3_price ?? null,
+        })));
+        logToFile(`[CHECKOUT] Bundle discount total: ${bundle_discount_total}`);
+>>>>>>> f5d018e8dbc51883cfd84d969520b277ddada00b
 
         let coupon_savings = 0;
         let validated_coupon_code: string | null = null;

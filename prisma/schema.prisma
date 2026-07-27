@@ -155,11 +155,13 @@ model product_image {
   product_id String   @db.UniqueIdentifier
   url        String   @db.NVarChar(500)
   public_id  String   @unique(map: "UX_image_public_id") @db.NVarChar(300)
+  color      String?  @db.NVarChar(80)
   sort_order Int      @default(0, map: "DF_image_sort_order")
   created_at DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_image_created_at")
   product    product  @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_image_product")
 
   @@index([product_id, sort_order, created_at(sort: Desc)], map: "IX_image_product")
+  @@index([product_id, color, sort_order], map: "IX_image_product_color")
 }
 
 model product_variant {
@@ -395,6 +397,9 @@ model bundle_promotion {
   name            String   @db.NVarChar(200)
   description     String?  @db.NVarChar(Max)
   discount_amount Decimal  @db.Decimal(18, 2)
+  bundle_price    Decimal? @db.Decimal(18, 2)
+  tier_2_price    Decimal? @db.Decimal(18, 2)
+  tier_3_price    Decimal? @db.Decimal(18, 2)
   is_active       Boolean  @default(true)
   created_at      DateTime @default(dbgenerated("sysutcdatetime()"))
   updated_at      DateTime @default(dbgenerated("sysutcdatetime()"))

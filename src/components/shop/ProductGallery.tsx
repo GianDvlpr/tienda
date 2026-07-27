@@ -6,13 +6,32 @@ import type { ProductImage } from '@/types/product';
 import Zoom from 'react-medium-image-zoom';
 import 'react-medium-image-zoom/dist/styles.css';
 
-export default function ProductGallery({ images }: { images: ProductImage[] }) {
+function normalizeColor(color?: string | null) {
+    return String(color || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+export default function ProductGallery({ images, selectedColor }: { images: ProductImage[]; selectedColor?: string | null }) {
     const { token } = theme.useToken();
     // Sort images by sort_order
     const sorted = useMemo(() => [...images].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), [images]);
-    const [activeIndex, setActiveIndex] = useState(0);
+    const [manualSelection, setManualSelection] = useState<{ color: string; index: number } | null>(null);
 
-    if (sorted.length === 0) {
+    const selectedColorKey = normalizeColor(selectedColor);
+    const displayImages = useMemo(() => {
+        if (!selectedColorKey) return sorted;
+
+        const colorImages = sorted.filter((img) => normalizeColor(img.color) === selectedColorKey);
+        if (colorImages.length > 0) return colorImages;
+
+        const genericImages = sorted.filter((img) => !normalizeColor(img.color));
+        return genericImages.length > 0 ? genericImages : sorted.slice(0, 1);
+    }, [selectedColorKey, sorted]);
+
+    const activeIndex = manualSelection?.color === selectedColorKey && manualSelection.index < displayImages.length
+        ? manualSelection.index
+        : 0;
+
+    if (displayImages.length === 0) {
         return (
             <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden' }}>
                 <div style={{ width: '100%', aspectRatio: '3 / 4', background: token.colorFillAlter }} />
@@ -23,13 +42,13 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
     return (
         <Flex gap={16} vertical={false} style={{ width: '100%' }} align="start">
             {/* --- Thumbnails Rail (Desktop: Left) --- */}
-            {sorted.length > 1 && (
+            {displayImages.length > 1 && (
                 <div className="gallery-thumbs-rail-desktop">
                     <Flex vertical gap={12} style={{ width: 80, flexShrink: 0 }}>
-                        {sorted.map((img, idx) => (
+                        {displayImages.map((img, idx) => (
                             <div 
                                 key={img.imageId || idx} 
-                                onClick={() => setActiveIndex(idx)}
+                                onClick={() => setManualSelection({ color: selectedColorKey, index: idx })}
                                 style={{ 
                                     cursor: 'pointer',
                                     borderRadius: 8,
@@ -66,7 +85,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                     <div className="main-image-container">
                         <Zoom>
                             <img
-                                src={sorted[activeIndex]?.url}
+                                src={displayImages[activeIndex]?.url}
                                 alt="Vista ampliada del producto"
                                 style={{ width: '100%', display: 'block', aspectRatio: '3 / 4', objectFit: 'cover' }}
                             />
@@ -75,13 +94,13 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
                 </Card>
 
                 {/* --- Thumbnails Rail (Mobile: Bottom) --- */}
-                {sorted.length > 1 && (
+                {displayImages.length > 1 && (
                     <div className="gallery-thumbs-rail-mobile">
                         <Flex gap={10} style={{ overflowX: 'auto', padding: '12px 2px', scrollbarWidth: 'none' }}>
-                            {sorted.map((img, idx) => (
+                            {displayImages.map((img, idx) => (
                                 <div 
                                     key={img.imageId || idx} 
-                                    onClick={() => setActiveIndex(idx)}
+                                    onClick={() => setManualSelection({ color: selectedColorKey, index: idx })}
                                     style={{ 
                                         width: 64,
                                         flexShrink: 0,

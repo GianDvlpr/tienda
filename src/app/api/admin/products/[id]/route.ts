@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { getTemporaryVariantSku, prepareVariantsWithUniqueSkus } from '@/lib/product-variant-sku';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -9,13 +10,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         const product = await prisma.product.findUnique({
             where: { product_id: id },
             include: {
-                product_image: { orderBy: { sort_order: 'asc' } },
                 product_variant: true,
                 product_collection: true
             }
         });
         if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
-        return NextResponse.json(product);
+
+        const images = await prisma.$queryRaw<any[]>`
+            SELECT image_id, product_id, url, public_id, color, sort_order, created_at
+            FROM dbo.product_image
+            WHERE product_id = ${id}
+            ORDER BY sort_order ASC, created_at DESC;
+        `;
+
+        return NextResponse.json({ ...product, product_image: images });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -61,38 +69,54 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             // 3. Sync Images (Delete all, re-insert. Not ideal for performance but fine for MVP)
             if (images) {
                 await tx.product_image.deleteMany({ where: { product_id: id } });
-                await tx.product_image.createMany({
-                    data: images.map((img: any, idx: number) => ({
-                        product_id: id,
-                        url: img.url,
-                        public_id: img.public_id || `img_${Date.now()}_${idx}`,
-                        sort_order: img.sort_order ?? idx
-                    }))
-                });
+                for (const [idx, img] of images.entries()) {
+                    await tx.$executeRaw`
+                        INSERT INTO dbo.product_image (product_id, url, public_id, color, sort_order)
+                        VALUES (
+                            ${id},
+                            ${img.url},
+                            ${img.public_id || `img_${Date.now()}_${idx}`},
+                            ${String(img.color || '').trim() || null},
+                            ${img.sort_order ?? idx}
+                        );
+                    `;
+                }
             }
 
             // 4. Upsert Variants
             // To be safe with external foreign keys (like order_item), we UPSERT instead of delete/create
             if (variants && variants.length > 0) {
                 const incomingIds = variants.map((v:any) => v.variant_id).filter(Boolean);
+                const preparedVariants = await prepareVariantsWithUniqueSkus(tx, variants, name, incomingIds);
                 // Mark missing ones as inactive instead of deleting to avoid FK errors
                 await tx.product_variant.updateMany({
                     where: { product_id: id, variant_id: { notIn: incomingIds } },
                     data: { is_active: false }
                 });
 
-                for (const v of variants) {
+                for (const [idx, v] of preparedVariants.entries()) {
+                    if (!v.variant_id) continue;
+
+                    await tx.product_variant.update({
+                        where: { variant_id: v.variant_id },
+                        data: { sku: getTemporaryVariantSku(v.variant_id, idx) }
+                    });
+                }
+
+                for (const v of preparedVariants) {
                     if (v.variant_id) {
                         await tx.product_variant.update({
                             where: { variant_id: v.variant_id },
-                            data: { sku: v.sku, size: v.size, color: v.color, price: v.price, stock: v.stock }
+                            data: { sku: v.sku, size: v.size, color: v.color, price: v.price, cost: v.cost, stock: v.stock, is_active: v.is_active ?? true }
                         });
                     } else {
                         await tx.product_variant.create({
                             data: {
                                 product_id: id,
                                 sku: v.sku, size: v.size, color: v.color, price: v.price || prod.base_price,
-                                stock: v.stock || 0
+                                cost: v.cost || prod.base_cost,
+                                stock: v.stock || 0,
+                                is_active: v.is_active ?? true
                             }
                         });
                     }
@@ -115,7 +139,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
         return NextResponse.json({ success: true, product: updated });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        const status = String(e.message || '').startsWith('Variante duplicada') ? 400 : 500;
+        return NextResponse.json({ error: e.message }, { status });
     }
 }
 

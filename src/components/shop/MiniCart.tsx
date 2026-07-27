@@ -10,11 +10,12 @@ import {
 import confetti from 'canvas-confetti';
 import { 
     DeleteFilled, WhatsAppOutlined, ArrowLeftOutlined, 
-    LoadingOutlined, TagOutlined 
+    LoadingOutlined 
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { useCartStore } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
+import { calculateBundleDiscount } from '@/lib/bundle-discount';
 
 const { Text, Title } = Typography;
 
@@ -61,21 +62,7 @@ export default function MiniCart({
     }, [open]);
 
     const bundleDiscount = useMemo(() => {
-        if (activeBundles.length === 0 || items.length === 0) return 0;
-        const cartProductStats: Record<string, number> = {};
-        items.forEach(item => {
-            cartProductStats[item.productId] = (cartProductStats[item.productId] || 0) + item.qty;
-        });
-
-        let totalSavings = 0;
-        activeBundles.forEach(bundle => {
-            const hasAll = bundle.requiredProductIds.every((id: string) => (cartProductStats[id] || 0) > 0);
-            if (hasAll) {
-                const possibleSets = Math.min(...bundle.requiredProductIds.map((id: string) => cartProductStats[id]));
-                totalSavings += possibleSets * bundle.discount_amount;
-            }
-        });
-        return totalSavings;
+        return calculateBundleDiscount(items, activeBundles);
     }, [items, activeBundles]);
 
     // Re-validate or clear coupon if subtotal changes (e.g. removed items)
@@ -108,7 +95,6 @@ export default function MiniCart({
                 if (Culqi.close) Culqi.close();
             }
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleApplyCoupon = async () => {
@@ -130,7 +116,7 @@ export default function MiniCart({
             } else {
                 toast.error(data.error || 'Cupón no válido');
             }
-        } catch (error) {
+        } catch {
             toast.error('Error al validar cupón');
         } finally {
             setIsValidatingCoupon(false);
@@ -214,9 +200,14 @@ export default function MiniCart({
                 text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color}) - ${formatPEN(item.unitPrice * item.qty)}\n`;
             });
 
-            if (appliedCoupon) {
+            if (bundleDiscount > 0 || appliedCoupon) {
                 text += `\nSubtotal: ${formatPEN(subtotal)}\n`;
-                text += `Cupón: ${appliedCoupon.code} (-${formatPEN(appliedCoupon.discountAmount)})\n`;
+                if (bundleDiscount > 0) {
+                    text += `Promo conjunto: -${formatPEN(bundleDiscount)}\n`;
+                }
+                if (appliedCoupon) {
+                    text += `Cupón: ${appliedCoupon.code} (-${formatPEN(appliedCoupon.discountAmount)})\n`;
+                }
                 text += `*Total a pagar: ${formatPEN(finalTotal)}*\n\n`;
             } else {
                 text += `\n*Total: ${formatPEN(subtotal)}*\n\n`;
@@ -341,7 +332,7 @@ export default function MiniCart({
                         </div>
                         {bundleDiscount > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text type="success">Descuento Conjunto</Text>
+                                <Text type="success">Promo Conjunto</Text>
                                 <Text type="success">-{formatPEN(bundleDiscount)}</Text>
                             </div>
                         )}
@@ -495,7 +486,7 @@ export default function MiniCart({
                                         </Flex>
                                         {bundleDiscount > 0 && (
                                             <Flex justify="space-between">
-                                                <Text type="success">Descuento Conjunto</Text>
+                                                <Text type="success">Promo Conjunto</Text>
                                                 <Text type="success">-{formatPEN(bundleDiscount)}</Text>
                                             </Flex>
                                         )}

@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Card, Flex } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, GiftOutlined, ReloadOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -26,7 +26,7 @@ export default function AdminBundlesPage() {
     const openCreateModal = () => {
         setEditingBundle(null);
         form.resetFields();
-        form.setFieldsValue({ is_active: true, discount_amount: 0, product_ids: [] });
+        form.setFieldsValue({ is_active: true, discount_amount: 0, bundle_price: null, tier_2_price: null, tier_3_price: null, product_ids: [] });
         setIsModalOpen(true);
     };
 
@@ -37,6 +37,9 @@ export default function AdminBundlesPage() {
             name: record.name,
             description: record.description,
             discount_amount: Number(record.discount_amount),
+            bundle_price: record.bundle_price ? Number(record.bundle_price) : null,
+            tier_2_price: record.tier_2_price ? Number(record.tier_2_price) : null,
+            tier_3_price: record.tier_3_price ? Number(record.tier_3_price) : null,
             is_active: record.is_active,
             product_ids: record.items?.map((i: any) => i.product_id) || []
         });
@@ -57,6 +60,16 @@ export default function AdminBundlesPage() {
     const onFinish = async (values: any) => {
         setIsSaving(true);
         try {
+            values.discount_amount = Number(values.discount_amount || 0);
+            const hasDiscount = Number(values.discount_amount || 0) > 0;
+            const hasBundlePrice = Number(values.bundle_price || 0) > 0;
+            const hasTier2 = Number(values.tier_2_price || 0) > 0;
+            const hasTier3 = Number(values.tier_3_price || 0) > 0;
+
+            if (!hasDiscount && !hasBundlePrice && !hasTier2 && !hasTier3) {
+                throw new Error('Define al menos un precio especial');
+            }
+
             const isUpdate = !!editingBundle;
             const url = isUpdate ? `/api/admin/bundles/${editingBundle.bundle_id}` : '/api/admin/bundles';
             const method = isUpdate ? 'PUT' : 'POST';
@@ -102,10 +115,25 @@ export default function AdminBundlesPage() {
             )
         },
         {
-            title: 'Ahorro / Descuento (S/)',
+            title: 'Promociones',
             dataIndex: 'discount_amount',
-            key: 'discount_amount',
-            render: (amount: number) => <Text type="success" strong>- S/ {Number(amount).toFixed(2)}</Text>
+            key: 'promotions',
+            render: (_: number, record: any) => (
+                <Space direction="vertical" size={2}>
+                    {Number(record.bundle_price || 0) > 0 && (
+                        <Text type="success" strong>Conjunto: S/ {Number(record.bundle_price).toFixed(2)}</Text>
+                    )}
+                    {!Number(record.bundle_price || 0) && Number(record.discount_amount || 0) > 0 && (
+                        <Text type="success" strong>Conjunto: - S/ {Number(record.discount_amount).toFixed(2)}</Text>
+                    )}
+                    {Number(record.tier_2_price || 0) > 0 && (
+                        <Text type="success">2 conjuntos por S/ {Number(record.tier_2_price).toFixed(2)}</Text>
+                    )}
+                    {Number(record.tier_3_price || 0) > 0 && (
+                        <Text type="success">3 conjuntos por S/ {Number(record.tier_3_price).toFixed(2)}</Text>
+                    )}
+                </Space>
+            )
         },
         {
             title: 'Estado',
@@ -172,7 +200,7 @@ export default function AdminBundlesPage() {
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={null}
-                width={600}
+                width={720}
             >
                 <Form layout="vertical" form={form} onFinish={onFinish} style={{ marginTop: 24 }}>
                     <Form.Item 
@@ -201,14 +229,33 @@ export default function AdminBundlesPage() {
                         </Select>
                     </Form.Item>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <Form.Item name="discount_amount" hidden>
+                        <InputNumber />
+                    </Form.Item>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                         <Form.Item 
-                            name="discount_amount" 
-                            label="Descuento Total (S/)" 
-                            extra="Monto que se restará del total cuando los productos estén juntos."
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            name="bundle_price" 
+                            label="Precio conjunto (S/)" 
+                            extra="Opcional. Si lleva todos los productos del conjunto, paga este total."
                         >
-                            <InputNumber style={{ width: '100%' }} min={0.01} step={0.01} precision={2} prefix="S/" />
+                            <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
+                        </Form.Item>
+
+                        <Form.Item
+                            name="tier_2_price"
+                            label="Precio 2 conjuntos (S/)"
+                            extra="Opcional. Si lleva 2 conjuntos completos, paga este total. Aplica sin importar color o talla."
+                        >
+                            <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
+                        </Form.Item>
+
+                        <Form.Item
+                            name="tier_3_price"
+                            label="Precio 3 conjuntos (S/)"
+                            extra="Opcional. Si lleva 3 conjuntos completos, paga este total. Aplica sin importar color o talla."
+                        >
+                            <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
                         </Form.Item>
 
                         <Form.Item name="is_active" label="Estado" valuePropName="checked">

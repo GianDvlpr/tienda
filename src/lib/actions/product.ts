@@ -32,7 +32,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
 
         // 2) Images
         const images = await prisma.$queryRaw<any[]>`
-            SELECT image_id, url, public_id, sort_order
+            SELECT image_id, url, public_id, color, sort_order
             FROM dbo.product_image
             WHERE product_id = ${p.product_id}
             ORDER BY sort_order ASC, created_at DESC;
@@ -53,6 +53,52 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
             ORDER BY v.size ASC, v.color ASC;
         `;
 
+        const bundleRows = await (prisma as any).bundle_promotion.findMany({
+            where: {
+                is_active: true,
+                items: {
+                    some: { product_id: p.product_id }
+                }
+            },
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                product_id: true,
+                                name: true,
+                                slug: true,
+                                is_active: true,
+                                base_price: true,
+                                product_image: {
+                                    orderBy: { sort_order: 'asc' },
+                                    take: 1
+                                },
+                                product_variant: {
+                                    where: { is_active: true },
+                                    take: 1
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+        });
+        const bundleTierRows = await prisma.$queryRaw<any[]>`
+            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price
+            FROM dbo.bundle_promotion
+            WHERE is_active = 1;
+        `;
+        const tiersByBundleId = new Map(bundleTierRows.map((row) => [
+            String(row.bundle_id),
+            {
+                bundle_price: row.bundle_price === null ? null : Number(row.bundle_price),
+                tier_2_price: row.tier_2_price === null ? null : Number(row.tier_2_price),
+                tier_3_price: row.tier_3_price === null ? null : Number(row.tier_3_price),
+            }
+        ]));
+
         return {
             product: {
                 productId: p.product_id,
@@ -71,6 +117,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 imageId: r.image_id,
                 url: r.url,
                 publicId: r.public_id,
+                color: r.color ?? null,
                 sortOrder: Number(r.sort_order ?? 0),
             })),
             variants: (variants ?? []).map((r: any) => ({
@@ -81,42 +128,14 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 price: Number(r.price ?? 0),
                 stock: Number(r.stock ?? 0),
             })),
-            bundles: await (prisma as any).bundle_promotion.findMany({
-                where: {
-                    is_active: true,
-                    items: {
-                        some: { product_id: p.product_id }
-                    }
-                },
-                include: {
-                    items: {
-                        include: {
-                            product: {
-                                select: {
-                                    product_id: true,
-                                    name: true,
-                                    slug: true,
-                                    is_active: true,
-                                    base_price: true,
-                                    product_image: {
-                                        orderBy: { sort_order: 'asc' },
-                                        take: 1
-                                    },
-                                    product_variant: {
-                                        where: { is_active: true },
-                                        take: 1
-                                    }
-                                }
-                            }
-
-                        }
-                    }
-                }
-            }).then((rows: any[]) => rows.map((b: any) => ({
+            bundles: bundleRows.map((b: any) => ({
                 bundle_id: b.bundle_id,
                 name: b.name,
                 description: b.description,
                 discount_amount: Number(b.discount_amount),
+                bundle_price: tiersByBundleId.get(String(b.bundle_id))?.bundle_price ?? null,
+                tier_2_price: tiersByBundleId.get(String(b.bundle_id))?.tier_2_price ?? null,
+                tier_3_price: tiersByBundleId.get(String(b.bundle_id))?.tier_3_price ?? null,
                 items: b.items.filter((i:any) => i.product.is_active).map((item: any) => {
                     const firstVariant = item.product.product_variant?.[0];
                     return {
@@ -132,7 +151,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                         sku: firstVariant?.sku || ''
                     };
                 })
-            })))
+            }))
 
 
         };
