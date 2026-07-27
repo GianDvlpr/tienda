@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
 import fs from 'fs';
-<<<<<<< HEAD
-=======
 import { calculateBundleDiscount } from '@/lib/bundle-discount';
->>>>>>> f5d018e8dbc51883cfd84d969520b277ddada00b
 
 const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
 
