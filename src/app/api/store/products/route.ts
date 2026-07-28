@@ -76,20 +76,20 @@ export async function GET(req: NextRequest) {
                 FROM dbo.product p
                 WHERE p.is_active = 1
                   AND (
-                    ${collection} IS NULL
+                    CAST(${collection} AS NVARCHAR(255)) IS NULL
                     OR EXISTS (
                         SELECT 1
                         FROM dbo.product_collection pc
                         JOIN dbo.collection c ON c.collection_id = pc.collection_id
                         WHERE pc.product_id = p.product_id
-                          AND c.slug = ${collection}
+                          AND c.slug = CAST(${collection} AS NVARCHAR(255))
                           AND c.is_active = 1
                     )
                   )
                   AND (
-                    ${q} IS NULL
-                    OR p.name LIKE '%' + ${q} + '%'
-                    OR p.description LIKE '%' + ${q} + '%'
+                    CAST(${q} AS NVARCHAR(MAX)) IS NULL
+                    OR p.name LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
+                    OR p.description LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
                   )
                   AND EXISTS (
                     SELECT 1
@@ -153,20 +153,20 @@ export async function GET(req: NextRequest) {
             FROM dbo.product p
             WHERE p.is_active = 1
               AND (
-                ${collection} IS NULL
+                CAST(${collection} AS NVARCHAR(255)) IS NULL
                 OR EXISTS (
                     SELECT 1
                     FROM dbo.product_collection pc
                     JOIN dbo.collection c ON c.collection_id = pc.collection_id
                     WHERE pc.product_id = p.product_id
-                      AND c.slug = ${collection}
+                      AND c.slug = CAST(${collection} AS NVARCHAR(255))
                       AND c.is_active = 1
                 )
               )
               AND (
-                ${q} IS NULL
-                OR p.name LIKE '%' + ${q} + '%'
-                OR p.description LIKE '%' + ${q} + '%'
+                CAST(${q} AS NVARCHAR(MAX)) IS NULL
+                OR p.name LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
+                OR p.description LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
               )
               AND EXISTS (
                 SELECT 1
