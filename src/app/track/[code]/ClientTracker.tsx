@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Steps, Row, Col, Tag, Space, Switch } from 'antd';
+import { Card, Typography, Steps, Row, Col, Tag, Space, Switch, Image } from 'antd';
 import { CheckCircleOutlined, LoadingOutlined, InboxOutlined, HomeOutlined, ClockCircleOutlined, BulbOutlined, BulbFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
@@ -70,6 +70,7 @@ export default function ClientTracker({ order, code }: { order: any, code: strin
     const isCancelled = liveStatus === 'CANCELLED';
     let currentStep = statusTimeline.findIndex(s => s.key.includes(liveStatus));
     if (currentStep === -1) currentStep = 0;
+    const publicPhotos = order.order_photo || [];
 
     return (
         <div style={{ minHeight: '100vh', background: isDarkMode ? '#141414' : '#fafafa', padding: '0 10px 20px', fontFamily: 'sans-serif' }}>
@@ -170,6 +171,27 @@ export default function ClientTracker({ order, code }: { order: any, code: strin
                         <Text type="secondary" style={{ fontSize: 12 }}>Nota: Los importes económicos se ocultan por motivos de privacidad.</Text>
                     </div>
                 </Card>
+
+                {publicPhotos.length > 0 && (
+                    <Card title="Fotos de tu pedido" style={{ marginTop: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                        <Row gutter={[12, 12]}>
+                            {publicPhotos.map((photo: any) => (
+                                <Col xs={12} sm={8} key={photo.photo_id}>
+                                    <Image
+                                        src={photo.url}
+                                        alt="Foto del pedido"
+                                        style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 8 }}
+                                    />
+                                    {photo.caption && (
+                                        <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                                            {photo.caption}
+                                        </Text>
+                                    )}
+                                </Col>
+                            ))}
+                        </Row>
+                    </Card>
+                )}
 
                 <div style={{ textAlign: 'center', marginTop: 40, paddingBottom: 40 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>© {new Date().getFullYear()} Aura Boutique. Todos los derechos reservados.</Text>

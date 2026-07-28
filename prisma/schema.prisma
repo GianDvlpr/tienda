@@ -86,11 +86,27 @@ model order_header {
   inventory_movement inventory_movement[]
   customer           customer?            @relation(fields: [customer_id], references: [customer_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_customer")
   order_item         order_item[]
+  order_photo        order_photo[]
   stock_reservation  stock_reservation[]
 
   @@index([customer_id, created_at(sort: Desc)], map: "IX_order_customer")
   @@index([sales_channel, created_at(sort: Desc)], map: "IX_order_sales_channel_created")
   @@index([status, created_at(sort: Desc)], map: "IX_order_status_created")
+}
+
+model order_photo {
+  photo_id           String       @id(map: "PK_order_photo") @default(dbgenerated("newsequentialid()"), map: "DF_order_photo_id") @db.UniqueIdentifier
+  order_id           String       @db.UniqueIdentifier
+  url                String       @db.NVarChar(500)
+  public_id          String?      @db.NVarChar(300)
+  caption            String?      @db.NVarChar(250)
+  is_public_tracking Boolean      @default(false, map: "DF_order_photo_public_tracking")
+  created_at         DateTime     @default(dbgenerated("sysutcdatetime()"), map: "DF_order_photo_created_at")
+  updated_at         DateTime     @default(dbgenerated("sysutcdatetime()"), map: "DF_order_photo_updated_at")
+  order_header       order_header @relation(fields: [order_id], references: [order_id], onUpdate: NoAction, map: "FK_order_photo_order")
+
+  @@index([order_id, created_at(sort: Desc)], map: "IX_order_photo_order_created")
+  @@index([order_id, is_public_tracking, created_at(sort: Desc)], map: "IX_order_photo_tracking")
 }
 
 model order_item {
@@ -418,4 +434,3 @@ model bundle_promotion_item {
   
   @@unique([bundle_id, product_id])
 }
-

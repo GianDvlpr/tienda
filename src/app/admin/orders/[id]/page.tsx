@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm } from 'antd';
+import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch } from 'antd';
 import { CloseOutlined, DeleteOutlined, EditOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
@@ -11,6 +11,7 @@ import { formatPEN } from '@/lib/money';
 import Link from 'next/link';
 import dayjs from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
+import ImageUploader from '@/components/admin/ImageUploader';
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
@@ -100,6 +101,15 @@ type Product = {
     product_variant?: ProductVariant[];
 };
 
+type OrderPhoto = {
+    photo_id: string;
+    url: string;
+    public_id?: string | null;
+    caption?: string | null;
+    is_public_tracking: boolean | number;
+    created_at: string;
+};
+
 type AdminOrderDetail = {
     order_id: string;
     code: string;
@@ -122,10 +132,15 @@ type AdminOrderDetail = {
     payment_method?: string | null;
     payment_reference?: string | null;
     order_item?: OrderItem[];
+    order_photo?: OrderPhoto[];
 };
 
 function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Error al actualizar pedido';
+}
+
+function isOrderPhotoPublic(photo: OrderPhoto) {
+    return photo.is_public_tracking === true || photo.is_public_tracking === 1;
 }
 
 export default function OrderDetailPage() {
@@ -142,6 +157,8 @@ export default function OrderDetailPage() {
     const [selectedQty, setSelectedQty] = useState(1);
     const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isAddingPhoto, setIsAddingPhoto] = useState(false);
+    const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
 
     const originalQtyByVariant = new Map((order?.order_item || []).map(item => [item.variant_id, item.qty]));
     const variantOptions = (products || []).flatMap(product =>
@@ -163,6 +180,7 @@ export default function OrderDetailPage() {
 
     const editSubtotal = editItems.reduce((sum, item) => sum + item.qty * item.unit_price, 0);
     const editTotal = order ? Math.max(0, editSubtotal + Number(order.shipping_cost || 0) - Number(order.discount_total || 0)) : editSubtotal;
+    const orderPhotos = order?.order_photo || [];
 
     const handleStartEdit = () => {
         if (!order) return;
@@ -320,6 +338,80 @@ export default function OrderDetailPage() {
         const encodedText = encodeURIComponent(text);
         const phone = order.shipping_phone.replace(/\D/g, ''); // limpia espacios y símbolos 
         window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
+    };
+
+    const handleOrderPhotoUpload = async (url: string, publicId: string) => {
+        setIsAddingPhoto(true);
+        try {
+            const res = await fetch(`/api/admin/orders/${id}/photos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url,
+                    public_id: publicId,
+                    is_public_tracking: false,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Error al registrar foto');
+            }
+
+            toast.success('Foto agregada como privada');
+            mutate();
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setIsAddingPhoto(false);
+        }
+    };
+
+    const handleTogglePhotoVisibility = async (photo: OrderPhoto, checked: boolean) => {
+        const busyKey = `${photo.photo_id}:visibility`;
+        setPhotoBusyId(busyKey);
+        try {
+            const res = await fetch(`/api/admin/orders/${id}/photos/${photo.photo_id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    caption: photo.caption || null,
+                    is_public_tracking: checked,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Error al actualizar foto');
+            }
+
+            toast.success(checked ? 'Foto visible en seguimiento' : 'Foto marcada como privada');
+            mutate();
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setPhotoBusyId(null);
+        }
+    };
+
+    const handleDeleteOrderPhoto = async (photoId: string) => {
+        const busyKey = `${photoId}:delete`;
+        setPhotoBusyId(busyKey);
+        try {
+            const res = await fetch(`/api/admin/orders/${id}/photos/${photoId}`, { method: 'DELETE' });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Error al eliminar foto');
+            }
+
+            toast.success('Foto eliminada del pedido');
+            mutate();
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setPhotoBusyId(null);
+        }
     };
 
     const handlePrint = () => {
@@ -675,10 +767,83 @@ export default function OrderDetailPage() {
                     </Card>
 
                     {!isEditing && order.notes && (
-                        <Card title="Notas Internas" variant="borderless">
+                        <Card title="Notas Internas" variant="borderless" style={{ marginBottom: 24 }}>
                             <Text>{order.notes}</Text>
                         </Card>
                     )}
+
+                    <Card title="Fotos del Pedido" variant="borderless">
+                        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                            <Alert
+                                type="info"
+                                showIcon
+                                message="Las fotos se agregan como privadas. Activa 'Visible' solo en imágenes que el cliente pueda ver en su seguimiento."
+                            />
+
+                            <ImageUploader
+                                onUploadSuccess={handleOrderPhotoUpload}
+                                buttonText={isAddingPhoto ? 'Registrando foto...' : 'Añadir foto del pedido'}
+                                multiple
+                            />
+
+                            {orderPhotos.length === 0 ? (
+                                <Text type="secondary">Aún no hay fotos registradas para este pedido.</Text>
+                            ) : (
+                                <Row gutter={[12, 12]}>
+                                    {orderPhotos.map((photo) => {
+                                        const isPublic = isOrderPhotoPublic(photo);
+                                        return (
+                                            <Col xs={24} sm={12} lg={8} key={photo.photo_id}>
+                                                <Card
+                                                    size="small"
+                                                    cover={
+                                                        <Image
+                                                            src={photo.url}
+                                                            alt="Foto del pedido"
+                                                            height={160}
+                                                            style={{ width: '100%', objectFit: 'cover' }}
+                                                        />
+                                                    }
+                                                >
+                                                    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                                                        <Tag color={isPublic ? 'green' : 'default'}>
+                                                            {isPublic ? 'Visible en seguimiento' : 'Privada'}
+                                                        </Tag>
+                                                        <Switch
+                                                            checked={isPublic}
+                                                            loading={photoBusyId === `${photo.photo_id}:visibility`}
+                                                            checkedChildren="Visible"
+                                                            unCheckedChildren="Privada"
+                                                            onChange={(checked) => handleTogglePhotoVisibility(photo, checked)}
+                                                        />
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                                            {dayjs(photo.created_at).format('DD MMM YYYY, HH:mm')}
+                                                        </Text>
+                                                        <Popconfirm
+                                                            title="Eliminar foto"
+                                                            description="¿Eliminar esta foto del pedido?"
+                                                            okText="Sí"
+                                                            cancelText="No"
+                                                            onConfirm={() => handleDeleteOrderPhoto(photo.photo_id)}
+                                                        >
+                                                            <Button
+                                                                danger
+                                                                icon={<DeleteOutlined />}
+                                                                loading={photoBusyId === `${photo.photo_id}:delete`}
+                                                                block
+                                                            >
+                                                                Eliminar
+                                                            </Button>
+                                                        </Popconfirm>
+                                                    </Space>
+                                                </Card>
+                                            </Col>
+                                        );
+                                    })}
+                                </Row>
+                            )}
+                        </Space>
+                    </Card>
                 </Col>
                 
                 <Col xs={24} md={8}>

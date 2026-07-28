@@ -32,6 +32,17 @@ type UpdateOrderRequest = {
     items?: OrderItemInput[];
 };
 
+type OrderPhotoRow = {
+    photo_id: string;
+    order_id: string;
+    url: string;
+    public_id: string | null;
+    caption: string | null;
+    is_public_tracking: boolean | number;
+    created_at: Date;
+    updated_at: Date;
+};
+
 function normalizeText(value: unknown) {
     return typeof value === 'string' ? value.trim() : '';
 }
@@ -61,7 +72,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
         }
 
-        return NextResponse.json(order);
+        const photos = await prisma.$queryRaw<OrderPhotoRow[]>`
+            SELECT photo_id, order_id, url, public_id, caption, is_public_tracking, created_at, updated_at
+            FROM dbo.order_photo
+            WHERE order_id = ${id}
+            ORDER BY created_at DESC
+        `;
+
+        return NextResponse.json({ ...order, order_photo: photos });
     } catch (e: unknown) {
         return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });
     }
