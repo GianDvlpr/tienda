@@ -115,12 +115,17 @@ export async function GET(req: NextRequest) {
             FROM filtered_products fp
             OUTER APPLY (
                 SELECT
-                    MIN(COALESCE(v.price, fp.base_price, 0)) AS min_price,
-                    MAX(COALESCE(v.price, fp.base_price, 0)) AS max_price,
-                    SUM(CASE WHEN v.stock > 0 THEN 1 ELSE 0 END) AS variants_in_stock
-                FROM dbo.product_variant v
-                WHERE v.product_id = fp.product_id
-                  AND v.is_active = 1
+                    MIN(priced_variants.variant_price) AS min_price,
+                    MAX(priced_variants.variant_price) AS max_price,
+                    SUM(CASE WHEN priced_variants.stock > 0 THEN 1 ELSE 0 END) AS variants_in_stock
+                FROM (
+                    SELECT
+                        COALESCE(v.price, fp.base_price, 0) AS variant_price,
+                        v.stock
+                    FROM dbo.product_variant v
+                    WHERE v.product_id = fp.product_id
+                      AND v.is_active = 1
+                ) priced_variants
             ) price_stats
             OUTER APPLY (
                 SELECT
