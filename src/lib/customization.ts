@@ -1,4 +1,4 @@
-export const CUSTOM_ORDER_NOTICE = 'Tiempo de confección: hasta 3 días hábiles como máximo. El plazo empieza a contar desde el siguiente día hábil de confirmado el pedido. Este tiempo no incluye el plazo de entrega de la agencia. Para iniciar la confección se requiere un adelanto del 30% del costo total del pedido personalizado.';
+export const CUSTOM_ORDER_NOTICE = 'Tiempo de confección: hasta 3 días hábiles como máximo. El plazo empieza a contar desde el siguiente día hábil de confirmado el pedido. Este tiempo no incluye el plazo de entrega de la agencia. Para iniciar la confección se requiere un adelanto del 30% del costo total del pedido.';
 
 export const CUSTOM_MEASUREMENT_LABELS = {
     PANTS: ['Cintura', 'Cadera', 'Tiro delantero', 'Tiro espalda', 'Largo'],

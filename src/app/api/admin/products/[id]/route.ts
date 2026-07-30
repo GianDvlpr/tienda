@@ -116,9 +116,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 }
             });
 
+            const customFabricSupplyId = is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null;
             await tx.$executeRaw`
                 UPDATE dbo.product
-                SET custom_fabric_supply_id = ${is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null}
+                SET custom_fabric_supply_id = CAST(${customFabricSupplyId} AS uniqueidentifier)
                 WHERE product_id = ${id};
             `;
 

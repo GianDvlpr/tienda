@@ -83,13 +83,12 @@ export async function POST(req: Request) {
                 `;
             }
 
-            if (is_customizable && custom_fabric_supply_id) {
-                await tx.$executeRaw`
-                    UPDATE dbo.product
-                    SET custom_fabric_supply_id = ${custom_fabric_supply_id}
-                    WHERE product_id = ${product.product_id};
-                `;
-            }
+            const customFabricSupplyId = is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null;
+            await tx.$executeRaw`
+                UPDATE dbo.product
+                SET custom_fabric_supply_id = CAST(${customFabricSupplyId} AS uniqueidentifier)
+                WHERE product_id = ${product.product_id};
+            `;
 
             return product;
         });
