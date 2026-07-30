@@ -16,6 +16,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 p.is_customizable,
                 p.customization_type,
                 p.customization_surcharge,
+                p.custom_fabric_supply_id,
                 COALESCE(p.base_price, 0) AS base_price,
                 c.name AS collection_name,
                 c.slug AS collection_slug
@@ -117,6 +118,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 isCustomizable: Boolean(p.is_customizable),
                 customizationType: p.customization_type ?? null,
                 customizationSurcharge: Number(p.customization_surcharge ?? 5),
+                customFabricSupplyId: p.custom_fabric_supply_id ?? null,
                 basePrice: Number(p.base_price ?? 0),
                 collection: p.collection_name ? {
                     name: p.collection_name,

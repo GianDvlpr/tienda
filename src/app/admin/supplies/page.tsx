@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, message } from 'antd';
-import { PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
+import { App, Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, Popconfirm } from 'antd';
+import { BgColorsOutlined, EditOutlined, PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import UnitCostHelper from '@/components/admin/UnitCostHelper';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 function SuppliesTab() {
+    const { message } = App.useApp();
     const { data: supplies, mutate, isLoading } = useSWR<any[]>('/api/admin/supplies', fetcher);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
@@ -74,6 +75,18 @@ function SuppliesTab() {
         }
     };
 
+    const handleDelete = async (supply: any) => {
+        try {
+            const res = await fetch(`/api/admin/supplies/${supply.supply_id}`, { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Error al eliminar insumo');
+            message.success(data.message || 'Insumo eliminado');
+            mutate();
+        } catch (e: any) {
+            message.error(e.message);
+        }
+    };
+
     const columns = [
         { title: 'Insumo', dataIndex: 'name', key: 'name' },
         { title: 'Tipo', dataIndex: 'type', render: (type: string) => <Tag color="blue">{type}</Tag> },
@@ -96,6 +109,15 @@ function SuppliesTab() {
                 <Space>
                     <Button size="small" type="primary" ghost onClick={() => setRestockSupply(r)}>+ Abastecer</Button>
                     <Button size="small" onClick={() => setHistorySupply(r)}>Kardex</Button>
+                    <Popconfirm
+                        title="¿Eliminar este insumo?"
+                        description="Si tiene historial se desactivará para conservar movimientos y fichas técnicas."
+                        okText="Sí, eliminar"
+                        cancelText="Cancelar"
+                        onConfirm={() => handleDelete(r)}
+                    >
+                        <Button size="small" danger>Eliminar</Button>
+                    </Popconfirm>
                 </Space>
             ) 
         }
@@ -184,6 +206,7 @@ function SuppliesTab() {
 }
 
 function ServicesTab() {
+    const { message } = App.useApp();
     const { data: services, mutate, isLoading } = useSWR<any[]>('/api/admin/services', fetcher);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
@@ -261,6 +284,172 @@ function ServicesTab() {
     );
 }
 
+function ColorsTab() {
+    const { message } = App.useApp();
+    const { data: colors, mutate, isLoading } = useSWR<any[]>('/api/admin/colors', fetcher);
+    const [form] = Form.useForm();
+    const [editing, setEditing] = useState<any>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const openModal = (record?: any) => {
+        setEditing(record || {});
+        form.setFieldsValue(record || { name: '', hex: '#000000', sort_order: (colors?.length || 0) + 1, is_available: true, is_active: true });
+    };
+
+    const onFinish = async (values: any) => {
+        setIsSaving(true);
+        try {
+            const isUpdate = !!editing?.color_id;
+            const res = await fetch(isUpdate ? `/api/admin/colors/${editing.color_id}` : '/api/admin/colors', {
+                method: isUpdate ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(values),
+            });
+            if (!res.ok) throw new Error('Error al guardar color');
+            message.success('Color guardado');
+            setEditing(null);
+            form.resetFields();
+            mutate();
+        } catch (e: any) {
+            message.error(e.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div>
+            <div style={{ marginBottom: 16, textAlign: 'right' }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>Nuevo Color</Button>
+            </div>
+            <Table
+                dataSource={colors}
+                loading={isLoading}
+                rowKey="color_id"
+                size="small"
+                columns={[
+                    { title: 'Color', dataIndex: 'name', render: (name: string, record: any) => <Space><span style={{ width: 18, height: 18, borderRadius: '50%', background: record.hex, border: '1px solid #ccc', display: 'inline-block' }} />{name}</Space> },
+                    { title: 'HEX', dataIndex: 'hex' },
+                    { title: 'Orden', dataIndex: 'sort_order' },
+                    { title: 'Disponibilidad', dataIndex: 'is_available', render: (v: boolean) => <Tag color={v ? 'green' : 'orange'}>{v ? 'Disponible' : 'Agotado'}</Tag> },
+                    { title: 'Estado', dataIndex: 'is_active', render: (v: boolean) => <Tag color={v ? 'green' : 'red'}>{v ? 'Activo' : 'Inactivo'}</Tag> },
+                    { title: 'Acciones', render: (_: any, record: any) => <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)}>Editar</Button> },
+                ]}
+            />
+            <Modal title={editing?.color_id ? 'Editar Color' : 'Nuevo Color'} open={!!editing} onCancel={() => setEditing(null)} footer={null}>
+                <Form layout="vertical" form={form} onFinish={onFinish}>
+                    <Form.Item name="name" label="Nombre" rules={[{ required: true }]}><Input /></Form.Item>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <Form.Item name="hex" label="HEX" rules={[{ required: true }]}><Input type="color" /></Form.Item>
+                        <Form.Item name="sort_order" label="Orden"><InputNumber style={{ width: '100%' }} min={0} /></Form.Item>
+                        <Form.Item name="is_available" label="Disponible" valuePropName="checked"><Switch /></Form.Item>
+                        <Form.Item name="is_active" label="Activo" valuePropName="checked"><Switch /></Form.Item>
+                    </div>
+                    <div style={{ textAlign: 'right' }}><Space><Button onClick={() => setEditing(null)}>Cancelar</Button><Button type="primary" htmlType="submit" loading={isSaving}>Guardar</Button></Space></div>
+                </Form>
+            </Modal>
+        </div>
+    );
+}
+
+function SupplyColorStockTab() {
+    const { message } = App.useApp();
+    const { data: fabricSupplies, mutate, isLoading } = useSWR<any[]>('/api/admin/supply-colors', fetcher);
+    const { data: colors } = useSWR<any[]>('/api/admin/colors', fetcher);
+    const [stockForm] = Form.useForm();
+    const [stockSupply, setStockSupply] = useState<any>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const openStock = (supply: any, row?: any) => {
+        setStockSupply(supply);
+        stockForm.setFieldsValue(row ? {
+            color_ids: [row.color_id],
+            stock: Number(row.stock || 0),
+            min_stock: Number(row.min_stock || 0),
+            unit_cost_override: row.unit_cost_override ? Number(row.unit_cost_override) : null,
+            is_available: row.is_available,
+            is_active: row.is_active,
+        } : { color_ids: [], stock: 0, min_stock: 0, unit_cost_override: null, is_available: true, is_active: true });
+    };
+
+    const saveStock = async (values: any) => {
+        setIsSaving(true);
+        try {
+            const res = await fetch('/api/admin/supply-colors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...values, supply_id: stockSupply.supply_id }),
+            });
+            if (!res.ok) throw new Error('Error al guardar stock por color');
+            message.success('Stock por color guardado');
+            setStockSupply(null);
+            stockForm.resetFields();
+            mutate();
+        } catch (e: any) {
+            message.error(e.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                Registra las telas en la pestaña Insumos y Materiales con clasificación TELA. Aquí asignas colores, stock y disponibilidad por cada tela.
+            </Text>
+            <Table
+                dataSource={fabricSupplies}
+                loading={isLoading}
+                rowKey="supply_id"
+                size="small"
+                expandable={{
+                    expandedRowRender: (supply) => (
+                        <div>
+                            <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => openStock(supply)} style={{ marginBottom: 8 }}>Agregar color/stock</Button>
+                            <Table
+                                dataSource={supply.supply_color_stock || []}
+                                rowKey="supply_color_id"
+                                size="small"
+                                pagination={false}
+                                columns={[
+                                    { title: 'Color', render: (_: any, row: any) => <Space><span style={{ width: 16, height: 16, borderRadius: '50%', background: row.color?.hex, border: '1px solid #ccc', display: 'inline-block' }} />{row.color?.name}</Space> },
+                                    { title: 'Stock', dataIndex: 'stock', render: (v: any) => Number(v) },
+                                    { title: 'Mínimo', dataIndex: 'min_stock', render: (v: any) => Number(v) },
+                                    { title: 'Disponible', dataIndex: 'is_available', render: (v: boolean) => <Tag color={v ? 'green' : 'orange'}>{v ? 'Sí' : 'Agotado'}</Tag> },
+                                    { title: 'Acciones', render: (_: any, row: any) => <Button size="small" icon={<EditOutlined />} onClick={() => openStock(supply, row)}>Editar</Button> },
+                                ]}
+                            />
+                        </div>
+                    )
+                }}
+                columns={[
+                    { title: 'Tela', dataIndex: 'name' },
+                    { title: 'Unidad', dataIndex: 'unit' },
+                    { title: 'Costo base', dataIndex: 'unit_cost', render: (v: any) => formatPEN(Number(v)) },
+                    { title: 'Stock total', dataIndex: 'stock', render: (v: any) => Number(v) },
+                    { title: 'Estado', dataIndex: 'is_active', render: (v: boolean) => <Tag color={v ? 'green' : 'red'}>{v ? 'Activa' : 'Inactiva'}</Tag> },
+                    { title: 'Acciones', render: (_: any, record: any) => <Button size="small" icon={<PlusOutlined />} onClick={() => openStock(record)}>Agregar color</Button> },
+                ]}
+            />
+            <Modal title={`Stock por color: ${stockSupply?.name || ''}`} open={!!stockSupply} onCancel={() => setStockSupply(null)} footer={null}>
+                <Form layout="vertical" form={stockForm} onFinish={saveStock}>
+                    <Form.Item name="color_ids" label="Colores" rules={[{ required: true, message: 'Selecciona al menos un color' }]}> 
+                        <Select mode="multiple" placeholder="Selecciona uno o varios colores" showSearch optionFilterProp="label" options={(colors || []).map((color) => ({ value: color.color_id, label: color.name }))} />
+                    </Form.Item>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <Form.Item name="stock" label="Stock"><InputNumber style={{ width: '100%' }} min={0} step={0.01} /></Form.Item>
+                        <Form.Item name="min_stock" label="Stock mínimo"><InputNumber style={{ width: '100%' }} min={0} step={0.01} /></Form.Item>
+                        <Form.Item name="unit_cost_override" label="Costo opcional"><InputNumber style={{ width: '100%' }} min={0} step={0.0001} /></Form.Item>
+                        <Form.Item name="is_available" label="Disponible" valuePropName="checked"><Switch /></Form.Item>
+                        <Form.Item name="is_active" label="Activo" valuePropName="checked"><Switch /></Form.Item>
+                    </div>
+                    <div style={{ textAlign: 'right' }}><Space><Button onClick={() => setStockSupply(null)}>Cancelar</Button><Button type="primary" htmlType="submit" loading={isSaving}>Guardar</Button></Space></div>
+                </Form>
+            </Modal>
+        </div>
+    );
+}
+
 export default function SuppliesWorkbenchPage() {
     return (
         <div>
@@ -278,6 +467,16 @@ export default function SuppliesWorkbenchPage() {
                             key: '2',
                             label: <span><ScissorOutlined /> Servicios (Mano de Obra)</span>,
                             children: <ServicesTab />,
+                        },
+                        {
+                            key: '3',
+                            label: <span><BgColorsOutlined /> Colores</span>,
+                            children: <ColorsTab />,
+                        },
+                        {
+                            key: '4',
+                            label: <span><ToolOutlined /> Stock por Color</span>,
+                            children: <SupplyColorStockTab />,
                         },
                     ]}
                 />

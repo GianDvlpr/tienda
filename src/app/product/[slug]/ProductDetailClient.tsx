@@ -15,7 +15,7 @@ import { useCartStore } from '@/store/cart.store';
 import { useWishlistStore } from '@/store/wishlist.store';
 import { useUIStore } from '@/store/ui.store';
 import { sortSizes } from '@/lib/sizes';
-import { CUSTOM_MEASUREMENT_LABELS, CUSTOM_ORDER_NOTICE, getMeasurementsForSize, parseSizeGuideJson } from '@/lib/customization';
+import { CUSTOM_COLOR_OPTIONS, CUSTOM_MEASUREMENT_LABELS, CUSTOM_ORDER_NOTICE, getAvailableCustomColorName, getMeasurementsForSize, parseSizeGuideJson, type CustomColorOption } from '@/lib/customization';
 
 
 const { Title, Text, Paragraph } = Typography;
@@ -60,9 +60,12 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
     const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
     const [customSize, setCustomSize] = useState('S');
+    const [customColor, setCustomColor] = useState(getAvailableCustomColorName());
+    const [customColorOptions, setCustomColorOptions] = useState<CustomColorOption[]>(CUSTOM_COLOR_OPTIONS.map((color) => ({ ...color })));
     const [customMeasurements, setCustomMeasurements] = useState<Record<string, string>>({});
     const [customBundle, setCustomBundle] = useState<BundlePromotion | null>(null);
     const [customBundleMeasurements, setCustomBundleMeasurements] = useState<Record<string, Record<string, string>>>({});
+    const [customBundleColors, setCustomBundleColors] = useState<Record<string, string>>({});
     const hasAutoOpenedCustomization = useRef(false);
 
     useEffect(() => {
@@ -74,6 +77,18 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             setSelectedColor(first.color);
         }
     }, [initialData]);
+
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (initialData.product.customFabricSupplyId) params.set('supplyId', initialData.product.customFabricSupplyId);
+
+        fetch(`/api/store/custom-colors?${params.toString()}`)
+            .then((res) => res.ok ? res.json() : null)
+            .then((data) => {
+                if (Array.isArray(data) && data.length > 0) setCustomColorOptions(data);
+            })
+            .catch(() => undefined);
+    }, [initialData.product.customFabricSupplyId]);
 
     const variants = initialData?.variants ?? [];
 
@@ -177,6 +192,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         }
         const initialSize = CUSTOM_SIZE_OPTIONS.includes(selectedSize || '') ? selectedSize! : 'S';
         setCustomSize(initialSize);
+        setCustomColor(getAvailableCustomColorName(selectedColor || customizationReferenceVariant.color, customColorOptions));
         setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, initialSize, customizationLabels));
         setIsCustomizationOpen(true);
     };
@@ -189,9 +205,10 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         hasAutoOpenedCustomization.current = true;
         const initialSize = CUSTOM_SIZE_OPTIONS.includes(selectedSize || '') ? selectedSize! : 'S';
         setCustomSize(initialSize);
+        setCustomColor(getAvailableCustomColorName(selectedColor || customizationReferenceVariant.color, customColorOptions));
         setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, initialSize, customizationLabels));
         setIsCustomizationOpen(true);
-    }, [customizationLabels, customizationReferenceVariant, initialData.product.size_guide_json, isCustomizable, searchParams, selectedSize]);
+    }, [customColorOptions, customizationLabels, customizationReferenceVariant, initialData.product.size_guide_json, isCustomizable, searchParams, selectedSize]);
 
     const onAddCustomizedToCart = () => {
         if (!initialData || !customizationReferenceVariant) return;
@@ -208,7 +225,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             slug: initialData.product.slug,
             name: initialData.product.name,
             size: customSize,
-            color: selectedColor || customizationReferenceVariant.color,
+            color: customColor,
             sku: customizationReferenceVariant.sku,
             imageUrl: selectedImage?.url ?? null,
             unitPrice: Number(customizationReferenceVariant.price) + customizationSurcharge,
@@ -238,13 +255,18 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         const nextMeasurements: Record<string, Record<string, string>> = {
             [initialData.product.productId]: getMeasurementsForSize(initialData.product.size_guide_json, selectedVariant.size, customizationLabels),
         };
+        const nextColors: Record<string, string> = {
+            [initialData.product.productId]: getAvailableCustomColorName(selectedColor || selectedVariant.color, customColorOptions),
+        };
 
         otherItems.forEach((item) => {
             const type = item.customizationType === 'PANTS' ? 'PANTS' : 'UPPER';
             nextMeasurements[item.productId] = getMeasurementsForSize(item.sizeGuideJson, item.size, CUSTOM_MEASUREMENT_LABELS[type]);
+            nextColors[item.productId] = getAvailableCustomColorName(item.color, customColorOptions);
         });
 
         setCustomBundleMeasurements(nextMeasurements);
+        setCustomBundleColors(nextColors);
         setCustomBundle(bundle);
     };
 
@@ -259,7 +281,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 name: initialData.product.name,
                 slug: initialData.product.slug,
                 size: selectedVariant.size,
-                color: selectedVariant.color,
+                color: customBundleColors[initialData.product.productId] || getAvailableCustomColorName(selectedVariant.color, customColorOptions),
                 sku: selectedVariant.sku,
                 unitPrice: Number(selectedVariant.price),
                 imageUrl: selectedImage?.url ?? null,
@@ -271,7 +293,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 name: item.name,
                 slug: item.slug,
                 size: item.size || 'UN',
-                color: item.color || 'UN',
+                color: customBundleColors[item.productId] || getAvailableCustomColorName(item.color, customColorOptions),
                 sku: item.sku || '',
                 unitPrice: Number(item.unitPrice || 0),
                 imageUrl: item.primaryImageUrl ?? null,
@@ -731,8 +753,30 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                     <div>
                         <Text strong>{initialData.product.name}</Text>
                         <Text type="secondary" style={{ display: 'block', marginTop: 2 }}>
-                            Color {selectedColor || customizationReferenceVariant?.color} / Precio personalizado {formatPEN((customizationReferenceVariant?.price ?? initialData.product.basePrice ?? 0) + customizationSurcharge)}
+                            Color {customColor} / Precio personalizado {formatPEN((customizationReferenceVariant?.price ?? initialData.product.basePrice ?? 0) + customizationSurcharge)}
                         </Text>
+                    </div>
+                    <div>
+                        <Text strong>Color personalizado</Text>
+                        <Radio.Group
+                            value={customColor}
+                            onChange={(event) => setCustomColor(event.target.value)}
+                            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}
+                        >
+                            {customColorOptions.map((color) => (
+                                <Radio.Button
+                                    key={color.name}
+                                    value={color.name}
+                                    disabled={!color.available}
+                                    style={{ height: 'auto', padding: '6px 10px' }}
+                                >
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ width: 14, height: 14, borderRadius: '50%', background: color.hex, border: `1px solid ${token.colorBorderSecondary}` }} />
+                                        {color.name}{!color.available ? ' (Agotado)' : ''}
+                                    </span>
+                                </Radio.Button>
+                            ))}
+                        </Radio.Group>
                     </div>
                     <div>
                         <Text strong>Talla personalizada</Text>
@@ -810,7 +854,29 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                         ].map((line) => {
                             const labels = CUSTOM_MEASUREMENT_LABELS[line.customizationType as 'PANTS' | 'UPPER'];
                             return (
-                                <Card key={line.productId} size="small" title={`${line.name} - ${line.size} / ${line.color}`}>
+                                <Card key={line.productId} size="small" title={`${line.name} - ${line.size} / ${customBundleColors[line.productId] || line.color}`}>
+                                    <div style={{ marginBottom: 12 }}>
+                                        <Text strong style={{ fontSize: 12 }}>Color personalizado</Text>
+                                        <Radio.Group
+                                            value={customBundleColors[line.productId] || getAvailableCustomColorName(line.color, customColorOptions)}
+                                            onChange={(event) => setCustomBundleColors((prev) => ({ ...prev, [line.productId]: event.target.value }))}
+                                            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}
+                                        >
+                                            {customColorOptions.map((color) => (
+                                                <Radio.Button
+                                                    key={color.name}
+                                                    value={color.name}
+                                                    disabled={!color.available}
+                                                    style={{ height: 'auto', padding: '5px 8px' }}
+                                                >
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: color.hex, border: `1px solid ${token.colorBorderSecondary}` }} />
+                                                        {color.name}{!color.available ? ' (Agotado)' : ''}
+                                                    </span>
+                                                </Radio.Button>
+                                            ))}
+                                        </Radio.Group>
+                                    </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                                         {labels.map((label) => (
                                             <div key={label}>

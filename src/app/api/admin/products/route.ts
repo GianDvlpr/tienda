@@ -27,6 +27,7 @@ export async function POST(req: Request) {
         const { 
             name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
             is_customizable, customization_type, customization_surcharge,
+            custom_fabric_supply_id,
             collections, // array of collection_id strings
             images,      // array of { url, public_id, color, sort_order }
             variants     // array of { sku, size, color, price, cost, stock }
@@ -79,6 +80,14 @@ export async function POST(req: Request) {
                         ${String(img.color || '').trim() || null},
                         ${img.sort_order ?? idx}
                     );
+                `;
+            }
+
+            if (is_customizable && custom_fabric_supply_id) {
+                await tx.$executeRaw`
+                    UPDATE dbo.product
+                    SET custom_fabric_supply_id = ${custom_fabric_supply_id}
+                    WHERE product_id = ${product.product_id};
                 `;
             }
 

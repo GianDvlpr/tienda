@@ -22,7 +22,9 @@ export default function NewProductPage() {
     const [uploadedImages, setUploadedImages] = useState<any[]>([]);
 
     const { data: collections } = useSWR<any[]>('/api/admin/collections', fetcher);
+    const { data: supplies } = useSWR<any[]>('/api/admin/supplies', fetcher);
     const watchedVariants = Form.useWatch('variants', form);
+    const fabricOptions = (supplies || []).filter((s: any) => s.type === 'TELA' && s.is_active);
 
     const imageColorOptions = useMemo(() => {
         const colors = new Map<string, string>();
@@ -43,6 +45,7 @@ export default function NewProductPage() {
             is_customizable: false,
             customization_type: 'UPPER',
             customization_surcharge: 5,
+            custom_fabric_supply_id: null,
             bulk_stock: 0,
             bulk_is_active: true,
             // Create at least one empty variant by default
@@ -307,6 +310,11 @@ export default function NewProductPage() {
                                         </Form.Item>
                                         <Form.Item name="customization_surcharge" label="Recargo personalizado (S/)" extra="Por defecto S/ 5.00 para prendas individuales.">
                                             <InputNumber disabled={!enabled} style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
+                                        </Form.Item>
+                                        <Form.Item name="custom_fabric_supply_id" label="Tela para personalización" extra="Define qué colores estarán disponibles según el stock por color de esta tela.">
+                                            <Select disabled={!enabled} allowClear placeholder="Selecciona una tela">
+                                                {fabricOptions.map((s: any) => <Option key={s.supply_id} value={s.supply_id}>{s.name}</Option>)}
+                                            </Select>
                                         </Form.Item>
                                     </>
                                 );

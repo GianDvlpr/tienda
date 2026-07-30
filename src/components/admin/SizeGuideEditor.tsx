@@ -21,6 +21,7 @@ interface SizeGuideEditorProps {
 
 export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProps) {
     const { token } = theme.useToken();
+    const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
     const [data, setData] = useState<SizeGuideData>({
         columns: ['S', 'M', 'L'],
         rows: [
@@ -71,6 +72,22 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
             }))
         };
         triggerChange(newData);
+    };
+
+    const moveColumn = (fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= data.columns.length || toIndex >= data.columns.length) return;
+        const nextColumns = [...data.columns];
+        const [movedColumn] = nextColumns.splice(fromIndex, 1);
+        nextColumns.splice(toIndex, 0, movedColumn);
+
+        const nextRows = data.rows.map((row) => {
+            const values = [...row.values];
+            const [movedValue] = values.splice(fromIndex, 1);
+            values.splice(toIndex, 0, movedValue ?? '');
+            return { ...row, values };
+        });
+
+        triggerChange({ columns: nextColumns, rows: nextRows });
     };
 
     const addRow = () => {
@@ -159,7 +176,25 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                                 Medida / Talla
                             </th>
                             {data.columns.map((col, i) => (
-                                <th key={i} style={{ padding: 8, border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, minWidth: 80 }}>
+                                <th
+                                    key={i}
+                                    draggable
+                                    onDragStart={() => setDraggedColumnIndex(i)}
+                                    onDragOver={(event) => event.preventDefault()}
+                                    onDrop={() => {
+                                        if (draggedColumnIndex !== null) moveColumn(draggedColumnIndex, i);
+                                        setDraggedColumnIndex(null);
+                                    }}
+                                    onDragEnd={() => setDraggedColumnIndex(null)}
+                                    title="Arrastra para reordenar la talla"
+                                    style={{
+                                        padding: 8,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        background: draggedColumnIndex === i ? token.colorFillSecondary : token.colorBgContainer,
+                                        minWidth: 100,
+                                        cursor: 'grab',
+                                    }}
+                                >
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                         <Input 
                                             size="small" 
@@ -167,6 +202,10 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
                                             onChange={e => updateHeader(i, e.target.value)} 
                                             style={{ textAlign: 'center', fontWeight: 'bold' }}
                                         />
+                                        <Space.Compact style={{ width: '100%' }}>
+                                            <Button size="small" disabled={i === 0} onClick={() => moveColumn(i, i - 1)} style={{ width: '50%' }}>←</Button>
+                                            <Button size="small" disabled={i === data.columns.length - 1} onClick={() => moveColumn(i, i + 1)} style={{ width: '50%' }}>→</Button>
+                                        </Space.Compact>
                                         <Button 
                                             type="text" 
                                             danger 

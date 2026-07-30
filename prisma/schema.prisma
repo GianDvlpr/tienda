@@ -148,6 +148,7 @@ model product {
   is_customizable    Boolean              @default(false, map: "DF_product_is_customizable")
   customization_type String?              @db.NVarChar(30)
   customization_surcharge Decimal         @default(5, map: "DF_product_customization_surcharge") @db.Decimal(18, 2)
+  custom_fabric_supply_id String?         @db.UniqueIdentifier
 
   created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_created_at")
   updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_updated_at")
@@ -310,6 +311,41 @@ model supply {
   
   product_bom_supply product_bom_supply[]
   supply_movement    supply_movement[]
+  supply_color_stock supply_color_stock[]
+}
+
+model custom_color {
+  color_id     String               @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  name         String               @unique @db.NVarChar(100)
+  hex          String               @db.NVarChar(20)
+  sort_order   Int                  @default(0)
+  is_available Boolean              @default(true)
+  is_active    Boolean              @default(true)
+  created_at   DateTime             @default(dbgenerated("sysutcdatetime()"))
+  updated_at   DateTime             @default(dbgenerated("sysutcdatetime()"))
+
+  supply_color_stock supply_color_stock[]
+
+  @@index([is_active, sort_order])
+}
+
+model supply_color_stock {
+  supply_color_id   String       @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
+  supply_id         String       @db.UniqueIdentifier
+  color_id          String       @db.UniqueIdentifier
+  stock             Decimal      @default(0) @db.Decimal(18, 4)
+  min_stock         Decimal      @default(0) @db.Decimal(18, 4)
+  unit_cost_override Decimal?    @db.Decimal(18, 4)
+  is_available      Boolean      @default(true)
+  is_active         Boolean      @default(true)
+  created_at        DateTime     @default(dbgenerated("sysutcdatetime()"))
+  updated_at        DateTime     @default(dbgenerated("sysutcdatetime()"))
+
+  supply            supply       @relation(fields: [supply_id], references: [supply_id], onDelete: Cascade)
+  color             custom_color @relation(fields: [color_id], references: [color_id], onDelete: Cascade)
+
+  @@unique([supply_id, color_id])
+  @@index([color_id])
 }
 
 model service {

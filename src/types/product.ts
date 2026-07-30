@@ -47,6 +47,7 @@ export interface ProductDetail {
     isCustomizable?: boolean;
     customizationType?: 'PANTS' | 'UPPER' | null;
     customizationSurcharge?: number;
+    customFabricSupplyId?: string | null;
 
     collection?: {
         name: string;
