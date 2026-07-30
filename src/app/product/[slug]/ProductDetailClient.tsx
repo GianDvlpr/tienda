@@ -761,7 +761,17 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                         <Radio.Group
                             value={customColor}
                             onChange={(event) => setCustomColor(event.target.value)}
-                            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}
+                            style={{
+                                display: 'grid',
+                                gridTemplateRows: 'repeat(2, auto)',
+                                gridAutoFlow: 'column',
+                                gridAutoColumns: 'max-content',
+                                gap: 8,
+                                marginTop: 8,
+                                overflowX: 'auto',
+                                paddingBottom: 8,
+                                maxWidth: '100%',
+                            }}
                         >
                             {customColorOptions.map((color) => (
                                 <Radio.Button
@@ -860,7 +870,17 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         <Radio.Group
                                             value={customBundleColors[line.productId] || getAvailableCustomColorName(line.color, customColorOptions)}
                                             onChange={(event) => setCustomBundleColors((prev) => ({ ...prev, [line.productId]: event.target.value }))}
-                                            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}
+                                            style={{
+                                                display: 'grid',
+                                                gridTemplateRows: 'repeat(2, auto)',
+                                                gridAutoFlow: 'column',
+                                                gridAutoColumns: 'max-content',
+                                                gap: 8,
+                                                marginTop: 8,
+                                                overflowX: 'auto',
+                                                paddingBottom: 8,
+                                                maxWidth: '100%',
+                                            }}
                                         >
                                             {customColorOptions.map((color) => (
                                                 <Radio.Button
