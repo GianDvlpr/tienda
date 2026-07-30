@@ -18,7 +18,6 @@ import AuraLogo from "@/components/AuraLogo";
 const { Header } = Layout;
 
 export default function ShopHeader() {
-    const [openCart, setOpenCart] = useState(false);
     const [openWishlist, setOpenWishlist] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const router = useRouter();
@@ -35,6 +34,8 @@ export default function ShopHeader() {
     const isSearchOpen = useUIStore((s) => s.isSearchOpen);
     const setSearchOpen = useUIStore((s) => s.setSearchOpen);
     const toggleSearch = useUIStore((s) => s.toggleSearch);
+    const openCart = useUIStore((s) => s.isCartOpen);
+    const setOpenCart = useUIStore((s) => s.setCartOpen);
 
     const [searchValue, setSearchValue] = useState(searchParams.get("q") ?? "");
 

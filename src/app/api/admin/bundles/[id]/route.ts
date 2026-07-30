@@ -11,7 +11,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     try {
         const { id } = await params;
         const body = await req.json();
-        const { name, description, discount_amount, bundle_price, tier_2_price, tier_3_price, is_active, product_ids } = body;
+        const { name, description, discount_amount, bundle_price, tier_2_price, tier_3_price, customization_surcharge, is_active, product_ids } = body;
         const discountAmount = Number(discount_amount || 0);
         const bundlePrice = parseOptionalPrice(bundle_price);
         const tier2Price = parseOptionalPrice(tier_2_price);
@@ -35,6 +35,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     name,
                     description,
                     discount_amount: discountAmount,
+                    customization_surcharge: Number(customization_surcharge ?? 8),
                     is_active: is_active ?? true,
                 }
             });
@@ -65,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 include: { items: true }
             });
 
-            return { ...updatedBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price };
+            return { ...updatedBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 8) };
         });
 
 

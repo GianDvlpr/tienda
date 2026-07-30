@@ -13,6 +13,9 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 p.description,
                 p.size_guide_url,
                 p.size_guide_json,
+                p.is_customizable,
+                p.customization_type,
+                p.customization_surcharge,
                 COALESCE(p.base_price, 0) AS base_price,
                 c.name AS collection_name,
                 c.slug AS collection_slug
@@ -69,6 +72,10 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                                 name: true,
                                 slug: true,
                                 is_active: true,
+                                is_customizable: true,
+                                customization_type: true,
+                                customization_surcharge: true,
+                                size_guide_json: true,
                                 base_price: true,
                                 product_image: {
                                     orderBy: { sort_order: 'asc' },
@@ -107,6 +114,9 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 description: p.description ?? null,
                 size_guide_url: p.size_guide_url ?? null,
                 size_guide_json: p.size_guide_json ?? null,
+                isCustomizable: Boolean(p.is_customizable),
+                customizationType: p.customization_type ?? null,
+                customizationSurcharge: Number(p.customization_surcharge ?? 5),
                 basePrice: Number(p.base_price ?? 0),
                 collection: p.collection_name ? {
                     name: p.collection_name,
@@ -148,7 +158,11 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                         unitPrice: Number(firstVariant?.price || item.product.base_price || 0),
                         size: firstVariant?.size || 'UN',
                         color: firstVariant?.color || 'UN',
-                        sku: firstVariant?.sku || ''
+                        sku: firstVariant?.sku || '',
+                        isCustomizable: Boolean(item.product.is_customizable),
+                        customizationType: item.product.customization_type ?? null,
+                        customizationSurcharge: Number(item.product.customization_surcharge ?? 5),
+                        sizeGuideJson: item.product.size_guide_json ?? null,
                     };
                 })
             }))

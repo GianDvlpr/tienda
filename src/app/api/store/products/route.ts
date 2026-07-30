@@ -15,6 +15,7 @@ const querySchema = z.object({
 
     sizes: z.string().optional(),
     colors: z.string().optional(),
+    customizable: z.coerce.number().optional(), // 0/1
 
     onlyInStock: z.coerce.number().optional(), // 0/1
     sort: SortEnum.optional(),
@@ -32,6 +33,8 @@ type ProductRow = {
     variants_in_stock: number | string | null;
     primary_image_url: string | null;
     secondary_image_url: string | null;
+    is_customizable: boolean | number | null;
+    customization_surcharge: number | string | null;
 };
 
 type CountRow = {
@@ -61,6 +64,7 @@ export async function GET(req: NextRequest) {
     const colorsCsv = safeCsvArray(qp.colors);
 
     const onlyInStockBit = qp.onlyInStock ? 1 : 0;
+    const customizableBit = qp.customizable ? 1 : 0;
     const sort = qp.sort ?? 'NEW';
 
     try {
@@ -72,9 +76,10 @@ export async function GET(req: NextRequest) {
 
         const items = await prisma.$queryRaw<ProductRow[]>`
             WITH filtered_products AS (
-                SELECT p.product_id, p.slug, p.name, p.base_price, p.created_at
+                SELECT p.product_id, p.slug, p.name, p.base_price, p.created_at, p.is_customizable, p.customization_surcharge
                 FROM dbo.product p
                 WHERE p.is_active = 1
+                  AND (${customizableBit} = 0 OR p.is_customizable = 1)
                   AND (
                     CAST(${collection} AS NVARCHAR(255)) IS NULL
                     OR EXISTS (
@@ -107,6 +112,8 @@ export async function GET(req: NextRequest) {
                 fp.product_id,
                 fp.slug,
                 fp.name,
+                fp.is_customizable,
+                fp.customization_surcharge,
                 price_stats.min_price,
                 price_stats.max_price,
                 price_stats.variants_in_stock,
@@ -152,6 +159,7 @@ export async function GET(req: NextRequest) {
             SELECT COUNT(*) AS total
             FROM dbo.product p
             WHERE p.is_active = 1
+              AND (${customizableBit} = 0 OR p.is_customizable = 1)
               AND (
                 CAST(${collection} AS NVARCHAR(255)) IS NULL
                 OR EXISTS (
@@ -193,6 +201,8 @@ export async function GET(req: NextRequest) {
                 variantsInStock: Number(r.variants_in_stock ?? 0),
                 primaryImageUrl: r.primary_image_url ?? null,
                 secondaryImageUrl: r.secondary_image_url ?? null,
+                isCustomizable: Boolean(r.is_customizable),
+                customizationSurcharge: Number(r.customization_surcharge ?? 5),
             })),
             total,
             page: qp.page,

@@ -26,6 +26,7 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { 
             name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
+            is_customizable, customization_type, customization_surcharge,
             collections, // array of collection_id strings
             images,      // array of { url, public_id, color, sort_order }
             variants     // array of { sku, size, color, price, cost, stock }
@@ -38,7 +39,17 @@ export async function POST(req: Request) {
 
             const product = await tx.product.create({
                 data: {
-                    name, slug, description, base_price, base_cost, is_active, size_guide_url, size_guide_json,
+                    name,
+                    slug,
+                    description,
+                    base_price,
+                    base_cost,
+                    is_active,
+                    size_guide_url,
+                    size_guide_json,
+                    is_customizable: !!is_customizable,
+                    customization_type: is_customizable ? customization_type : null,
+                    customization_surcharge: Number(customization_surcharge ?? 5),
 
 
                     product_collection: {

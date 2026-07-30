@@ -7,6 +7,8 @@ export interface ProductListItem {
     variantsInStock: number;
     primaryImageUrl: string | null;
     secondaryImageUrl: string | null;
+    isCustomizable?: boolean;
+    customizationSurcharge?: number;
 }
 
 
@@ -42,6 +44,9 @@ export interface ProductDetail {
     basePrice: number;
     size_guide_url?: string | null;
     size_guide_json?: string | null;
+    isCustomizable?: boolean;
+    customizationType?: 'PANTS' | 'UPPER' | null;
+    customizationSurcharge?: number;
 
     collection?: {
         name: string;
@@ -59,6 +64,10 @@ export interface BundlePromotionItem {
     size?: string;
     color?: string;
     sku?: string;
+    isCustomizable?: boolean;
+    customizationType?: 'PANTS' | 'UPPER' | null;
+    customizationSurcharge?: number;
+    sizeGuideJson?: string | null;
 }
 
 export interface BundlePromotion {
@@ -69,6 +78,7 @@ export interface BundlePromotion {
     bundle_price?: number | null;
     tier_2_price?: number | null;
     tier_3_price?: number | null;
+    customization_surcharge?: number | null;
     items: BundlePromotionItem[];
 }
 

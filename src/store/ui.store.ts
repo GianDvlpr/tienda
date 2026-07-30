@@ -11,6 +11,8 @@ interface UIState {
     quickViewProductSlug: string | null;
     openQuickView: (slug: string) => void;
     closeQuickView: () => void;
+    isCartOpen: boolean;
+    setCartOpen: (open: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -24,4 +26,6 @@ export const useUIStore = create<UIState>((set) => ({
     quickViewProductSlug: null,
     openQuickView: (slug) => set({ isQuickViewOpen: true, quickViewProductSlug: slug }),
     closeQuickView: () => set({ isQuickViewOpen: false, quickViewProductSlug: null }),
+    isCartOpen: false,
+    setCartOpen: (open) => set({ isCartOpen: open }),
 }));

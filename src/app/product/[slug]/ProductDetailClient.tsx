@@ -1,10 +1,11 @@
 'use client';
 
 import { toast } from 'sonner';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Divider, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Card, Divider, Input, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
 import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 
 import ProductGallery from '@/components/shop/ProductGallery';
@@ -12,7 +13,9 @@ import type { BundlePromotion, ProductDetailResponse, ProductVariant } from '@/t
 import { formatPEN } from '@/lib/money';
 import { useCartStore } from '@/store/cart.store';
 import { useWishlistStore } from '@/store/wishlist.store';
+import { useUIStore } from '@/store/ui.store';
 import { sortSizes } from '@/lib/sizes';
+import { CUSTOM_MEASUREMENT_LABELS, CUSTOM_ORDER_NOTICE, getMeasurementsForSize, parseSizeGuideJson } from '@/lib/customization';
 
 
 const { Title, Text, Paragraph } = Typography;
@@ -39,11 +42,13 @@ interface ProductDetailClientProps {
 }
 
 export default function ProductDetailClient({ initialData }: ProductDetailClientProps) {
+    const searchParams = useSearchParams();
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
 
     const addCartItem = useCartStore((s) => s.addItem);
+    const setCartOpen = useUIStore((s) => s.setCartOpen);
     const addWishlistItem = useWishlistStore((s) => s.addItem);
     const removeWishlistItem = useWishlistStore((s) => s.removeItem);
     const isInWishlist = useWishlistStore((s) => s.isInWishlist);
@@ -51,6 +56,11 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+    const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
+    const [customMeasurements, setCustomMeasurements] = useState<Record<string, string>>({});
+    const [customBundle, setCustomBundle] = useState<BundlePromotion | null>(null);
+    const [customBundleMeasurements, setCustomBundleMeasurements] = useState<Record<string, Record<string, string>>>({});
+    const hasAutoOpenedCustomization = useRef(false);
 
     useEffect(() => {
         if (!initialData) return;
@@ -107,6 +117,23 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
     const canAdd = !!selectedVariant && selectedVariant.stock > 0;
     const isWishlisted = selectedVariant ? isInWishlist(selectedVariant.variantId) : false;
+    const isCustomizable = !!initialData.product.isCustomizable;
+    const customizationType = initialData.product.customizationType === 'PANTS' ? 'PANTS' : 'UPPER';
+    const customizationLabels = CUSTOM_MEASUREMENT_LABELS[customizationType];
+    const customizationSurcharge = Number(initialData.product.customizationSurcharge ?? 5);
+
+    const availableSizes = useMemo(() => {
+        const set = new Set<string>();
+        for (const variant of variants) {
+            if (variant.stock > 0) set.add(variant.size);
+        }
+        return set;
+    }, [variants]);
+
+    useEffect(() => {
+        if (!isCustomizable || !selectedSize) return;
+        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, selectedSize, customizationLabels));
+    }, [initialData.product.size_guide_json, isCustomizable, selectedSize, customizationLabels]);
 
     const onAddToCart = () => {
         if (!initialData || !selectedVariant) return;
@@ -129,6 +156,148 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         }, 1);
 
         toast.success('Agregado a tu carrito');
+    };
+
+    const openCustomization = () => {
+        if (!initialData || !selectedVariant) return;
+        if (!canAdd) {
+            toast.warning('Elige una talla y color disponible');
+            return;
+        }
+        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, selectedVariant.size, customizationLabels));
+        setIsCustomizationOpen(true);
+    };
+
+    useEffect(() => {
+        if (hasAutoOpenedCustomization.current) return;
+        if (searchParams.get('personalizar') !== '1') return;
+        if (!isCustomizable || !selectedVariant || !canAdd) return;
+
+        hasAutoOpenedCustomization.current = true;
+        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, selectedVariant.size, customizationLabels));
+        setIsCustomizationOpen(true);
+    }, [canAdd, customizationLabels, initialData.product.size_guide_json, isCustomizable, searchParams, selectedVariant]);
+
+    const onAddCustomizedToCart = () => {
+        if (!initialData || !selectedVariant) return;
+        const missing = customizationLabels.filter((label) => !String(customMeasurements[label] || '').trim());
+        if (missing.length > 0) {
+            toast.warning(`Completa las medidas: ${missing.join(', ')}`);
+            return;
+        }
+
+        addCartItem({
+            cartItemId: `${selectedVariant.variantId}:custom:${Date.now()}`,
+            variantId: selectedVariant.variantId,
+            productId: initialData.product.productId,
+            slug: initialData.product.slug,
+            name: initialData.product.name,
+            size: selectedVariant.size,
+            color: selectedVariant.color,
+            sku: selectedVariant.sku,
+            imageUrl: selectedImage?.url ?? null,
+            unitPrice: Number(selectedVariant.price) + customizationSurcharge,
+            isCustomized: true,
+            customMeasurements,
+            customizationSurcharge,
+        }, 1);
+
+        setIsCustomizationOpen(false);
+        setCartOpen(true);
+        toast.success('Prenda personalizada agregada a tu carrito');
+    };
+
+    const openBundleCustomization = (bundle: BundlePromotion) => {
+        if (!selectedVariant || !canAdd) {
+            toast.warning('Elige una talla y color disponible');
+            return;
+        }
+
+        const otherItems = bundle.items.filter((item) => item.productId !== initialData.product.productId);
+        const missingCustomizable = otherItems.some((item) => !item.isCustomizable || !item.variantId);
+        if (missingCustomizable || !isCustomizable) {
+            toast.warning('Todos los productos del conjunto deben permitir personalización y tener variante disponible');
+            return;
+        }
+
+        const nextMeasurements: Record<string, Record<string, string>> = {
+            [initialData.product.productId]: getMeasurementsForSize(initialData.product.size_guide_json, selectedVariant.size, customizationLabels),
+        };
+
+        otherItems.forEach((item) => {
+            const type = item.customizationType === 'PANTS' ? 'PANTS' : 'UPPER';
+            nextMeasurements[item.productId] = getMeasurementsForSize(item.sizeGuideJson, item.size, CUSTOM_MEASUREMENT_LABELS[type]);
+        });
+
+        setCustomBundleMeasurements(nextMeasurements);
+        setCustomBundle(bundle);
+    };
+
+    const onAddCustomizedBundleToCart = () => {
+        if (!customBundle || !selectedVariant) return;
+
+        const otherItems = customBundle.items.filter((item) => item.productId !== initialData.product.productId);
+        const lines = [
+            {
+                productId: initialData.product.productId,
+                variantId: selectedVariant.variantId,
+                name: initialData.product.name,
+                slug: initialData.product.slug,
+                size: selectedVariant.size,
+                color: selectedVariant.color,
+                sku: selectedVariant.sku,
+                unitPrice: Number(selectedVariant.price),
+                imageUrl: selectedImage?.url ?? null,
+                customizationType,
+            },
+            ...otherItems.map((item) => ({
+                productId: item.productId,
+                variantId: item.variantId!,
+                name: item.name,
+                slug: item.slug,
+                size: item.size || 'UN',
+                color: item.color || 'UN',
+                sku: item.sku || '',
+                unitPrice: Number(item.unitPrice || 0),
+                imageUrl: item.primaryImageUrl ?? null,
+                customizationType: item.customizationType === 'PANTS' ? 'PANTS' : 'UPPER',
+            })),
+        ];
+
+        for (const line of lines) {
+            const labels = CUSTOM_MEASUREMENT_LABELS[line.customizationType as 'PANTS' | 'UPPER'];
+            const missing = labels.filter((label) => !String(customBundleMeasurements[line.productId]?.[label] || '').trim());
+            if (missing.length > 0) {
+                toast.warning(`Completa medidas de ${line.name}: ${missing.join(', ')}`);
+                return;
+            }
+        }
+
+        const groupId = `bundle-${customBundle.bundle_id}-${Date.now()}`;
+        const bundleSurcharge = Number(customBundle.customization_surcharge ?? 8);
+        lines.forEach((line, index) => {
+            addCartItem({
+                cartItemId: `${line.variantId}:custom-bundle:${groupId}`,
+                variantId: line.variantId,
+                productId: line.productId,
+                slug: line.slug,
+                name: line.name,
+                size: line.size,
+                color: line.color,
+                sku: line.sku,
+                imageUrl: line.imageUrl,
+                unitPrice: line.unitPrice + (index === 0 ? bundleSurcharge : 0),
+                isCustomized: true,
+                customMeasurements: customBundleMeasurements[line.productId],
+                customizationSurcharge: index === 0 ? bundleSurcharge : 0,
+                customizationGroupId: groupId,
+                customizationGroupLabel: `Conjunto personalizado: ${customBundle.name}`,
+            }, 1);
+        });
+
+        setCustomBundle(null);
+        setCartOpen(true);
+        toast.success('Conjunto personalizado agregado a tu carrito');
     };
 
     const onToggleWishlist = () => {
@@ -333,6 +502,18 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         Agregar al Carrito
                                     </Button>
 
+                                    {isCustomizable && (
+                                        <Button
+                                            size="large"
+                                            icon={<ShoppingCartOutlined />}
+                                            disabled={!canAdd}
+                                            onClick={openCustomization}
+                                            style={{ flex: 1, minWidth: 200, borderColor: '#C89F53', color: '#C89F53' }}
+                                        >
+                                            Personalizar prenda (+{formatPEN(customizationSurcharge)})
+                                        </Button>
+                                    )}
+
                                     <Button
                                         size="large"
                                         icon={isWishlisted ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
@@ -457,6 +638,21 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                     Añadir conjunto
                                                                 </Button>
 
+                                                                <Button
+                                                                    size="middle"
+                                                                    style={{
+                                                                        marginTop: 8,
+                                                                        borderColor: '#C89F53',
+                                                                        color: '#C89F53',
+                                                                        borderRadius: '20px',
+                                                                        padding: '0 18px',
+                                                                        fontWeight: 600,
+                                                                    }}
+                                                                    onClick={() => openBundleCustomization(bundle)}
+                                                                >
+                                                                    Personalizar conjunto (+{formatPEN(Number(bundle.customization_surcharge ?? 8))})
+                                                                </Button>
+
 
 
                                                             </div>
@@ -507,6 +703,103 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             )}
 
             <Modal
+                title="Personalizar prenda"
+                open={isCustomizationOpen}
+                onCancel={() => setIsCustomizationOpen(false)}
+                onOk={onAddCustomizedToCart}
+                okText="Confirmar medidas"
+                cancelText="Cancelar"
+                width={620}
+                centered
+            >
+                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                    <Alert type="info" showIcon message={CUSTOM_ORDER_NOTICE} />
+                    <div>
+                        <Text strong>{initialData.product.name}</Text>
+                        <Text type="secondary" style={{ display: 'block', marginTop: 2 }}>
+                            Talla {selectedVariant?.size} / Color {selectedVariant?.color} / Precio personalizado {formatPEN((selectedVariant?.price ?? initialData.product.basePrice ?? 0) + customizationSurcharge)}
+                        </Text>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                        {customizationLabels.map((label) => (
+                            <div key={label}>
+                                <Text strong style={{ fontSize: 12 }}>{label}</Text>
+                                <Input
+                                    value={customMeasurements[label] || ''}
+                                    onChange={(event) => setCustomMeasurements((prev) => ({ ...prev, [label]: event.target.value }))}
+                                    placeholder="Medida en cm"
+                                    style={{ marginTop: 6 }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </Space>
+            </Modal>
+
+            <Modal
+                title="Personalizar conjunto completo"
+                open={!!customBundle}
+                onCancel={() => setCustomBundle(null)}
+                onOk={onAddCustomizedBundleToCart}
+                okText="Confirmar conjunto"
+                cancelText="Cancelar"
+                width={760}
+                centered
+            >
+                {customBundle && selectedVariant && (
+                    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                        <Alert type="info" showIcon message={CUSTOM_ORDER_NOTICE} />
+                        <Text type="secondary">
+                            Se aplicará un solo recargo de conjunto personalizado de {formatPEN(Number(customBundle.customization_surcharge ?? 8))}.
+                        </Text>
+                        {[
+                            {
+                                productId: initialData.product.productId,
+                                name: initialData.product.name,
+                                size: selectedVariant.size,
+                                color: selectedVariant.color,
+                                customizationType,
+                            },
+                            ...customBundle.items
+                                .filter((item) => item.productId !== initialData.product.productId)
+                                .map((item) => ({
+                                    productId: item.productId,
+                                    name: item.name,
+                                    size: item.size || 'UN',
+                                    color: item.color || 'UN',
+                                    customizationType: item.customizationType === 'PANTS' ? 'PANTS' : 'UPPER',
+                                })),
+                        ].map((line) => {
+                            const labels = CUSTOM_MEASUREMENT_LABELS[line.customizationType as 'PANTS' | 'UPPER'];
+                            return (
+                                <Card key={line.productId} size="small" title={`${line.name} - ${line.size} / ${line.color}`}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                                        {labels.map((label) => (
+                                            <div key={label}>
+                                                <Text strong style={{ fontSize: 12 }}>{label}</Text>
+                                                <Input
+                                                    value={customBundleMeasurements[line.productId]?.[label] || ''}
+                                                    onChange={(event) => setCustomBundleMeasurements((prev) => ({
+                                                        ...prev,
+                                                        [line.productId]: {
+                                                            ...(prev[line.productId] || {}),
+                                                            [label]: event.target.value,
+                                                        },
+                                                    }))}
+                                                    placeholder="Medida en cm"
+                                                    style={{ marginTop: 6 }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </Space>
+                )}
+            </Modal>
+
+            <Modal
                 title="Guía de Tallas"
                 open={isSizeGuideOpen}
                 onCancel={() => setIsSizeGuideOpen(false)}
@@ -522,54 +815,56 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                         return <Text type="secondary">Guía de tallas no disponible para este producto.</Text>;
                     }
 
-                    let table = null;
-                    if (hasJson) {
-                        try {
-                            const { columns, rows } = JSON.parse(initialData.product.size_guide_json!);
-                            table = (
-                                <div style={{ overflowX: 'auto', marginBottom: 24 }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${token.colorBorderSecondary}`, backgroundColor: token.colorBgContainer }}>
-                                        <thead>
-                                            <tr>
-                                                <th style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout, textAlign: 'left', minWidth: 100 }}>Medida (cm)</th>
-                                                {columns.map((col: string, i: number) => (
-                                                    <th key={i} style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout, textAlign: 'center' }}>{col}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {rows.map((row: any, i: number) => (
-                                                <tr key={i}>
-                                                    <td style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, fontWeight: 600 }}>{row.label}</td>
-                                                    {row.values.map((val: string, j: number) => (
-                                                        <td key={j} style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, textAlign: 'center' }}>{val}</td>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            );
-                        } catch (e) {
-                            console.error("Error parsing size guide JSON", e);
-                        }
+                    if (hasUrl) {
+                        return (
+                            <div style={{ textAlign: 'center' }}>
+                                <Image
+                                    src={initialData.product.size_guide_url!}
+                                    alt="Guía de tallas"
+                                    style={{ maxWidth: '100%', borderRadius: 8 }}
+                                />
+                            </div>
+                        );
                     }
 
-                    return (
-                        <>
-                            {table}
-                            {hasUrl && (
-                                <div style={{ textAlign: 'center', marginTop: hasJson ? 16 : 0 }}>
-                                    {hasJson && <Divider>Guía Visual</Divider>}
-                                    <Image 
-                                        src={initialData.product.size_guide_url!} 
-                                        alt="Guía de tallas" 
-                                        style={{ maxWidth: '100%', borderRadius: 8 }} 
-                                    />
-                                </div>
-                            )}
-                        </>
-                    );
+                    const sizeGuide = hasJson ? parseSizeGuideJson(initialData.product.size_guide_json) : null;
+                    const table = sizeGuide ? (
+                        <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${token.colorBorderSecondary}`, backgroundColor: token.colorBgContainer }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout, textAlign: 'left', minWidth: 100 }}>Medida (cm)</th>
+                                        {(sizeGuide.columns || []).map((col, i) => {
+                                            const available = availableSizes.has(col);
+                                            return (
+                                                <th key={i} style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout, textAlign: 'center', opacity: available ? 1 : 0.35 }}>
+                                                    {col}
+                                                    {!available && <Text type="secondary" style={{ display: 'block', fontSize: 10 }}>Sin stock</Text>}
+                                                </th>
+                                            );
+                                        })}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(sizeGuide.rows || []).map((row, i) => (
+                                        <tr key={i}>
+                                            <td style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, fontWeight: 600 }}>{row.label}</td>
+                                            {row.values.map((val, j) => {
+                                                const available = availableSizes.has((sizeGuide.columns || [])[j]);
+                                                return (
+                                                    <td key={j} style={{ padding: '12px 8px', border: `1px solid ${token.colorBorderSecondary}`, textAlign: 'center', opacity: available ? 1 : 0.35 }}>
+                                                        {val}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : null;
+
+                    return table;
                 })()}
 
             </Modal>

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 import { 
-    Button, Drawer, Empty, InputNumber, Space, Typography, 
+    Alert, Button, Drawer, Empty, InputNumber, Space, Typography, 
     Form, Input, Card, Result, Divider, theme, Flex 
 } from 'antd';
 import confetti from 'canvas-confetti';
@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useCartStore, type CartItem } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
+import { CUSTOM_ORDER_NOTICE } from '@/lib/customization';
 
 const { Text, Title } = Typography;
 
@@ -106,6 +107,11 @@ export default function MiniCart({
     const bundleDiscount = useMemo(() => {
         return calculateBundleDiscount(items, activeBundles);
     }, [items, activeBundles]);
+    const hasCustomizedItems = useMemo(() => items.some((item) => !!item.isCustomized), [items]);
+
+    useEffect(() => {
+        if (hasCustomizedItems) setPaymentMethod('WHATSAPP');
+    }, [hasCustomizedItems]);
 
     // Re-validate or clear coupon if subtotal changes (e.g. removed items)
     useEffect(() => {
@@ -178,7 +184,7 @@ export default function MiniCart({
             subtotal: frozenSubtotal
         };
         
-        if (paymentMethod === 'WHATSAPP') {
+        if (paymentMethod === 'WHATSAPP' || hasCustomizedItems) {
             processWhatsAppCheckout(shippingDataRef.current);
             return;
         }
@@ -241,8 +247,17 @@ export default function MiniCart({
 
             let text = `¡Hola! Quiero hacer el pedido *${orderCode}*:\n\n`;
             payload.items.forEach((item) => {
-                text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color}) - ${formatPEN(item.unitPrice * item.qty)}\n`;
+                text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color})${item.isCustomized ? ' [Personalizada]' : ''} - ${formatPEN(item.unitPrice * item.qty)}\n`;
+                if (item.isCustomized && item.customMeasurements) {
+                    Object.entries(item.customMeasurements).forEach(([label, value]) => {
+                        text += `  • ${label}: ${value}\n`;
+                    });
+                }
             });
+
+            if (hasCustomizedItems) {
+                text += `\n*Importante:* ${CUSTOM_ORDER_NOTICE}\n`;
+            }
 
             if (bundleDiscount > 0 || appliedCoupon) {
                 text += `\nSubtotal: ${formatPEN(subtotal)}\n`;
@@ -446,8 +461,10 @@ export default function MiniCart({
                             </div>
                         ) : (
                             <Flex vertical gap={16}>
-                                {items.map((item) => (
-                                    <div key={item.variantId} style={{ paddingBottom: 16, borderBottom: `1px solid ${token.colorFillSecondary}` }}>
+                                {items.map((item) => {
+                                    const itemKey = item.cartItemId || item.variantId;
+                                    return (
+                                    <div key={itemKey} style={{ paddingBottom: 16, borderBottom: `1px solid ${token.colorFillSecondary}` }}>
                                         <Flex align="start" gap={16}>
                                             <div style={{ width: 80, height: 100, overflow: 'hidden', borderRadius: 0, flexShrink: 0, backgroundColor: '#f9f9f9' }}>
                                                 {item.imageUrl ? (
@@ -467,22 +484,44 @@ export default function MiniCart({
                                                         <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                                                             {`${item.size} / ${item.color}`}
                                                         </Text>
+                                                        {item.isCustomized && (
+                                                            <Text style={{ display: 'block', color: '#C89F53', fontSize: 12, marginTop: 4 }}>
+                                                                Personalizada{item.customizationSurcharge ? ` (+${formatPEN(item.customizationSurcharge)})` : ''}
+                                                            </Text>
+                                                        )}
+                                                        {item.customizationGroupLabel && (
+                                                            <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 2 }}>
+                                                                {item.customizationGroupLabel}
+                                                            </Text>
+                                                        )}
                                                     </div>
                                                     <Button
                                                         type="text"
                                                         size="small"
                                                         icon={<DeleteFilled style={{ fontSize: 14, color: '#ccc' }} />}
-                                                        onClick={() => removeItem(item.variantId)}
+                                                        onClick={() => removeItem(itemKey)}
                                                     />
                                                 </Flex>
-                                                
+                                                {item.isCustomized && item.customMeasurements && (
+                                                    <div style={{ marginTop: 8, padding: 8, background: token.colorFillAlter, borderRadius: 6 }}>
+                                                        {Object.entries(item.customMeasurements).map(([label, value]) => (
+                                                            <Text key={label} type="secondary" style={{ display: 'block', fontSize: 11 }}>
+                                                                {label}: {value}
+                                                            </Text>
+                                                        ))}
+                                                        <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 6 }}>
+                                                            {CUSTOM_ORDER_NOTICE}
+                                                        </Text>
+                                                    </div>
+                                                )}
+                                                 
                                                 <Flex align="center" justify="space-between" style={{ marginTop: 12 }}>
                                                     <InputNumber
                                                         min={1}
                                                         variant="borderless"
                                                         size="small"
                                                         value={item.qty}
-                                                        onChange={(v) => setQty(item.variantId, Number(v ?? 1))}
+                                                        onChange={(v) => setQty(itemKey, Number(v ?? 1))}
                                                         style={{ width: 50, borderBottom: '1px solid #eee', borderRadius: 0 }}
                                                     />
                                                     <Text style={{ fontWeight: 500 }}>{formatPEN(item.unitPrice * item.qty)}</Text>
@@ -490,7 +529,8 @@ export default function MiniCart({
                                             </div>
                                         </Flex>
                                     </div>
-                                ))}
+                                );
+                                })}
                             </Flex>
                         )}
                     </div>
@@ -501,7 +541,11 @@ export default function MiniCart({
                         </div>
                         
                         <Form layout="vertical" form={form} onFinish={handleCheckoutSubmit} requiredMark={false}>
-                            <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Completo</Text>} name="shipping_name" rules={[{ required: true, message: 'Requerido' }]}>
+                            {hasCustomizedItems && (
+                                <Alert type="warning" showIcon message={CUSTOM_ORDER_NOTICE} style={{ marginBottom: 16 }} />
+                            )}
+
+                            <Form.Item label={<Text strong style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Completo</Text>} name="shipping_name" rules={[{ required: true, message: 'Requerido' }]}> 
                                 <Input variant="filled" placeholder="Tu nombre" size="large" style={{ borderRadius: 4 }} />
                             </Form.Item>
 
@@ -572,15 +616,17 @@ export default function MiniCart({
 
 
                             <Space orientation="vertical" size="large" style={{ width: '100%', marginTop: 24 }}>
-                                <Button 
-                                    type="primary" 
-                                    htmlType="submit"
-                                    onClick={() => setPaymentMethod('CULQI')}
-                                    loading={isSubmitting && paymentMethod === 'CULQI'}
-                                    style={{ width: '100%', height: 50, fontSize: 14, fontWeight: 600, letterSpacing: '0.05em', borderRadius: 4 }}
-                                >
-                                    PAGAR CON TARJETA
-                                </Button>
+                                {!hasCustomizedItems && (
+                                    <Button 
+                                        type="primary" 
+                                        htmlType="submit"
+                                        onClick={() => setPaymentMethod('CULQI')}
+                                        loading={isSubmitting && paymentMethod === 'CULQI'}
+                                        style={{ width: '100%', height: 50, fontSize: 14, fontWeight: 600, letterSpacing: '0.05em', borderRadius: 4 }}
+                                    >
+                                        PAGAR CON TARJETA
+                                    </Button>
+                                )}
                                 <Button 
                                     htmlType="submit"
                                     onClick={() => setPaymentMethod('WHATSAPP')}

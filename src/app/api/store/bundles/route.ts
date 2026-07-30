@@ -17,7 +17,7 @@ export async function GET() {
         });
 
         const tierRows = await prisma.$queryRaw<any[]>`
-            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price
+            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price, customization_surcharge
             FROM dbo.bundle_promotion
             WHERE is_active = 1;
         `;
@@ -27,6 +27,7 @@ export async function GET() {
                 bundle_price: row.bundle_price === null ? null : Number(row.bundle_price),
                 tier_2_price: row.tier_2_price === null ? null : Number(row.tier_2_price),
                 tier_3_price: row.tier_3_price === null ? null : Number(row.tier_3_price),
+                customization_surcharge: row.customization_surcharge === null ? 8 : Number(row.customization_surcharge),
             }
         ]));
 
@@ -37,6 +38,7 @@ export async function GET() {
             bundle_price: tiersByBundleId.get(String(b.bundle_id))?.bundle_price ?? null,
             tier_2_price: tiersByBundleId.get(String(b.bundle_id))?.tier_2_price ?? null,
             tier_3_price: tiersByBundleId.get(String(b.bundle_id))?.tier_3_price ?? null,
+            customization_surcharge: tiersByBundleId.get(String(b.bundle_id))?.customization_surcharge ?? 8,
             requiredProductIds: b.items.map((i: any) => i.product_id)
         })));
     } catch (e: any) {

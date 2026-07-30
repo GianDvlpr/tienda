@@ -2,6 +2,7 @@ export type BundleDiscountCartItem = {
     productId: string;
     qty: number;
     unitPrice: number;
+    customizationSurcharge?: number | null;
 };
 
 export type BundleDiscountPromotion = {
@@ -75,7 +76,7 @@ export function calculateBundleDiscount(items: BundleDiscountCartItem[], bundles
 
             if (requiredSet.has(productId)) {
                 for (let i = 0; i < qty; i += 1) {
-                    const unitPrice = Number(item.unitPrice || 0);
+                    const unitPrice = Math.max(0, Number(item.unitPrice || 0) - Number(item.customizationSurcharge || 0));
                     pricesByProduct[productId] = [...(pricesByProduct[productId] || []), unitPrice];
                 }
             }

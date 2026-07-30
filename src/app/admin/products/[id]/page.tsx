@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin, Divider, AutoComplete } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Image, Spin, Divider, AutoComplete, theme } from 'antd';
 
 import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter, useParams } from 'next/navigation';
@@ -20,6 +20,7 @@ export default function EditProductPage() {
     const router = useRouter();
     const params = useParams();
     const id = params.id as string;
+    const { token } = theme.useToken();
 
     const [form] = Form.useForm();
     const [isSaving, setIsSaving] = useState(false);
@@ -51,6 +52,9 @@ export default function EditProductPage() {
                 is_active: product.is_active,
                 size_guide_url: product.size_guide_url,
                 size_guide_json: product.size_guide_json,
+                is_customizable: product.is_customizable,
+                customization_type: product.customization_type || 'UPPER',
+                customization_surcharge: product.customization_surcharge ? Number(product.customization_surcharge) : 5,
                 bulk_stock: 0,
                 bulk_is_active: true,
                 collections: product.product_collection?.map((pc: any) => pc.collection_id) || [],
@@ -316,6 +320,39 @@ export default function EditProductPage() {
                     </Form.Item>
                 </Card>
 
+                <Card title="Personalización" variant="borderless" style={{ marginBottom: 24 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                        <Form.Item name="is_customizable" label="Permite personalización" valuePropName="checked">
+                            <Switch checkedChildren="Sí" unCheckedChildren="No" />
+                        </Form.Item>
+
+                        <Form.Item
+                            noStyle
+                            shouldUpdate={(prevValues, currentValues) => prevValues.is_customizable !== currentValues.is_customizable}
+                        >
+                            {({ getFieldValue }) => {
+                                const enabled = !!getFieldValue('is_customizable');
+                                return (
+                                    <>
+                                        <Form.Item name="customization_type" label="Tipo de prenda" rules={enabled ? [{ required: true, message: 'Selecciona el tipo' }] : []}>
+                                            <Select disabled={!enabled}>
+                                                <Option value="PANTS">Pantalón</Option>
+                                                <Option value="UPPER">Parte superior</Option>
+                                            </Select>
+                                        </Form.Item>
+                                        <Form.Item name="customization_surcharge" label="Recargo personalizado (S/)" extra="Por defecto S/ 5.00 para prendas individuales.">
+                                            <InputNumber disabled={!enabled} style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
+                                        </Form.Item>
+                                    </>
+                                );
+                            }}
+                        </Form.Item>
+                    </div>
+                    <Text type="secondary">
+                        Si está activo, el producto podrá comprarse normal o con medidas personalizadas.
+                    </Text>
+                </Card>
+
                 <Card title="Imágenes del Producto" variant="borderless" style={{ marginBottom: 24 }}>
                     <div style={{ marginBottom: 16 }}>
                         <ImageUploader onUploadSuccess={handleUploadSuccess} buttonText="Añadir Fotos" multiple />
@@ -482,13 +519,27 @@ export default function EditProductPage() {
                     </Form.List>
                 </Card>
 
-                <div style={{ textAlign: 'right', paddingBottom: 64 }}>
-                    <Space size="large">
-                        <Button onClick={() => router.back()}>Cancelar</Button>
-                        <Button type="primary" htmlType="submit" size="large" loading={isSaving}>
-                            Guardar Cambios
-                        </Button>
-                    </Space>
+                <div style={{ height: 88 }} />
+
+                <div style={{
+                    position: 'fixed',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 1000,
+                    padding: '12px 24px',
+                    background: token.colorBgContainer,
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                    boxShadow: token.boxShadowSecondary,
+                }}>
+                    <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'flex-end' }}>
+                        <Space size="large">
+                            <Button onClick={() => router.back()}>Cancelar</Button>
+                            <Button type="primary" htmlType="submit" size="large" loading={isSaving}>
+                                Guardar Cambios
+                            </Button>
+                        </Space>
+                    </div>
                 </div>
             </Form>
         </div>

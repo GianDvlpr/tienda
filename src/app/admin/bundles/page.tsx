@@ -26,7 +26,7 @@ export default function AdminBundlesPage() {
     const openCreateModal = () => {
         setEditingBundle(null);
         form.resetFields();
-        form.setFieldsValue({ is_active: true, discount_amount: 0, bundle_price: null, tier_2_price: null, tier_3_price: null, product_ids: [] });
+        form.setFieldsValue({ is_active: true, discount_amount: 0, bundle_price: null, tier_2_price: null, tier_3_price: null, customization_surcharge: 8, product_ids: [] });
         setIsModalOpen(true);
     };
 
@@ -40,6 +40,7 @@ export default function AdminBundlesPage() {
             bundle_price: record.bundle_price ? Number(record.bundle_price) : null,
             tier_2_price: record.tier_2_price ? Number(record.tier_2_price) : null,
             tier_3_price: record.tier_3_price ? Number(record.tier_3_price) : null,
+            customization_surcharge: record.customization_surcharge ? Number(record.customization_surcharge) : 8,
             is_active: record.is_active,
             product_ids: record.items?.map((i: any) => i.product_id) || []
         });
@@ -132,6 +133,7 @@ export default function AdminBundlesPage() {
                     {Number(record.tier_3_price || 0) > 0 && (
                         <Text type="success">3 conjuntos por S/ {Number(record.tier_3_price).toFixed(2)}</Text>
                     )}
+                    <Text type="secondary">Personalizado: + S/ {Number(record.customization_surcharge ?? 8).toFixed(2)}</Text>
                 </Space>
             )
         },
@@ -254,6 +256,14 @@ export default function AdminBundlesPage() {
                             name="tier_3_price"
                             label="Precio 3 conjuntos (S/)"
                             extra="Opcional. Si lleva 3 conjuntos completos, paga este total. Aplica sin importar color o talla."
+                        >
+                            <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
+                        </Form.Item>
+
+                        <Form.Item
+                            name="customization_surcharge"
+                            label="Recargo conjunto personalizado (S/)"
+                            extra="Por defecto S/ 8.00 si el conjunto completo se personaliza."
                         >
                             <InputNumber style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
                         </Form.Item>

@@ -71,6 +71,11 @@ type OrderItem = {
     variant_size: string;
     variant_color: string;
     sku: string;
+    is_customized?: boolean | number;
+    custom_measurements_json?: string | null;
+    customization_surcharge?: number | string | null;
+    customization_group_id?: string | null;
+    customization_group_label?: string | null;
 };
 
 type EditableOrderItem = {
@@ -551,6 +556,33 @@ export default function OrderDetailPage() {
                     <Text strong>{record.product_name}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>SKU: {record.sku}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>{record.variant_size} - {record.variant_color}</Text>
+                    {(record.is_customized === true || record.is_customized === 1) && (
+                        <>
+                            <Tag color="gold" style={{ width: 'fit-content' }}>Personalizado</Tag>
+                            {record.customization_group_label && (
+                                <Text type="secondary" style={{ fontSize: 12 }}>{record.customization_group_label}</Text>
+                            )}
+                            {Number(record.customization_surcharge || 0) > 0 && (
+                                <Text style={{ fontSize: 12, color: '#C89F53' }}>Recargo: {formatPEN(Number(record.customization_surcharge))}</Text>
+                            )}
+                            {record.custom_measurements_json && (() => {
+                                try {
+                                    const measurements = JSON.parse(record.custom_measurements_json) as Record<string, string>;
+                                    return (
+                                        <div style={{ marginTop: 4 }}>
+                                            {Object.entries(measurements).map(([label, value]) => (
+                                                <Text key={label} type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                                    {label}: {value}
+                                                </Text>
+                                            ))}
+                                        </div>
+                                    );
+                                } catch {
+                                    return <Text type="secondary" style={{ fontSize: 12 }}>{record.custom_measurements_json}</Text>;
+                                }
+                            })()}
+                        </>
+                    )}
                 </Space>
             ),
         },

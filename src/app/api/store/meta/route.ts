@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
 
     const onlyInStock = (url.searchParams.get('onlyInStock') ?? '0') === '1';
     const onlyInStockInt = onlyInStock ? 1 : 0;
+    const customizable = (url.searchParams.get('customizable') ?? '0') === '1';
+    const customizableInt = customizable ? 1 : 0;
 
     try {
         // 1) collections (globales)
@@ -36,6 +38,7 @@ export async function GET(req: NextRequest) {
       JOIN dbo.product p ON p.product_id = v.product_id
       WHERE
         p.is_active = 1
+        AND (${customizableInt} = 0 OR p.is_customizable = 1)
         AND v.is_active = 1
         AND (${onlyInStockInt} = 0 OR v.stock > 0)
         AND (
@@ -60,6 +63,7 @@ export async function GET(req: NextRequest) {
       JOIN dbo.product p ON p.product_id = v.product_id
       WHERE
         p.is_active = 1
+        AND (${customizableInt} = 0 OR p.is_customizable = 1)
         AND v.is_active = 1
         AND (${onlyInStockInt} = 0 OR v.stock > 0)
         AND (
@@ -86,6 +90,7 @@ export async function GET(req: NextRequest) {
       JOIN dbo.product p ON p.product_id = v.product_id
       WHERE
         p.is_active = 1
+        AND (${customizableInt} = 0 OR p.is_customizable = 1)
         AND v.is_active = 1
         AND (${onlyInStockInt} = 0 OR v.stock > 0)
         AND (

@@ -19,7 +19,7 @@ import {
     Col
 } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import styles from '@/components/shop/productGridTransition.module.css';
 import ProductGrid from '@/components/shop/ProductGrid';
@@ -50,8 +50,9 @@ function parseCommaArray(param: string | null): string[] {
     return param.split(',').filter(Boolean);
 }
 
-export default function ShopClient() {
+export default function ShopClient({ customizableOnly = false }: { customizableOnly?: boolean }) {
     const sp = useSearchParams();
+    const pathname = usePathname();
     const screens = Grid.useBreakpoint();
     const isDesktop = screens.lg;
 
@@ -104,9 +105,10 @@ export default function ShopClient() {
     const metaKey = useMemo(() => {
         const params = new URLSearchParams();
         if (collection) params.set('collection', collection);
+        if (customizableOnly) params.set('customizable', '1');
         params.set('onlyInStock', onlyInStock ? '1' : '0');
         return `/api/store/meta?${params.toString()}`;
-    }, [collection, onlyInStock]);
+    }, [collection, customizableOnly, onlyInStock]);
 
     const {
         data: meta,
@@ -153,6 +155,7 @@ export default function ShopClient() {
         const params = new URLSearchParams();
 
         if (collection) params.set('collection', collection);
+        if (customizableOnly) params.set('customizable', '1');
         if (debouncedQ.trim()) params.set('q', debouncedQ.trim());
 
         if (price[0] !== priceBounds.min) params.set('minPrice', String(price[0]));
@@ -168,15 +171,15 @@ export default function ShopClient() {
         if (pageSize !== 12) params.set('pageSize', String(pageSize));
 
         return params.toString();
-    }, [collection, debouncedQ, price, priceBounds, debouncedSizes, debouncedColors, onlyInStock, sort, page, pageSize]);
+    }, [collection, customizableOnly, debouncedQ, price, priceBounds, debouncedSizes, debouncedColors, onlyInStock, sort, page, pageSize]);
 
     useEffect(() => {
         setPage(1);
     }, [debouncedSizes, debouncedColors]);
 
     useEffect(() => {
-        window.history.replaceState(null, '', `/shop?${queryString}`);
-    }, [queryString]);
+        window.history.replaceState(null, '', `${pathname}?${queryString}`);
+    }, [pathname, queryString]);
 
     const productsKey = useMemo(() => `/api/store/products?${queryString}`, [queryString]);
 
@@ -227,6 +230,15 @@ export default function ShopClient() {
             <HeroSlider />
 
             <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: '48px 24px 24px' }}>
+                {customizableOnly && (
+                    <Card variant="borderless" style={{ marginBottom: 24, background: 'linear-gradient(135deg, rgba(200,159,83,0.12), rgba(255,255,255,0.85))' }}>
+                        <Title level={2} style={{ marginTop: 0 }}>Prendas personalizadas</Title>
+                        <Text type="secondary">
+                            Elige una prenda, selecciona talla y color, y ajusta tus medidas antes de pedirla por WhatsApp.
+                        </Text>
+                    </Card>
+                )}
+
                 {(metaError || productsError) ? (
                     <Alert
                         type="error"

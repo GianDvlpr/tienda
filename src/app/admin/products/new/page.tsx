@@ -40,6 +40,9 @@ export default function NewProductPage() {
             base_price: 0,
             base_cost: 0,
             size_guide_url: null,
+            is_customizable: false,
+            customization_type: 'UPPER',
+            customization_surcharge: 5,
             bulk_stock: 0,
             bulk_is_active: true,
             // Create at least one empty variant by default
@@ -280,6 +283,39 @@ export default function NewProductPage() {
                             ))}
                         </Select>
                     </Form.Item>
+                </Card>
+
+                <Card title="Personalización" variant="borderless" style={{ marginBottom: 24 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                        <Form.Item name="is_customizable" label="Permite personalización" valuePropName="checked">
+                            <Switch checkedChildren="Sí" unCheckedChildren="No" />
+                        </Form.Item>
+
+                        <Form.Item
+                            noStyle
+                            shouldUpdate={(prevValues, currentValues) => prevValues.is_customizable !== currentValues.is_customizable}
+                        >
+                            {({ getFieldValue }) => {
+                                const enabled = !!getFieldValue('is_customizable');
+                                return (
+                                    <>
+                                        <Form.Item name="customization_type" label="Tipo de prenda" rules={enabled ? [{ required: true, message: 'Selecciona el tipo' }] : []}>
+                                            <Select disabled={!enabled}>
+                                                <Option value="PANTS">Pantalón</Option>
+                                                <Option value="UPPER">Parte superior</Option>
+                                            </Select>
+                                        </Form.Item>
+                                        <Form.Item name="customization_surcharge" label="Recargo personalizado (S/)" extra="Por defecto S/ 5.00 para prendas individuales.">
+                                            <InputNumber disabled={!enabled} style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
+                                        </Form.Item>
+                                    </>
+                                );
+                            }}
+                        </Form.Item>
+                    </div>
+                    <Text type="secondary">
+                        Si está activo, el producto podrá comprarse normal o con medidas personalizadas.
+                    </Text>
                 </Card>
 
                 {/* --- SECCIÓN IMÁGENES --- */}

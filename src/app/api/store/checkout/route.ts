@@ -20,6 +20,11 @@ type CheckoutItem = {
     color: string;
     sku?: string | null;
     imageUrl?: string | null;
+    isCustomized?: boolean;
+    customMeasurements?: Record<string, string> | null;
+    customizationSurcharge?: number;
+    customizationGroupId?: string | null;
+    customizationGroupLabel?: string | null;
 };
 
 type CheckoutBody = {
@@ -70,6 +75,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Falta el token de pago' }, { status: 400 });
         }
 
+        const hasCustomizedItems = items.some((item) => !!item.isCustomized);
+        if (hasCustomizedItems && method !== 'WHATSAPP') {
+            return NextResponse.json({ error: 'Los pedidos personalizados solo pueden solicitarse por WhatsApp' }, { status: 400 });
+        }
+
         const culqiSecret = process.env.CULQI_SECRET_KEY;
         if (method === 'CULQI' && (!culqiSecret || culqiSecret === 'PON_TU_LLAVE_PRIVADA_AQUI')) {
             return NextResponse.json({ error: 'La pasarela de pagos no está configurada correctamente' }, { status: 500 });
@@ -95,7 +105,7 @@ export async function POST(req: Request) {
         logToFile(`[CHECKOUT] Items in Cart: ${items.length}, Variants found: ${variantsInCart.length}`);
 
         const cartProductStats: Record<string, number> = {};
-        const serverBundleItems: { productId: string; qty: number; unitPrice: number }[] = [];
+        const serverBundleItems: { productId: string; qty: number; unitPrice: number; customizationSurcharge?: number }[] = [];
 
         for (const item of items) {
             const variant = variantsInCart.find(v => 
@@ -108,6 +118,7 @@ export async function POST(req: Request) {
                     productId: pId,
                     qty: item.qty,
                     unitPrice: item.unitPrice,
+                    customizationSurcharge: item.customizationSurcharge || 0,
                 });
             } else {
                 logToFile(`[CHECKOUT] Variant NOT found in DB: ${item.variantId}`);
@@ -268,7 +279,12 @@ export async function POST(req: Request) {
                         variant_size: item.size,
                         variant_color: item.color,
                         sku: item.sku || 'N/A',
-                        image_url: item.imageUrl
+                        image_url: item.imageUrl,
+                        is_customized: !!item.isCustomized,
+                        custom_measurements_json: item.isCustomized && item.customMeasurements ? JSON.stringify(item.customMeasurements) : null,
+                        customization_surcharge: Number(item.customizationSurcharge || 0),
+                        customization_group_id: item.customizationGroupId || null,
+                        customization_group_label: item.customizationGroupLabel || null,
                     }
                 });
 
