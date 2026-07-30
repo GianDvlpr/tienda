@@ -117,11 +117,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             });
 
             const customFabricSupplyId = is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null;
-            await tx.$executeRaw`
-                UPDATE dbo.product
-                SET custom_fabric_supply_id = CAST(${customFabricSupplyId} AS uniqueidentifier)
-                WHERE product_id = ${id};
-            `;
+            if (customFabricSupplyId) {
+                await tx.$executeRaw`
+                    UPDATE dbo.product
+                    SET custom_fabric_supply_id = ${customFabricSupplyId}
+                    WHERE product_id = ${id};
+                `;
+            } else {
+                await tx.$executeRaw`
+                    UPDATE dbo.product
+                    SET custom_fabric_supply_id = NULL
+                    WHERE product_id = ${id};
+                `;
+            }
 
 
             // 2. Sync Collections by diff instead of recreating all rows
