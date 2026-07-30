@@ -7,8 +7,12 @@ import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bun
 const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
 
 function logToFile(msg: string) {
-    const timestamp = new Date().toISOString();
-    fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`);
+    try {
+        const timestamp = new Date().toISOString();
+        fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`);
+    } catch (error) {
+        console.error('Checkout log error:', error);
+    }
 }
 
 type CheckoutItem = {
@@ -287,6 +291,8 @@ export async function POST(req: Request) {
                         customization_group_label: item.customizationGroupLabel || null,
                     }
                 });
+
+                if (item.isCustomized) continue;
 
                 // Optional: We can discount stock here or from the Admin Panel. 
                 // Let's discount it right away to prevent overselling.

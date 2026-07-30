@@ -249,8 +249,11 @@ export default function MiniCart({
             payload.items.forEach((item) => {
                 text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color})${item.isCustomized ? ' [Personalizada]' : ''} - ${formatPEN(item.unitPrice * item.qty)}\n`;
                 if (item.isCustomized && item.customMeasurements) {
+                    text += `  Medidas:\n`;
+                    text += `  Medida | Valor\n`;
+                    text += `  --- | ---\n`;
                     Object.entries(item.customMeasurements).forEach(([label, value]) => {
-                        text += `  • ${label}: ${value}\n`;
+                        text += `  ${label} | ${value}\n`;
                     });
                 }
             });
@@ -290,7 +293,7 @@ export default function MiniCart({
             
             const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '51907360760';
             const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
-            window.open(waUrl, '_blank');
+            window.location.assign(waUrl);
         } catch (error: unknown) {
             toast.error(error instanceof Error ? error.message : 'Ocurrió un error al procesar el pedido');
         } finally {
@@ -504,11 +507,16 @@ export default function MiniCart({
                                                 </Flex>
                                                 {item.isCustomized && item.customMeasurements && (
                                                     <div style={{ marginTop: 8, padding: 8, background: token.colorFillAlter, borderRadius: 6 }}>
-                                                        {Object.entries(item.customMeasurements).map(([label, value]) => (
-                                                            <Text key={label} type="secondary" style={{ display: 'block', fontSize: 11 }}>
-                                                                {label}: {value}
-                                                            </Text>
-                                                        ))}
+                                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                                                            <tbody>
+                                                                {Object.entries(item.customMeasurements).map(([label, value]) => (
+                                                                    <tr key={label}>
+                                                                        <td style={{ padding: '3px 6px', borderBottom: `1px solid ${token.colorBorderSecondary}`, fontWeight: 600 }}>{label}</td>
+                                                                        <td style={{ padding: '3px 6px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>{value}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
                                                         <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 6 }}>
                                                             {CUSTOM_ORDER_NOTICE}
                                                         </Text>

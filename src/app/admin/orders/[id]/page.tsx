@@ -569,13 +569,16 @@ export default function OrderDetailPage() {
                                 try {
                                     const measurements = JSON.parse(record.custom_measurements_json) as Record<string, string>;
                                     return (
-                                        <div style={{ marginTop: 4 }}>
-                                            {Object.entries(measurements).map(([label, value]) => (
-                                                <Text key={label} type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                                                    {label}: {value}
-                                                </Text>
-                                            ))}
-                                        </div>
+                                        <table style={{ marginTop: 4, borderCollapse: 'collapse', fontSize: 12 }}>
+                                            <tbody>
+                                                {Object.entries(measurements).map(([label, value]) => (
+                                                    <tr key={label}>
+                                                        <td style={{ padding: '2px 8px 2px 0', fontWeight: 600 }}>{label}</td>
+                                                        <td style={{ padding: '2px 0' }}>{value}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     );
                                 } catch {
                                     return <Text type="secondary" style={{ fontSize: 12 }}>{record.custom_measurements_json}</Text>;

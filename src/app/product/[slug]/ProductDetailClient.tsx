@@ -20,6 +20,8 @@ import { CUSTOM_MEASUREMENT_LABELS, CUSTOM_ORDER_NOTICE, getMeasurementsForSize,
 
 const { Title, Text, Paragraph } = Typography;
 
+const CUSTOM_SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL'];
+
 function normalizeColor(color?: string | null) {
     return String(color || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
@@ -57,6 +59,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
     const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
+    const [customSize, setCustomSize] = useState('S');
     const [customMeasurements, setCustomMeasurements] = useState<Record<string, string>>({});
     const [customBundle, setCustomBundle] = useState<BundlePromotion | null>(null);
     const [customBundleMeasurements, setCustomBundleMeasurements] = useState<Record<string, Record<string, string>>>({});
@@ -122,6 +125,14 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     const customizationLabels = CUSTOM_MEASUREMENT_LABELS[customizationType];
     const customizationSurcharge = Number(initialData.product.customizationSurcharge ?? 5);
 
+    const customizationReferenceVariant = useMemo(() => {
+        if (!isCustomizable) return null;
+        return variants.find((v) => selectedColor && v.color === selectedColor)
+            ?? variants.find((v) => v.stock > 0)
+            ?? variants[0]
+            ?? null;
+    }, [isCustomizable, selectedColor, variants]);
+
     const availableSizes = useMemo(() => {
         const set = new Set<string>();
         for (const variant of variants) {
@@ -131,9 +142,9 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     }, [variants]);
 
     useEffect(() => {
-        if (!isCustomizable || !selectedSize) return;
-        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, selectedSize, customizationLabels));
-    }, [initialData.product.size_guide_json, isCustomizable, selectedSize, customizationLabels]);
+        if (!isCustomizable || !customSize) return;
+        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, customSize, customizationLabels));
+    }, [customSize, initialData.product.size_guide_json, isCustomizable, customizationLabels]);
 
     const onAddToCart = () => {
         if (!initialData || !selectedVariant) return;
@@ -159,27 +170,31 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     };
 
     const openCustomization = () => {
-        if (!initialData || !selectedVariant) return;
-        if (!canAdd) {
-            toast.warning('Elige una talla y color disponible');
+        if (!initialData || !customizationReferenceVariant) return;
+        if (!selectedColor && !customizationReferenceVariant.color) {
+            toast.warning('Elige un color para personalizar');
             return;
         }
-        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, selectedVariant.size, customizationLabels));
+        const initialSize = CUSTOM_SIZE_OPTIONS.includes(selectedSize || '') ? selectedSize! : 'S';
+        setCustomSize(initialSize);
+        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, initialSize, customizationLabels));
         setIsCustomizationOpen(true);
     };
 
     useEffect(() => {
         if (hasAutoOpenedCustomization.current) return;
         if (searchParams.get('personalizar') !== '1') return;
-        if (!isCustomizable || !selectedVariant || !canAdd) return;
+        if (!isCustomizable || !customizationReferenceVariant) return;
 
         hasAutoOpenedCustomization.current = true;
-        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, selectedVariant.size, customizationLabels));
+        const initialSize = CUSTOM_SIZE_OPTIONS.includes(selectedSize || '') ? selectedSize! : 'S';
+        setCustomSize(initialSize);
+        setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, initialSize, customizationLabels));
         setIsCustomizationOpen(true);
-    }, [canAdd, customizationLabels, initialData.product.size_guide_json, isCustomizable, searchParams, selectedVariant]);
+    }, [customizationLabels, customizationReferenceVariant, initialData.product.size_guide_json, isCustomizable, searchParams, selectedSize]);
 
     const onAddCustomizedToCart = () => {
-        if (!initialData || !selectedVariant) return;
+        if (!initialData || !customizationReferenceVariant) return;
         const missing = customizationLabels.filter((label) => !String(customMeasurements[label] || '').trim());
         if (missing.length > 0) {
             toast.warning(`Completa las medidas: ${missing.join(', ')}`);
@@ -187,16 +202,16 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         }
 
         addCartItem({
-            cartItemId: `${selectedVariant.variantId}:custom:${Date.now()}`,
-            variantId: selectedVariant.variantId,
+            cartItemId: `${customizationReferenceVariant.variantId}:custom:${Date.now()}`,
+            variantId: customizationReferenceVariant.variantId,
             productId: initialData.product.productId,
             slug: initialData.product.slug,
             name: initialData.product.name,
-            size: selectedVariant.size,
-            color: selectedVariant.color,
-            sku: selectedVariant.sku,
+            size: customSize,
+            color: selectedColor || customizationReferenceVariant.color,
+            sku: customizationReferenceVariant.sku,
             imageUrl: selectedImage?.url ?? null,
-            unitPrice: Number(selectedVariant.price) + customizationSurcharge,
+            unitPrice: Number(customizationReferenceVariant.price) + customizationSurcharge,
             isCustomized: true,
             customMeasurements,
             customizationSurcharge,
@@ -431,8 +446,18 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                 <Divider style={{ margin: '12px 0' }} />
 
                                 <div>
-                                    <Flex align="center" justify="space-between">
-                                        <Text strong>Talla</Text>
+                                    <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
+                                        {isCustomizable ? (
+                                            <Button
+                                                type="link"
+                                                size="small"
+                                                disabled={!customizationReferenceVariant}
+                                                onClick={openCustomization}
+                                                style={{ padding: 0, height: 'auto' }}
+                                            >
+                                                Personalizar prenda
+                                            </Button>
+                                        ) : <span />}
                                         {(initialData.product.size_guide_url || initialData.product.size_guide_json) && (
                                             <Button 
                                                 type="link" 
@@ -444,6 +469,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                             </Button>
                                         )}
                                     </Flex>
+                                    <Text strong>Talla</Text>
                                     <div style={{ marginTop: 8 }}>
                                         <Radio.Group
                                             value={selectedSize ?? undefined}
@@ -501,18 +527,6 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                     >
                                         Agregar al Carrito
                                     </Button>
-
-                                    {isCustomizable && (
-                                        <Button
-                                            size="large"
-                                            icon={<ShoppingCartOutlined />}
-                                            disabled={!canAdd}
-                                            onClick={openCustomization}
-                                            style={{ flex: 1, minWidth: 200, borderColor: '#C89F53', color: '#C89F53' }}
-                                        >
-                                            Personalizar prenda (+{formatPEN(customizationSurcharge)})
-                                        </Button>
-                                    )}
 
                                     <Button
                                         size="large"
@@ -717,21 +731,45 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                     <div>
                         <Text strong>{initialData.product.name}</Text>
                         <Text type="secondary" style={{ display: 'block', marginTop: 2 }}>
-                            Talla {selectedVariant?.size} / Color {selectedVariant?.color} / Precio personalizado {formatPEN((selectedVariant?.price ?? initialData.product.basePrice ?? 0) + customizationSurcharge)}
+                            Color {selectedColor || customizationReferenceVariant?.color} / Precio personalizado {formatPEN((customizationReferenceVariant?.price ?? initialData.product.basePrice ?? 0) + customizationSurcharge)}
                         </Text>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-                        {customizationLabels.map((label) => (
-                            <div key={label}>
-                                <Text strong style={{ fontSize: 12 }}>{label}</Text>
-                                <Input
-                                    value={customMeasurements[label] || ''}
-                                    onChange={(event) => setCustomMeasurements((prev) => ({ ...prev, [label]: event.target.value }))}
-                                    placeholder="Medida en cm"
-                                    style={{ marginTop: 6 }}
-                                />
-                            </div>
-                        ))}
+                    <div>
+                        <Text strong>Talla personalizada</Text>
+                        <Radio.Group
+                            value={customSize}
+                            onChange={(event) => setCustomSize(event.target.value)}
+                            buttonStyle="solid"
+                            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}
+                        >
+                            {CUSTOM_SIZE_OPTIONS.map((size) => (
+                                <Radio.Button key={size} value={size}>{size}</Radio.Button>
+                            ))}
+                        </Radio.Group>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${token.colorBorderSecondary}` }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ padding: 10, textAlign: 'left', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout }}>Medida</th>
+                                    <th style={{ padding: 10, textAlign: 'left', border: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgLayout }}>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {customizationLabels.map((label) => (
+                                    <tr key={label}>
+                                        <td style={{ padding: 10, border: `1px solid ${token.colorBorderSecondary}`, fontWeight: 600 }}>{label}</td>
+                                        <td style={{ padding: 10, border: `1px solid ${token.colorBorderSecondary}` }}>
+                                            <Input
+                                                value={customMeasurements[label] || ''}
+                                                onChange={(event) => setCustomMeasurements((prev) => ({ ...prev, [label]: event.target.value }))}
+                                                placeholder="Medida en cm"
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </Space>
             </Modal>

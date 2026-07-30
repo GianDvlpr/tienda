@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, MouseEvent } from 'react';
-import { Button, Card, Typography, Tooltip } from 'antd';
-import { EditOutlined, HeartFilled, EyeFilled } from '@ant-design/icons';
+import { Card, Typography, Tooltip } from 'antd';
+import { HeartFilled, EyeFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -78,12 +78,6 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                 setIsAdding(false);
             }
         }
-    };
-
-    const handleCustomizeClick = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        router.push(`/product/${item.slug}?personalizar=1`);
     };
 
     return (
@@ -260,22 +254,6 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                     <Text style={{ fontSize: 14, color: '#666', fontWeight: 400 }}>
                         {formatPrice(item.minPrice, item.maxPrice)}
                     </Text>
-                    {item.isCustomizable && (
-                        <Button
-                            size="small"
-                            icon={<EditOutlined />}
-                            onClick={handleCustomizeClick}
-                            style={{
-                                width: 'fit-content',
-                                marginTop: 6,
-                                borderColor: '#C89F53',
-                                color: '#C89F53',
-                                fontWeight: 600,
-                            }}
-                        >
-                            Personalizar
-                        </Button>
-                    )}
                 </div>
             </Card>
             </motion.div>
