@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 import { 
     Alert, Button, Drawer, Empty, InputNumber, Space, Typography, 
-    Form, Input, Card, Result, Divider, theme, Flex 
+    Form, Input, Card, Result, Divider, theme, Flex, Grid
 } from 'antd';
 import confetti from 'canvas-confetti';
 import { 
@@ -70,6 +70,8 @@ export default function MiniCart({
     onClose: () => void;
 }) {
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
     const items = useCartStore((s) => s.items);
     const removeItem = useCartStore((s) => s.removeItem);
     const setQty = useCartStore((s) => s.setQty);
@@ -373,9 +375,6 @@ export default function MiniCart({
         onClose();
     };
 
-
-    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-
     return (
         <Drawer
             title={
@@ -390,10 +389,10 @@ export default function MiniCart({
             )}
             open={open}
             onClose={handleClose}
-            size={isMobile ? 'large' : 'default'}
+            width={isMobile ? '100vw' : 420}
             styles={{ 
-                body: { padding: '24px 20px' },
-                footer: { padding: '24px 20px' }
+                body: { padding: isMobile ? '20px 16px' : '24px 20px' },
+                footer: { padding: isMobile ? '16px' : '24px 20px' }
             }}
             footer={
                 (orderSuccess || isProcessingPayment || items.length === 0 || isCheckoutView) ? null : (
@@ -468,8 +467,8 @@ export default function MiniCart({
                                     const itemKey = item.cartItemId || item.variantId;
                                     return (
                                     <div key={itemKey} style={{ paddingBottom: 16, borderBottom: `1px solid ${token.colorFillSecondary}` }}>
-                                        <Flex align="start" gap={16}>
-                                            <div style={{ width: 80, height: 100, overflow: 'hidden', borderRadius: 0, flexShrink: 0, backgroundColor: '#f9f9f9' }}>
+                                        <Flex align="start" gap={isMobile ? 12 : 16}>
+                                            <div style={{ width: isMobile ? 72 : 80, height: isMobile ? 92 : 100, overflow: 'hidden', borderRadius: 0, flexShrink: 0, backgroundColor: '#f9f9f9' }}>
                                                 {item.imageUrl ? (
                                                     <img
                                                         src={item.imageUrl}

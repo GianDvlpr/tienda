@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button, Drawer, Empty, List, Space, Typography, Flex, theme, Card } from 'antd';
+import { Button, Drawer, Empty, Space, Typography, Flex, theme, Card, Grid } from 'antd';
 import { DeleteFilled, ShoppingFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { useWishlistStore } from '@/store/wishlist.store';
@@ -19,6 +19,8 @@ export default function WishlistDrawer({
     onClose: () => void;
 }) {
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
     const items = useWishlistStore((s) => s.items);
     const removeItem = useWishlistStore((s) => s.removeItem);
     const addToCart = useCartStore((s) => s.addItem);
@@ -44,7 +46,8 @@ export default function WishlistDrawer({
             title="Mis Favoritos"
             open={open}
             onClose={onClose}
-            size="default"
+            width={isMobile ? '100vw' : 420}
+            styles={{ body: { padding: isMobile ? 16 : 24 } }}
         >
             {items.length === 0 ? (
                 <Empty description="No tienes artículos favoritos" />

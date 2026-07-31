@@ -55,6 +55,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
     const pathname = usePathname();
     const screens = Grid.useBreakpoint();
     const isDesktop = screens.lg;
+    const isMobile = !screens.sm;
 
     const [showSidebar, setShowSidebar] = useState(true);
 
@@ -229,10 +230,10 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
         <div style={{ paddingBottom: 64 }}>
             <HeroSlider />
 
-            <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: '48px 24px 24px' }}>
+            <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? '32px 12px 88px' : '48px 24px 24px' }}>
                 {customizableOnly && (
-                    <Card variant="borderless" style={{ marginBottom: 24, background: 'linear-gradient(135deg, rgba(200,159,83,0.12), rgba(255,255,255,0.85))' }}>
-                        <Title level={2} style={{ marginTop: 0 }}>Prendas personalizadas</Title>
+                    <Card variant="borderless" style={{ marginBottom: 24, background: 'linear-gradient(135deg, rgba(200,159,83,0.12), rgba(255,255,255,0.85))' }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
+                        <Title level={2} style={{ marginTop: 0, fontSize: isMobile ? 28 : undefined }}>Prendas personalizadas</Title>
                         <Text type="secondary">
                             Elige una prenda, selecciona talla y color, y ajusta tus medidas antes de pedirla por WhatsApp.
                         </Text>
@@ -249,7 +250,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
                     />
                 ) : null}
 
-                <Row gutter={[32, 32]}>
+                <Row gutter={[isMobile ? 16 : 32, isMobile ? 24 : 32]}>
                     {isDesktop && showSidebar && (
                         <Col lg={6}>
                             <Card variant="borderless" style={{ position: 'sticky', top: 100 }}>
@@ -270,6 +271,8 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
                             placement="left"
                             onClose={() => setFilterDrawerOpen(false)}
                             open={isFilterDrawerOpen}
+                            width={isMobile ? '100vw' : 420}
+                            styles={{ body: { padding: isMobile ? 16 : 24 } }}
                             extra={hasActiveFilters && <Button type="link" onClick={handleClearAll}>Limpiar</Button>}
                         >
                             {metaLoading && !meta ? <ShopFiltersSkeleton /> : <ShopFilters {...filterProps} />}
@@ -278,7 +281,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
 
                     <Col xs={24} lg={isDesktop && showSidebar ? 18 : 24}>
                         <Flex justify="space-between" align="center" wrap="wrap" gap={16} style={{ marginBottom: 24 }}>
-                            <Flex wrap="wrap" gap={8} align="center" style={{ flex: 1 }}>
+                            <Flex wrap="wrap" gap={8} align="center" style={{ flex: 1, minWidth: isMobile ? '100%' : 280 }}>
                                 {isDesktop && (
                                     <Button 
                                         icon={<FilterOutlined />} 
@@ -325,7 +328,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
                                     resetPage();
                                 }}
                                 options={SORT_OPTIONS as any}
-                                style={{ minWidth: 200 }}
+                                style={{ minWidth: isMobile ? '100%' : 200, width: isMobile ? '100%' : undefined }}
                                 placeholder="Ordenar por"
                                 size="large"
                             />
@@ -335,7 +338,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
                             {productsLoading && !data ? (
                                 <ProductGridSkeleton count={pageSize} />
                             ) : !data || data.items.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '64px 0', background: '#fff', borderRadius: 12 }}>
+                                <div style={{ textAlign: 'center', padding: isMobile ? '44px 16px' : '64px 0', background: '#fff', borderRadius: 12 }}>
                                     <Empty 
                                         description={<Text type="secondary" style={{ fontSize: 16 }}>No hay productos que coincidan con estos filtros</Text>} 
                                     />

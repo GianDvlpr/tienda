@@ -382,9 +382,9 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     }, []);
 
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: screens.xs ? '12px' : 24, paddingTop: screens.xs ? 20 : 100 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '12px' : 24, paddingTop: isMobile ? 84 : 100, paddingBottom: isMobile ? 92 : 24 }}>
              {/* Sticky Barra Compra Móvil */}
-             {isMobile && showStickyBar && (
+              {isMobile && showStickyBar && (
                 <div style={{
                     position: 'fixed',
                     bottom: 0,
@@ -439,7 +439,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
             <div style={{ display: 'grid', gap: 16 }}>
 
-                <Card variant="borderless">
+                <Card variant="borderless" styles={{ body: { padding: isMobile ? 16 : 24 } }}>
                     <Row gutter={[24, 24]}>
                         <Col xs={24} md={12}>
                             <ProductGallery images={initialData.images ?? []} selectedColor={selectedColor} />
@@ -449,7 +449,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                             <Space orientation="vertical" size={10} style={{ width: '100%' }}>
 
 
-                                <Title level={3} style={{ margin: 0 }}>
+                                <Title level={3} style={{ margin: 0, fontSize: isMobile ? 26 : undefined, lineHeight: 1.1 }}>
                                     {initialData.product.name}
                                 </Title>
 
@@ -545,7 +545,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         icon={<ShoppingCartOutlined />}
                                         disabled={!canAdd}
                                         onClick={onAddToCart}
-                                        style={{ flex: 1, minWidth: 200 }}
+                                        style={{ flex: 1, minWidth: isMobile ? '100%' : 200 }}
                                     >
                                         Agregar al Carrito
                                     </Button>
@@ -555,7 +555,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         icon={isWishlisted ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />}
                                         disabled={!canAdd}
                                         onClick={onToggleWishlist}
-                                        style={{ flex: 1, minWidth: 200 }}
+                                        style={{ flex: 1, minWidth: isMobile ? '100%' : 200 }}
                                     >
                                         {isWishlisted ? 'En Favoritos' : 'Añadir a Deseos'}
                                     </Button>
@@ -565,7 +565,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         icon={<WhatsAppOutlined />}
                                         disabled={!canAdd}
                                         onClick={handleWhatsAppConsult}
-                                        style={{ color: '#25D366', borderColor: '#25D366', flex: 1, minWidth: 200 }}
+                                        style={{ color: '#25D366', borderColor: '#25D366', flex: 1, minWidth: isMobile ? '100%' : 200 }}
                                     >
                                         WhatsApp
                                     </Button>
@@ -623,7 +623,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                 </Link>
                                                             ))}
                                                             
-                                                            <div style={{ marginLeft: 'auto' }}>
+                                                            <div style={{ marginLeft: isMobile ? 0 : 'auto', width: isMobile ? '100%' : undefined }}>
                                                                 <Button 
                                                                     type="primary" 
                                                                     size="middle"
@@ -634,6 +634,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                         borderRadius: '20px',
                                                                         padding: '0 24px',
                                                                         fontWeight: 600,
+                                                                        width: isMobile ? '100%' : undefined,
                                                                         boxShadow: '0 2px 8px rgba(200, 159, 83, 0.2)'
                                                                     }}
                                                                     onClick={() => {
@@ -683,6 +684,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                         borderRadius: '20px',
                                                                         padding: '0 18px',
                                                                         fontWeight: 600,
+                                                                        width: isMobile ? '100%' : undefined,
                                                                     }}
                                                                     onClick={() => openBundleCustomization(bundle)}
                                                                 >
@@ -706,7 +708,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 </Card>
             </div>
             
-            {isMobile && (
+            {isMobile && !showStickyBar && (
                 <div style={{
                     position: 'fixed',
                     bottom: 0,
@@ -721,7 +723,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                     justifyContent: 'space-between',
                     gap: 12
                 }}>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <Text strong style={{ display: 'block', fontSize: 16 }}>{formatPEN(selectedVariant?.price ?? initialData.product.basePrice ?? 0)}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>{selectedVariant ? `Talla: ${selectedVariant.size}` : 'Seleccione variante'}</Text>
                     </div>
@@ -745,7 +747,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 onOk={onAddCustomizedToCart}
                 okText="Confirmar medidas"
                 cancelText="Cancelar"
-                width={620}
+                width={isMobile ? 'calc(100vw - 24px)' : 620}
                 centered
             >
                 <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
@@ -835,7 +837,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 onOk={onAddCustomizedBundleToCart}
                 okText="Confirmar conjunto"
                 cancelText="Cancelar"
-                width={760}
+                width={isMobile ? 'calc(100vw - 24px)' : 760}
                 centered
             >
                 {customBundle && selectedVariant && (
@@ -928,7 +930,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 open={isSizeGuideOpen}
                 onCancel={() => setIsSizeGuideOpen(false)}
                 footer={null}
-                width={700}
+                width={isMobile ? 'calc(100vw - 24px)' : 700}
                 centered
             >
                 {(() => {

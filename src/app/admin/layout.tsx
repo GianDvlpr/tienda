@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout, Menu, Button, theme, Switch, Space, Grid, App } from 'antd';
 
 import {
@@ -42,6 +42,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
 
   const { data: user } = useSWR<any>('/api/admin/me', fetcher);
+
+  useEffect(() => {
+    document.body.classList.add('admin-shell');
+    return () => document.body.classList.remove('admin-shell');
+  }, []);
 
   if (pathname === '/admin/login') {
     return <Layout style={{ minHeight: '100vh', background: colorBgContainer }}>{children}</Layout>;
@@ -153,12 +158,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           transition: 'all 0.2s',
           minHeight: '100vh'
         }}>
-          <Header style={{
-            padding: isMobile ? '0 12px' : '0 24px',
+          <Header className="admin-header" style={{
+            padding: isMobile ? '0 8px' : '0 24px',
             background: colorBgContainer,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            height: isMobile ? 52 : 64,
+            lineHeight: isMobile ? '52px' : '64px',
             position: 'sticky',
             top: 0,
             zIndex: 1000,
@@ -168,7 +175,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: '16px', width: 64, height: 64 }}
+              style={{ fontSize: '16px', width: isMobile ? 44 : 64, height: isMobile ? 44 : 64 }}
             />
             <Space size={isMobile ? 'small' : 'large'}>
               {!isMobile && (
@@ -184,13 +191,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Button>
             </Space>
           </Header>
-          <Content style={{
+          <Content className="admin-content" style={{
             margin: isMobile ? '12px 8px' : '24px 16px',
             padding: isMobile ? 12 : 24,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
-            overflowX: 'hidden'
+            overflowX: 'auto'
           }}>
             <OrderNotificationListener />
             {children}

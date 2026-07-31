@@ -34,16 +34,16 @@ export default function HeroSlider() {
     const displaySlides = slides && slides.length > 0 ? slides : defaultSlides;
 
     return (
-        <div style={{ position: 'relative', width: '100vw', height: '90vh', overflow: 'hidden' }}>
+        <div className="hero-slider" style={{ position: 'relative', width: '100vw', height: 'var(--hero-height)', overflow: 'hidden' }}>
             <Carousel 
                 autoplay 
                 effect="fade" 
                 dots={false}
-                style={{ width: '100vw', height: '90vh' }}
+                style={{ width: '100vw', height: 'var(--hero-height)' }}
             >
                 {displaySlides.map((slide) => (
                     <div key={slide.slide_id}>
-                        <div style={{ position: 'relative', width: '100vw', height: '90vh' }}>
+                        <div style={{ position: 'relative', width: '100vw', height: 'var(--hero-height)' }}>
                             <Image 
                                 src={slide.image_url} 
                                 alt={slide.title || "Slide"} 
@@ -55,19 +55,19 @@ export default function HeroSlider() {
                                 position: 'absolute',
                                 top: 0, left: 0, right: 0, bottom: 0,
                                 backgroundColor: 'rgba(0,0,0,0.3)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'flex-end',
-                                alignItems: 'center',
-                                paddingBottom: '12vh'
-                            }}>
+                                 display: 'flex',
+                                 flexDirection: 'column',
+                                 justifyContent: 'flex-end',
+                                 alignItems: 'center',
+                                 padding: '0 20px clamp(72px, 12vh, 140px)'
+                             }}>
                                 {slide.subtitle && (
                                     <Text style={{ color: '#fff', letterSpacing: '0.2em', fontSize: 13, marginBottom: 8, textTransform: 'uppercase' }}>
                                         {slide.subtitle}
                                     </Text>
                                 )}
-                                {slide.title && (
-                                    <Title level={1} style={{ color: '#fff', fontSize: '3.5rem', margin: '0 0 16px', fontWeight: 400, textAlign: 'center' }}>
+                                 {slide.title && (
+                                    <Title level={1} style={{ color: '#fff', fontSize: 'clamp(2.15rem, 7vw, 3.5rem)', margin: '0 0 16px', fontWeight: 400, textAlign: 'center', lineHeight: 1.05 }}>
                                         {slide.title}
                                     </Title>
                                 )}
@@ -91,17 +91,39 @@ export default function HeroSlider() {
                 ))}
             </Carousel>
 
-            {/* Faux Play/Pause controls aligned bottom left and right matching the LV style */}
-            <div style={{ position: 'absolute', bottom: 32, left: 32, zIndex: 10 }}>
+             {/* Faux Play/Pause controls aligned bottom left and right matching the LV style */}
+            <div className="hero-control hero-control-left" style={{ position: 'absolute', bottom: 32, left: 32, zIndex: 10 }}>
                 <Button type="text" style={{ color: 'white' }}>
                     <strong>II</strong> {/* Pause symbol placeholder */}
                 </Button>
             </div>
-            <div style={{ position: 'absolute', bottom: 32, right: 32, zIndex: 10 }}>
+            <div className="hero-control hero-control-right" style={{ position: 'absolute', bottom: 32, right: 32, zIndex: 10 }}>
                 <Button type="text" style={{ color: 'white' }}>
                     <CaretRightOutlined />
                 </Button>
             </div>
+
+            <style jsx>{`
+                .hero-slider {
+                    --hero-height: max(520px, 90svh);
+                }
+
+                @media (max-width: 768px) {
+                    .hero-slider {
+                        --hero-height: max(480px, 74svh);
+                    }
+
+                    .hero-control-left {
+                        left: 12px !important;
+                        bottom: 18px !important;
+                    }
+
+                    .hero-control-right {
+                        right: 12px !important;
+                        bottom: 18px !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

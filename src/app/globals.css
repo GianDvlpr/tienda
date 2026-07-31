@@ -35,6 +35,71 @@ a {
   text-decoration: none;
 }
 
+img,
+svg {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .admin-content,
+  body.admin-shell .ant-modal-body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-content .ant-table-wrapper,
+  body.admin-shell .ant-modal-body .ant-table-wrapper {
+    max-width: 100%;
+  }
+
+  .admin-content .ant-table-content,
+  body.admin-shell .ant-modal-body .ant-table-content {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-content .ant-table-content > table,
+  body.admin-shell .ant-modal-body .ant-table-content > table {
+    min-width: max-content;
+  }
+
+  .admin-content .ant-form [style*="grid-template-columns"],
+  body.admin-shell .ant-modal .ant-form [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-content h1.ant-typography,
+  .admin-content h2.ant-typography,
+  .admin-content h3.ant-typography,
+  .admin-content h4.ant-typography {
+    font-size: 20px !important;
+    line-height: 1.2 !important;
+  }
+
+  .admin-content [style*="justify-content: space-between"] {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  body.admin-shell .ant-modal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    top: 8px;
+    margin: 0 auto;
+    padding-bottom: 8px;
+  }
+
+  body.admin-shell .ant-modal-content {
+    max-height: calc(100svh - 16px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.admin-shell .ant-modal-body {
+    overflow-y: auto;
+    max-height: calc(100svh - 152px);
+  }
+}
+
 /* Animations */
 @keyframes fadeInUp {
   from {

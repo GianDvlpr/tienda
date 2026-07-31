@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Drawer, Spin, Typography, Space, Divider, Radio, Flex, Button, Alert } from 'antd';
+import { Drawer, Spin, Typography, Space, Divider, Radio, Flex, Button, Alert, Grid } from 'antd';
 import { ShoppingFilled } from '@ant-design/icons';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -25,6 +25,8 @@ function formatPEN(amount: number) {
 export default function QuickViewDrawer() {
     const { isQuickViewOpen, closeQuickView, quickViewProductSlug } = useUIStore();
     const addCartItem = useCartStore((s) => s.addItem);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -99,9 +101,10 @@ export default function QuickViewDrawer() {
             placement="right"
             onClose={handleClose}
             open={isQuickViewOpen}
-            size="default" // Reemplaza width={400} (default es 378px aprox)
+            width={isMobile ? '100vw' : 420}
             destroyOnClose
             style={{ padding: 0 }}
+            styles={{ body: { padding: isMobile ? 16 : 24 } }}
         >
             {isLoading ? (
                 <Flex justify="center" align="center" style={{ height: '100%' }}>

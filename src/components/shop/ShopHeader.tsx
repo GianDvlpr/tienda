@@ -1,10 +1,10 @@
 "use client";
 
 import { Layout, Badge, Button, Switch, Space, Input, Grid } from "antd";
-import { HeartFilled, HeartOutlined, BulbOutlined, BulbFilled, MenuOutlined, SearchOutlined, CloseOutlined, ShoppingFilled } from "@ant-design/icons";
+import { HeartFilled, BulbOutlined, BulbFilled, SearchOutlined, CloseOutlined, ShoppingFilled } from "@ant-design/icons";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
 import { useWishlistStore } from "@/store/wishlist.store";
@@ -30,7 +30,6 @@ export default function ShopHeader() {
     const totalWishlistItems = useWishlistStore((s) => s.totalItems());
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
-    const toggleFilterDrawer = useUIStore((s) => s.toggleFilterDrawer);
     const isSearchOpen = useUIStore((s) => s.isSearchOpen);
     const setSearchOpen = useUIStore((s) => s.setSearchOpen);
     const toggleSearch = useUIStore((s) => s.toggleSearch);
@@ -86,7 +85,7 @@ export default function ShopHeader() {
                 }}
             >
                 {/* Left section: Navigation / Search */}
-                <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, color: "white" }}>
+                <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, color: "white", minWidth: 0 }}>
                     {!isSearchOpen && (
                         <>
 
@@ -101,7 +100,7 @@ export default function ShopHeader() {
                         </>
                     )}
                     {isSearchOpen && (
-                        <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: 400 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: isMobile ? 'none' : 400 }}>
                             <Input
                                 ref={inputRef}
                                 placeholder="Buscar en la tienda..."
@@ -136,7 +135,7 @@ export default function ShopHeader() {
                     style={{
                         textDecoration: "none",
                         marginTop: 10,
-                        display: "flex",
+                        display: isMobile && isSearchOpen ? "none" : "flex",
                         justifyContent: "center",
                         alignItems: "center"
                     }}
@@ -145,7 +144,7 @@ export default function ShopHeader() {
                 </Link>
 
                 {/* Right section: User actions */}
-                <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, justifyContent: "flex-end", color: "white" }}>
+                <Space size={isMobile ? "small" : "middle"} style={{ flex: 1, justifyContent: "flex-end", color: "white", display: isMobile && isSearchOpen ? 'none' : 'flex' }}>
                     {!isMobile && (
                         <Switch
                             checked={isDarkMode}
