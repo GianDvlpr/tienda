@@ -1,4 +1,8 @@
-export const CUSTOM_ORDER_NOTICE = 'Tiempo de confección: hasta 3 días hábiles como máximo. El plazo empieza a contar desde el siguiente día hábil de confirmado el pedido. Este tiempo no incluye el plazo de entrega de la agencia. Para iniciar la confección se requiere un adelanto del 30% del costo total del pedido.';
+export const CUSTOM_MEASUREMENT_MAX_DELTA_CM = 3;
+
+export const CUSTOM_ORDER_NOTICE = 'Tiempo de confección: hasta 3 días hábiles como máximo. El plazo empieza a contar desde el siguiente día hábil de confirmado el pedido. Este tiempo no incluye el plazo de entrega de la agencia. Para iniciar la confección se requiere un adelanto del 30% del costo total del pedido. Las prendas personalizadas no aplican para cambios o devoluciones por talla, color o medidas indicadas por el cliente; solo se aceptarán reclamos por defecto de fabricación o error atribuible a AURA.';
+
+export const CUSTOM_MEASUREMENT_POLICY = `Cada medida puede ajustarse como máximo ${CUSTOM_MEASUREMENT_MAX_DELTA_CM} cm por encima o por debajo de la talla base seleccionada. Si la diferencia es mayor, la caída, proporción o diseño original de la prenda puede deformarse.`;
 
 export const CUSTOM_MEASUREMENT_LABELS = {
     PANTS: ['Cintura', 'Cadera', 'Tiro delantero', 'Tiro espalda', 'Largo'],
@@ -96,4 +100,36 @@ export function getMeasurementsForSize(sizeGuideJson: string | null | undefined,
     }
 
     return result;
+}
+
+export function parseMeasurementCm(value: unknown) {
+    const text = String(value ?? '').replace(',', '.').trim();
+    const match = text.match(/-?\d+(?:\.\d+)?/);
+    if (!match) return null;
+
+    const parsed = Number(match[0]);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function getMeasurementDeltaErrors(
+    measurements: Record<string, string>,
+    referenceMeasurements: Record<string, string>,
+    labels: readonly string[],
+    maxDeltaCm = CUSTOM_MEASUREMENT_MAX_DELTA_CM
+) {
+    const errors: string[] = [];
+
+    for (const label of labels) {
+        const reference = parseMeasurementCm(referenceMeasurements[label]);
+        const current = parseMeasurementCm(measurements[label]);
+
+        if (reference === null || current === null) continue;
+
+        const delta = Math.abs(current - reference);
+        if (delta > maxDeltaCm) {
+            errors.push(`${label}: máximo +/- ${maxDeltaCm} cm respecto a la talla base`);
+        }
+    }
+
+    return errors;
 }

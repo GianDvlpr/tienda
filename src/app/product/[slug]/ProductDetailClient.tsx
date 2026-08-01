@@ -15,7 +15,7 @@ import { useCartStore } from '@/store/cart.store';
 import { useWishlistStore } from '@/store/wishlist.store';
 import { useUIStore } from '@/store/ui.store';
 import { sortSizes } from '@/lib/sizes';
-import { CUSTOM_COLOR_OPTIONS, CUSTOM_MEASUREMENT_LABELS, CUSTOM_ORDER_NOTICE, getAvailableCustomColorName, getMeasurementsForSize, parseSizeGuideJson, type CustomColorOption } from '@/lib/customization';
+import { CUSTOM_COLOR_OPTIONS, CUSTOM_MEASUREMENT_LABELS, CUSTOM_MEASUREMENT_POLICY, CUSTOM_ORDER_NOTICE, getAvailableCustomColorName, getMeasurementDeltaErrors, getMeasurementsForSize, parseSizeGuideJson, type CustomColorOption } from '@/lib/customization';
 
 
 const { Title, Text, Paragraph } = Typography;
@@ -218,6 +218,13 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             return;
         }
 
+        const referenceMeasurements = getMeasurementsForSize(initialData.product.size_guide_json, customSize, customizationLabels);
+        const measurementErrors = getMeasurementDeltaErrors(customMeasurements, referenceMeasurements, customizationLabels);
+        if (measurementErrors.length > 0) {
+            toast.warning(`Revisa las medidas. ${measurementErrors.join(' · ')}`);
+            return;
+        }
+
         addCartItem({
             cartItemId: `${customizationReferenceVariant.variantId}:custom:${Date.now()}`,
             variantId: customizationReferenceVariant.variantId,
@@ -286,6 +293,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 unitPrice: Number(selectedVariant.price),
                 imageUrl: selectedImage?.url ?? null,
                 customizationType,
+                sizeGuideJson: initialData.product.size_guide_json,
             },
             ...otherItems.map((item) => ({
                 productId: item.productId,
@@ -298,6 +306,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 unitPrice: Number(item.unitPrice || 0),
                 imageUrl: item.primaryImageUrl ?? null,
                 customizationType: item.customizationType === 'PANTS' ? 'PANTS' : 'UPPER',
+                sizeGuideJson: item.sizeGuideJson ?? null,
             })),
         ];
 
@@ -306,6 +315,13 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             const missing = labels.filter((label) => !String(customBundleMeasurements[line.productId]?.[label] || '').trim());
             if (missing.length > 0) {
                 toast.warning(`Completa medidas de ${line.name}: ${missing.join(', ')}`);
+                return;
+            }
+
+            const referenceMeasurements = getMeasurementsForSize(line.sizeGuideJson, line.size, labels);
+            const measurementErrors = getMeasurementDeltaErrors(customBundleMeasurements[line.productId] ?? {}, referenceMeasurements, labels);
+            if (measurementErrors.length > 0) {
+                toast.warning(`Revisa medidas de ${line.name}. ${measurementErrors.join(' · ')}`);
                 return;
             }
         }
@@ -471,11 +487,10 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                     <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
                                         {isCustomizable ? (
                                             <Button
-                                                type="link"
                                                 size="small"
                                                 disabled={!customizationReferenceVariant}
                                                 onClick={openCustomization}
-                                                style={{ padding: 0, height: 'auto' }}
+                                                style={{ borderColor: '#C89F53', color: '#C89F53', fontWeight: 600 }}
                                             >
                                                 Personalizar prenda
                                             </Button>
@@ -752,6 +767,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             >
                 <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                     <Alert type="info" showIcon message={CUSTOM_ORDER_NOTICE} />
+                    <Alert type="warning" showIcon message={CUSTOM_MEASUREMENT_POLICY} />
                     <div>
                         <Text strong>{initialData.product.name}</Text>
                         <Text type="secondary" style={{ display: 'block', marginTop: 2 }}>
@@ -843,6 +859,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                 {customBundle && selectedVariant && (
                     <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                         <Alert type="info" showIcon message={CUSTOM_ORDER_NOTICE} />
+                        <Alert type="warning" showIcon message={CUSTOM_MEASUREMENT_POLICY} />
                         <Text type="secondary">
                             Se aplicará un solo recargo de conjunto personalizado de {formatPEN(Number(customBundle.customization_surcharge ?? 8))}.
                         </Text>

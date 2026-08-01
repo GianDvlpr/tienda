@@ -36,17 +36,28 @@ export default function TermsPage() {
                 Nuestro stock se actualiza en tiempo real; sin embargo, en casos excepcionales de error técnico, si un producto no estuviera disponible después de realizada la compra, se procederá al reembolso total o cambio por otra prenda de igual valor a elección del cliente.
             </Paragraph>
 
-            <Title level={4}>4. ENVÍOS</Title>
+            <Title level={4}>4. PRENDAS PERSONALIZADAS</Title>
+            <Paragraph>
+                Algunas prendas pueden solicitarse con medidas o colores personalizados. Estos pedidos se gestionan por WhatsApp y requieren confirmación de medidas antes de iniciar la confección. El plazo de confección es de hasta 3 días hábiles como máximo desde el siguiente día hábil de confirmado el pedido, sin incluir el tiempo de entrega de la agencia.
+            </Paragraph>
+            <Paragraph>
+                Cada medida personalizada puede aumentar o reducirse como máximo <Text strong>3 cm</Text> respecto a la talla base seleccionada. Cambios mayores pueden deformar la caída, proporción o diseño original de la prenda, por lo que AURA podrá solicitar confirmación adicional o rechazar el ajuste.
+            </Paragraph>
+            <Paragraph>
+                Las prendas personalizadas no aplican para cambios o devoluciones por talla, color o medidas indicadas por el cliente. Solo se aceptarán reclamos cuando exista defecto de fabricación o error atribuible a AURA respecto a las condiciones confirmadas del pedido.
+            </Paragraph>
+
+            <Title level={4}>5. ENVÍOS</Title>
             <Paragraph>
                 Realizamos envíos a todo el Perú. Los plazos de entrega varían entre 2 a 5 días hábiles dependiendo de la ubicación. El costo del envío se detalla al momento de finalizar la compra o se coordina directamente por WhatsApp para destinos específicos.
             </Paragraph>
 
-            <Title level={4}>5. PROPIEDAD INTELECTUAL</Title>
+            <Title level={4}>6. PROPIEDAD INTELECTUAL</Title>
             <Paragraph>
                 Todo el contenido, marcas, logotipos y fotografías en este sitio son propiedad exclusiva de AURA. Queda prohibida su reproducción total o parcial sin autorización expresa.
             </Paragraph>
 
-            <Title level={4}>6. CONTACTO</Title>
+            <Title level={4}>7. CONTACTO</Title>
             <Paragraph>
                 Para cualquier consulta sobre estos términos, puede contactarnos a través de nuestro WhatsApp oficial o redes sociales.
             </Paragraph>

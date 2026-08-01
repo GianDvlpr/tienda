@@ -41,6 +41,28 @@ type CheckoutPayload = CheckoutFormValues & {
     subtotal: number;
 };
 
+type CheckoutResponseItem = {
+    qty: number;
+    name: string;
+    size: string;
+    color: string;
+    unitPrice: number;
+    lineTotal?: number;
+    isCustomized?: boolean;
+    customMeasurements?: Record<string, string> | null;
+    customizationSurcharge?: number;
+    customizationGroupLabel?: string | null;
+};
+
+type CheckoutResponse = {
+    orderCode: string;
+    subtotal?: number;
+    bundleDiscount?: number;
+    couponDiscount?: number;
+    total?: number;
+    items?: CheckoutResponseItem[];
+};
+
 type CulqiInstance = {
     publicKey?: string;
     token?: { id: string; email?: string };
@@ -244,12 +266,30 @@ export default function MiniCart({
                 throw new Error(err.error || 'Ocurrió un error al procesar el pedido');
             }
 
-            const data = await res.json();
+            const data = await res.json() as CheckoutResponse;
             const orderCode = data.orderCode;
+            const checkoutItems: CheckoutResponseItem[] = Array.isArray(data.items)
+                ? data.items
+                : payload.items.map((item) => ({
+                    qty: item.qty,
+                    name: item.name,
+                    size: item.size,
+                    color: item.color,
+                    unitPrice: item.unitPrice,
+                    lineTotal: item.unitPrice * item.qty,
+                    isCustomized: item.isCustomized,
+                    customMeasurements: item.customMeasurements,
+                    customizationSurcharge: item.customizationSurcharge,
+                    customizationGroupLabel: item.customizationGroupLabel,
+                }));
+            const serverSubtotal = Number(data.subtotal ?? subtotal);
+            const serverBundleDiscount = Number(data.bundleDiscount ?? bundleDiscount);
+            const serverCouponDiscount = Number(data.couponDiscount ?? appliedCoupon?.discountAmount ?? 0);
+            const serverTotal = Number(data.total ?? Math.max(0, serverSubtotal - serverBundleDiscount - serverCouponDiscount));
 
             let text = `¡Hola! Quiero hacer el pedido *${orderCode}*:\n\n`;
-            payload.items.forEach((item) => {
-                text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color})${item.isCustomized ? ' [Personalizada]' : ''} - ${formatPEN(item.unitPrice * item.qty)}\n`;
+            checkoutItems.forEach((item) => {
+                text += `- ${item.qty}x ${item.name} (${item.size}, ${item.color})${item.isCustomized ? ' [Personalizada]' : ''} - ${formatPEN(Number(item.lineTotal ?? item.unitPrice * item.qty))}\n`;
                 if (item.isCustomized && item.customMeasurements) {
                     text += `  Medidas:\n`;
                     text += `  Medida | Valor\n`;
@@ -264,17 +304,17 @@ export default function MiniCart({
                 text += `\n*Importante:* ${CUSTOM_ORDER_NOTICE}\n`;
             }
 
-            if (bundleDiscount > 0 || appliedCoupon) {
-                text += `\nSubtotal: ${formatPEN(subtotal)}\n`;
-                if (bundleDiscount > 0) {
-                    text += `Promo conjunto: -${formatPEN(bundleDiscount)}\n`;
+            if (serverBundleDiscount > 0 || serverCouponDiscount > 0) {
+                text += `\nSubtotal: ${formatPEN(serverSubtotal)}\n`;
+                if (serverBundleDiscount > 0) {
+                    text += `Promo conjunto: -${formatPEN(serverBundleDiscount)}\n`;
                 }
-                if (appliedCoupon) {
-                    text += `Cupón: ${appliedCoupon.code} (-${formatPEN(appliedCoupon.discountAmount)})\n`;
+                if (serverCouponDiscount > 0 && appliedCoupon) {
+                    text += `Cupón: ${appliedCoupon.code} (-${formatPEN(serverCouponDiscount)})\n`;
                 }
-                text += `*Total a pagar: ${formatPEN(finalTotal)}*\n\n`;
+                text += `*Total a pagar: ${formatPEN(serverTotal)}*\n\n`;
             } else {
-                text += `\n*Total: ${formatPEN(subtotal)}*\n\n`;
+                text += `\n*Total: ${formatPEN(serverTotal)}*\n\n`;
             }
 
             text += `*Mis datos:*\n`;

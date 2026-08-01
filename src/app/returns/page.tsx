@@ -38,7 +38,18 @@ export default function ReturnsPage() {
                 <Text type="secondary">Nota: El costo de envío para devoluciones corre por cuenta del cliente, a menos que el error sea de fábrica o de envío por parte de AURA.</Text>
             </Paragraph>
 
-            <Title level={4}>4. REEMBOLSOS</Title>
+            <Title level={4}>4. PRENDAS PERSONALIZADAS</Title>
+            <Paragraph>
+                Las prendas confeccionadas o ajustadas con medidas, color o indicaciones solicitadas por el cliente son consideradas <Text strong>personalizadas</Text>. Por su naturaleza, no aplican para cambios o devoluciones por elección de talla, color, diseño o medidas proporcionadas por el cliente.
+            </Paragraph>
+            <Paragraph>
+                Cada medida personalizada puede aumentar o reducirse como máximo <Text strong>3 cm</Text> respecto a la talla base seleccionada. Si la diferencia solicitada es mayor, la caída, proporción o diseño original de la prenda puede deformarse, por lo que AURA podrá solicitar una confirmación adicional o rechazar el ajuste.
+            </Paragraph>
+            <Paragraph>
+                Solo se aceptarán reclamos, correcciones o devoluciones de prendas personalizadas cuando exista un defecto de fabricación comprobable o un error atribuible a AURA respecto a las medidas confirmadas del pedido.
+            </Paragraph>
+
+            <Title level={4}>5. REEMBOLSOS</Title>
             <Paragraph>
                 Una vez recepcionado el producto devuelto y verificado su estado óptimo, procederemos con el reembolso del dinero. El tiempo de procesamiento para reembolsos a tarjetas vía <Text strong>Culqi</Text> puede tomar entre 10 a 25 días hábiles dependiendo de la entidad bancaria del cliente.
             </Paragraph>

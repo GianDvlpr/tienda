@@ -5,6 +5,7 @@ import { Drawer, Spin, Typography, Space, Divider, Radio, Flex, Button, Alert, G
 import { ShoppingFilled } from '@ant-design/icons';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 import { useUIStore } from '@/store/ui.store';
 import { useCartStore } from '@/store/cart.store';
@@ -25,6 +26,7 @@ function formatPEN(amount: number) {
 export default function QuickViewDrawer() {
     const { isQuickViewOpen, closeQuickView, quickViewProductSlug } = useUIStore();
     const addCartItem = useCartStore((s) => s.addItem);
+    const router = useRouter();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.sm;
 
@@ -93,6 +95,12 @@ export default function QuickViewDrawer() {
         }, 1);
         toast.success(`Agregado al carrito: ${data.product.name}`);
         handleClose();
+    };
+
+    const onCustomize = () => {
+        if (!data) return;
+        handleClose();
+        router.push(`/product/${data.product.slug}?personalizar=1`);
     };
 
     return (
@@ -179,6 +187,15 @@ export default function QuickViewDrawer() {
 
                     {/* Footer Pinned Action */}
                     <div style={{ flexShrink: 0, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                        {data.product.isCustomizable && (
+                            <Button
+                                size="large"
+                                onClick={onCustomize}
+                                style={{ width: '100%', borderColor: '#C89F53', color: '#C89F53', borderRadius: 0, height: 48, marginBottom: 8 }}
+                            >
+                                Personalizar prenda
+                            </Button>
+                        )}
                         <Button
                             type="primary"
                             size="large"
