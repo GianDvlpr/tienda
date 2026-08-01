@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Divider, Input, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
+import { Alert, Button, Card, Divider, InputNumber, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
 import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -15,7 +15,7 @@ import { useCartStore } from '@/store/cart.store';
 import { useWishlistStore } from '@/store/wishlist.store';
 import { useUIStore } from '@/store/ui.store';
 import { sortSizes } from '@/lib/sizes';
-import { CUSTOM_COLOR_OPTIONS, CUSTOM_MEASUREMENT_LABELS, CUSTOM_MEASUREMENT_POLICY, CUSTOM_ORDER_NOTICE, getAvailableCustomColorName, getMeasurementDeltaErrors, getMeasurementsForSize, parseSizeGuideJson, type CustomColorOption } from '@/lib/customization';
+import { CUSTOM_COLOR_OPTIONS, CUSTOM_MEASUREMENT_LABELS, CUSTOM_MEASUREMENT_POLICY, CUSTOM_ORDER_NOTICE, getAvailableCustomColorName, getMeasurementDeltaErrors, getMeasurementsForSize, parseMeasurementCm, parseSizeGuideJson, type CustomColorOption } from '@/lib/customization';
 
 
 const { Title, Text, Paragraph } = Typography;
@@ -807,7 +807,15 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                         </Radio.Group>
                     </div>
                     <div>
-                        <Text strong>Talla personalizada</Text>
+                        <Flex align="center" justify="space-between" gap={12} wrap="wrap">
+                            <Text strong>Talla personalizada</Text>
+                            <Button
+                                size="small"
+                                onClick={() => setCustomMeasurements(getMeasurementsForSize(initialData.product.size_guide_json, customSize, customizationLabels))}
+                            >
+                                Reiniciar a talla base
+                            </Button>
+                        </Flex>
                         <Radio.Group
                             value={customSize}
                             onChange={(event) => setCustomSize(event.target.value)}
@@ -832,10 +840,15 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                     <tr key={label}>
                                         <td style={{ padding: 10, border: `1px solid ${token.colorBorderSecondary}`, fontWeight: 600 }}>{label}</td>
                                         <td style={{ padding: 10, border: `1px solid ${token.colorBorderSecondary}` }}>
-                                            <Input
-                                                value={customMeasurements[label] || ''}
-                                                onChange={(event) => setCustomMeasurements((prev) => ({ ...prev, [label]: event.target.value }))}
+                                            <InputNumber
+                                                value={parseMeasurementCm(customMeasurements[label])}
+                                                onChange={(value) => setCustomMeasurements((prev) => ({ ...prev, [label]: value === null ? '' : String(value) }))}
+                                                min={0}
+                                                step={0.5}
+                                                precision={1}
                                                 placeholder="Medida en cm"
+                                                addonAfter="cm"
+                                                style={{ width: '100%' }}
                                             />
                                         </td>
                                     </tr>
@@ -870,6 +883,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                 size: selectedVariant.size,
                                 color: selectedVariant.color,
                                 customizationType,
+                                sizeGuideJson: initialData.product.size_guide_json,
                             },
                             ...customBundle.items
                                 .filter((item) => item.productId !== initialData.product.productId)
@@ -879,6 +893,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                     size: item.size || 'UN',
                                     color: item.color || 'UN',
                                     customizationType: item.customizationType === 'PANTS' ? 'PANTS' : 'UPPER',
+                                    sizeGuideJson: item.sizeGuideJson ?? null,
                                 })),
                         ].map((line) => {
                             const labels = CUSTOM_MEASUREMENT_LABELS[line.customizationType as 'PANTS' | 'UPPER'];
@@ -916,21 +931,36 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                             ))}
                                         </Radio.Group>
                                     </div>
+                                    <Flex justify="flex-end" style={{ marginBottom: 12 }}>
+                                        <Button
+                                            size="small"
+                                            onClick={() => setCustomBundleMeasurements((prev) => ({
+                                                ...prev,
+                                                [line.productId]: getMeasurementsForSize(line.sizeGuideJson, line.size, labels),
+                                            }))}
+                                        >
+                                            Reiniciar a talla base
+                                        </Button>
+                                    </Flex>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                                         {labels.map((label) => (
                                             <div key={label}>
                                                 <Text strong style={{ fontSize: 12 }}>{label}</Text>
-                                                <Input
-                                                    value={customBundleMeasurements[line.productId]?.[label] || ''}
-                                                    onChange={(event) => setCustomBundleMeasurements((prev) => ({
+                                                <InputNumber
+                                                    value={parseMeasurementCm(customBundleMeasurements[line.productId]?.[label])}
+                                                    onChange={(value) => setCustomBundleMeasurements((prev) => ({
                                                         ...prev,
                                                         [line.productId]: {
                                                             ...(prev[line.productId] || {}),
-                                                            [label]: event.target.value,
+                                                            [label]: value === null ? '' : String(value),
                                                         },
                                                     }))}
+                                                    min={0}
+                                                    step={0.5}
+                                                    precision={1}
                                                     placeholder="Medida en cm"
-                                                    style={{ marginTop: 6 }}
+                                                    addonAfter="cm"
+                                                    style={{ marginTop: 6, width: '100%' }}
                                                 />
                                             </div>
                                         ))}
