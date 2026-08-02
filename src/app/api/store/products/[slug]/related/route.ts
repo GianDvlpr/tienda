@@ -28,12 +28,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
                 rp.base_price,
                 img.url as primary_image_url,
                 (
-                    SELECT ISNULL(MIN(v.price), rp.base_price)
+                    SELECT ISNULL(MIN(NULLIF(v.price, 0)), rp.base_price)
                     FROM product_variant v
                     WHERE v.product_id = rp.product_id AND v.is_active = 1
                 ) as min_price,
                 (
-                    SELECT ISNULL(MAX(v.price), rp.base_price)
+                    SELECT ISNULL(MAX(NULLIF(v.price, 0)), rp.base_price)
                     FROM product_variant v
                     WHERE v.product_id = rp.product_id AND v.is_active = 1
                 ) as max_price,

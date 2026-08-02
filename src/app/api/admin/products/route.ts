@@ -21,6 +21,11 @@ export async function GET() {
     }
 }
 
+function nullablePositiveNumber(value: unknown) {
+    const numberValue = Number(value ?? 0);
+    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -61,7 +66,7 @@ export async function POST(req: Request) {
                             sku: v.sku,
                             size: v.size,
                             color: v.color,
-                            price: v.price || base_price,
+                            price: nullablePositiveNumber(v.price),
                             cost: v.cost || base_cost,
                             stock: v.stock || 0,
                             is_active: v.is_active ?? true

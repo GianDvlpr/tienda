@@ -186,7 +186,7 @@ export async function POST(req: Request) {
                 v.sku,
                 v.size,
                 v.color,
-                COALESCE(v.price, p.base_price, 0) AS price,
+                COALESCE(NULLIF(v.price, 0), p.base_price, 0) AS price,
                 v.stock,
                 v.is_active AS variant_is_active,
                 p.name AS product_name,

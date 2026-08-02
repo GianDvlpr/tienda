@@ -13,6 +13,11 @@ function sameText(a: unknown, b: unknown) {
     return String(a || '').trim() === String(b || '').trim();
 }
 
+function nullablePositiveNumber(value: unknown) {
+    const numberValue = Number(value ?? 0);
+    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const resolvedParams = await params;
@@ -211,7 +216,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 for (const v of preparedVariants) {
                     if (v.variant_id) {
                         const oldVariant = oldVariantsById.get(v.variant_id);
-                        const nextData = { sku: v.sku, size: v.size, color: v.color, price: v.price, cost: v.cost, stock: v.stock, is_active: v.is_active ?? true };
+                        const nextData = { sku: v.sku, size: v.size, color: v.color, price: nullablePositiveNumber(v.price), cost: v.cost, stock: v.stock, is_active: v.is_active ?? true };
                         const changed = !oldVariant
                             || !sameText(oldVariant.sku, nextData.sku)
                             || !sameText(oldVariant.size, nextData.size)
@@ -231,7 +236,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                         await tx.product_variant.create({
                             data: {
                                 product_id: id,
-                                sku: v.sku, size: v.size, color: v.color, price: v.price || prod.base_price,
+                                sku: v.sku, size: v.size, color: v.color, price: nullablePositiveNumber(v.price),
                                 cost: v.cost || prod.base_cost,
                                 stock: v.stock || 0,
                                 is_active: v.is_active ?? true

@@ -148,7 +148,8 @@ export async function POST(req: Request) {
                     throw new Error(`Stock insuficiente para "${variant.product.name}" (${variant.size}, ${variant.color}). Disponibles: ${variant.stock}`);
                 }
 
-                const unitPrice = item.unitPrice ?? Number(variant.price ?? variant.product.base_price ?? 0);
+                const variantPrice = Number(variant.price ?? 0);
+                const unitPrice = item.unitPrice ?? (variantPrice > 0 ? variantPrice : Number(variant.product.base_price ?? 0));
                 const lineTotal = unitPrice * item.qty;
                 subtotal += lineTotal;
 

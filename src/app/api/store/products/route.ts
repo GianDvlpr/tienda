@@ -101,8 +101,8 @@ export async function GET(req: NextRequest) {
                     FROM dbo.product_variant v
                     WHERE v.product_id = p.product_id
                       AND v.is_active = 1
-                      AND (${minPrice} IS NULL OR COALESCE(v.price, p.base_price, 0) >= ${minPrice})
-                      AND (${maxPrice} IS NULL OR COALESCE(v.price, p.base_price, 0) <= ${maxPrice})
+                      AND (${minPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) >= ${minPrice})
+                      AND (${maxPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) <= ${maxPrice})
                       AND (${sizesCsv} IS NULL OR v.size IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${sizesCsv} AS NVARCHAR(MAX)), N''), N',')))
                       AND (${colorsCsv} IS NULL OR v.color IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${colorsCsv} AS NVARCHAR(MAX)), N''), N',')))
                       AND (${onlyInStockBit} = 0 OR v.stock > 0)
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
                     SUM(CASE WHEN priced_variants.stock > 0 THEN 1 ELSE 0 END) AS variants_in_stock
                 FROM (
                     SELECT
-                        COALESCE(v.price, fp.base_price, 0) AS variant_price,
+                        COALESCE(NULLIF(v.price, 0), fp.base_price, 0) AS variant_price,
                         v.stock
                     FROM dbo.product_variant v
                     WHERE v.product_id = fp.product_id
@@ -181,8 +181,8 @@ export async function GET(req: NextRequest) {
                 FROM dbo.product_variant v
                 WHERE v.product_id = p.product_id
                   AND v.is_active = 1
-                  AND (${minPrice} IS NULL OR COALESCE(v.price, p.base_price, 0) >= ${minPrice})
-                  AND (${maxPrice} IS NULL OR COALESCE(v.price, p.base_price, 0) <= ${maxPrice})
+                  AND (${minPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) >= ${minPrice})
+                  AND (${maxPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) <= ${maxPrice})
                   AND (${sizesCsv} IS NULL OR v.size IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${sizesCsv} AS NVARCHAR(MAX)), N''), N',')))
                   AND (${colorsCsv} IS NULL OR v.color IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${colorsCsv} AS NVARCHAR(MAX)), N''), N',')))
                   AND (${onlyInStockBit} = 0 OR v.stock > 0)

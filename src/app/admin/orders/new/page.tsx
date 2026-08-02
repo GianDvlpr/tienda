@@ -91,7 +91,8 @@ export default function NewAdminOrderPage() {
 
     const variantOptions = (products || []).flatMap(product =>
         (product.product_variant || []).map(variant => {
-            const price = Number(variant.price ?? product.base_price ?? 0);
+            const variantPrice = Number(variant.price ?? 0);
+            const price = variantPrice > 0 ? variantPrice : Number(product.base_price ?? 0);
             const inactiveLabel = !product.is_active || !variant.is_active ? ' | Inactivo' : '';
             const label = `${product.name} - ${variant.size} / ${variant.color} | ${variant.sku} | Stock: ${variant.stock}${inactiveLabel}`;
             return {

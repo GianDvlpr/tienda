@@ -49,7 +49,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 v.sku,
                 v.size,
                 v.color,
-                COALESCE(v.price, p.base_price, 0) AS price,
+                COALESCE(NULLIF(v.price, 0), p.base_price, 0) AS price,
                 v.stock
             FROM dbo.product_variant v
             JOIN dbo.product p ON p.product_id = v.product_id

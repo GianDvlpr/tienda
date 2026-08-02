@@ -84,8 +84,8 @@ export async function GET(req: NextRequest) {
         // 4) price range (según colección/stock)
         const priceRows = await prisma.$queryRaw<{ minPrice: any; maxPrice: any }[]>`
       SELECT
-        MIN(COALESCE(v.price, p.base_price, 0)) AS minPrice,
-        MAX(COALESCE(v.price, p.base_price, 0)) AS maxPrice
+        MIN(COALESCE(NULLIF(v.price, 0), p.base_price, 0)) AS minPrice,
+        MAX(COALESCE(NULLIF(v.price, 0), p.base_price, 0)) AS maxPrice
       FROM dbo.product_variant v
       JOIN dbo.product p ON p.product_id = v.product_id
       WHERE
