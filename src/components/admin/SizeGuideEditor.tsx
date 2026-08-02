@@ -19,14 +19,19 @@ interface SizeGuideEditorProps {
     onChange?: (value: string | null) => void;
 }
 
+const STANDARD_SIZE_COLUMNS = ['XS', 'S', 'M', 'L', 'XL'];
+
 export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProps) {
     const { token } = theme.useToken();
     const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
     const [data, setData] = useState<SizeGuideData>({
-        columns: ['S', 'M', 'L'],
+        columns: STANDARD_SIZE_COLUMNS,
         rows: [
-            { label: 'Busto (cm)', values: ['', '', ''] },
-            { label: 'Cintura (cm)', values: ['', '', ''] }
+            { label: 'Ancho busto (cm)', values: new Array(STANDARD_SIZE_COLUMNS.length).fill('') },
+            { label: 'Ancho espalda (cm)', values: new Array(STANDARD_SIZE_COLUMNS.length).fill('') },
+            { label: 'Cintura (cm)', values: new Array(STANDARD_SIZE_COLUMNS.length).fill('') },
+            { label: 'Cadera (cm)', values: new Array(STANDARD_SIZE_COLUMNS.length).fill('') },
+            { label: 'Largo (cm)', values: new Array(STANDARD_SIZE_COLUMNS.length).fill('') }
         ]
     });
 
@@ -129,10 +134,10 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
 
     const applyTemplate = (labels: string[]) => {
         const newData = {
-            ...data,
+            columns: STANDARD_SIZE_COLUMNS,
             rows: labels.map(label => ({
                 label: `${label} (cm)`,
-                values: new Array(data.columns.length).fill('')
+                values: new Array(STANDARD_SIZE_COLUMNS.length).fill('')
             }))
         };
         triggerChange(newData);
@@ -140,10 +145,10 @@ export default function SizeGuideEditor({ value, onChange }: SizeGuideEditorProp
 
     const templates = {
         'Blusa/Top': ['Busto', 'Largo', 'Manga', 'Hombros'],
-        'Pantalón': ['Cintura', 'Cadera', 'Largo', 'Tiro', 'Muslo'],
+        'Pantalón': ['Cintura', 'Cadera', 'Tiro delantero', 'Tiro espalda', 'Largo'],
         'Falda': ['Cintura', 'Cadera', 'Largo'],
         'Vestido': ['Busto', 'Cintura', 'Cadera', 'Largo'],
-        'Chaleco': ['Busto', 'Espalda', 'Largo'],
+        'Chaleco': ['Ancho busto', 'Ancho espalda', 'Cintura', 'Cadera', 'Largo'],
         'Saco/Casaca': ['Busto', 'Hombros', 'Manga', 'Largo']
     };
 

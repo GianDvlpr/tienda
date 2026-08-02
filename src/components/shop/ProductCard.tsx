@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, MouseEvent } from 'react';
-import { Card, Typography, Tooltip } from 'antd';
+import { Card, Typography, Tooltip, theme } from 'antd';
 import { HeartFilled, EyeFilled } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ function formatPrice(min: number, max: number) {
 
 export default function ProductCard({ item }: { item: ProductListItem }) {
     const router = useRouter();
+    const { token } = theme.useToken();
     const [isHovered, setIsHovered] = useState(false);
     
     // El store necesita la variante específica (talla, color). 
@@ -245,13 +246,13 @@ export default function ProductCard({ item }: { item: ProductListItem }) {
                     <Text style={{ 
                         fontSize: 14, 
                         transition: 'color 0.3s', 
-                        color: isHovered ? '#C89F53' : '#1a1a1a',
+                        color: isHovered ? '#C89F53' : token.colorText,
                         fontWeight: 500,
                         letterSpacing: '0.01em'
                     }}>
                         {item.name}
                     </Text>
-                    <Text style={{ fontSize: 14, color: '#666', fontWeight: 400 }}>
+                    <Text style={{ fontSize: 14, color: token.colorTextSecondary, fontWeight: 400 }}>
                         {formatPrice(item.minPrice, item.maxPrice)}
                     </Text>
                 </div>

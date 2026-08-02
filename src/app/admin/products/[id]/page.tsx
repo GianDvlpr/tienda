@@ -474,7 +474,7 @@ export default function EditProductPage() {
                         </Text>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                             <Form.Item name="bulk_sizes" label="Tallas">
-                                <TextArea rows={2} placeholder="S, M, L" />
+                                <TextArea rows={2} placeholder="XS, S, M, L, XL" />
                             </Form.Item>
                             <Form.Item name="bulk_colors" label="Colores">
                                 <TextArea rows={2} placeholder="Negro, Marrón, Vino, Perla" />
@@ -500,39 +500,62 @@ export default function EditProductPage() {
                     <Form.List name="variants">
                         {(fields, { add, remove }) => (
                             <>
-                                {fields.map(({ key, name, ...restField }) => (
-                                    <Card key={key} size="small" style={{ marginBottom: 16 }}>
-                                        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 16 }}>
-                                                {/* Hidden field for variant_id so we can update instead of create */}
-                                                <Form.Item {...restField} name={[name, 'variant_id']} hidden><Input /></Form.Item>
-                                                
-                                                <Form.Item {...restField} name={[name, 'sku']} label="SKU" rules={[{ required: true, message: 'SKU requerido' }]}>
-                                                    <Input placeholder="Ej. VNT-R-S" />
-                                                </Form.Item>
-                                                <Form.Item {...restField} name={[name, 'size']} label="Talla" rules={[{ required: true, message: 'Obligatorio' }]}>
-                                                    <Input placeholder="S, M, L..." />
-                                                </Form.Item>
-                                                <Form.Item {...restField} name={[name, 'color']} label="Color" rules={[{ required: true, message: 'Obligatorio' }]}>
-                                                    <Input placeholder="Rojo, Azul..." />
-                                                </Form.Item>
-                                                <Form.Item {...restField} name={[name, 'stock']} label="Stock Físico" rules={[{ required: true, message: 'Obligatorio' }]}>
-                                                    <InputNumber style={{ width: '100%' }} min={0} />
-                                                </Form.Item>
-                                                <Form.Item {...restField} name={[name, 'price']} label="Precio Ref. (Opcional)">
-                                                    <InputNumber style={{ width: '100%' }} min={0} step={0.01} placeholder="Usa el Base" />
-                                                </Form.Item>
-                                                <Form.Item {...restField} name={[name, 'cost']} label="Costo Ref. (Opcional)">
-                                                    <InputNumber style={{ width: '100%' }} min={0} step={0.01} placeholder="Usa el Costo Base" />
-                                                </Form.Item>
-                                                <Form.Item {...restField} name={[name, 'is_active']} label="Activa" valuePropName="checked">
-                                                    <Switch checkedChildren="Sí" unCheckedChildren="No" />
-                                                </Form.Item>
-                                            </div>
-                                            <Button type="text" danger onClick={() => remove(name)} icon={<DeleteOutlined />} style={{ marginTop: 32 }} />
-                                        </div>
-                                    </Card>
-                                ))}
+                                <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+                                    <table style={{ width: '100%', minWidth: 920, borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr>
+                                                {['SKU', 'Talla', 'Color', 'Stock', 'Precio ref.', 'Costo ref.', 'Activa', ''].map((label) => (
+                                                    <th key={label} style={{ padding: '8px 6px', textAlign: 'left', borderBottom: '1px solid #f0f0f0', fontSize: 12 }}>{label}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {fields.map(({ key, name, ...restField }) => (
+                                                <tr key={key}>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 170 }}>
+                                                        <Form.Item {...restField} name={[name, 'variant_id']} hidden><Input /></Form.Item>
+                                                        <Form.Item {...restField} name={[name, 'sku']} rules={[{ required: true, message: 'SKU requerido' }]} style={{ marginBottom: 0 }}>
+                                                            <Input size="small" placeholder="Ej. VNT-R-S" />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 110 }}>
+                                                        <Form.Item {...restField} name={[name, 'size']} rules={[{ required: true, message: 'Obligatorio' }]} style={{ marginBottom: 0 }}>
+                                                            <Input size="small" placeholder="XS" />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 150 }}>
+                                                        <Form.Item {...restField} name={[name, 'color']} rules={[{ required: true, message: 'Obligatorio' }]} style={{ marginBottom: 0 }}>
+                                                            <Input size="small" placeholder="Negro" />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 95 }}>
+                                                        <Form.Item {...restField} name={[name, 'stock']} rules={[{ required: true, message: 'Obligatorio' }]} style={{ marginBottom: 0 }}>
+                                                            <InputNumber size="small" style={{ width: '100%' }} min={0} />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 125 }}>
+                                                        <Form.Item {...restField} name={[name, 'price']} style={{ marginBottom: 0 }}>
+                                                            <InputNumber size="small" style={{ width: '100%' }} min={0} step={0.01} placeholder="Base" />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 125 }}>
+                                                        <Form.Item {...restField} name={[name, 'cost']} style={{ marginBottom: 0 }}>
+                                                            <InputNumber size="small" style={{ width: '100%' }} min={0} step={0.01} placeholder="Base" />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 78 }}>
+                                                        <Form.Item {...restField} name={[name, 'is_active']} valuePropName="checked" style={{ marginBottom: 0 }}>
+                                                            <Switch size="small" checkedChildren="Sí" unCheckedChildren="No" />
+                                                        </Form.Item>
+                                                    </td>
+                                                    <td style={{ padding: 6, verticalAlign: 'top', width: 42 }}>
+                                                        <Button type="text" danger size="small" onClick={() => remove(name)} icon={<DeleteOutlined />} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                                 <Button type="dashed" onClick={() => add({ size: 'Única', color: 'Unicolor', is_active: true, stock: 0, cost: form.getFieldValue('base_cost') ?? null })} block icon={<PlusOutlined />}>
                                     Añadir otra variante
                                 </Button>
