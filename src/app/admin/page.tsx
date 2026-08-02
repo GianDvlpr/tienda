@@ -17,7 +17,11 @@ const { Title, Text } = Typography;
 
 const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pendiente', color: 'orange' },
+    'PAID': { label: 'Pagado', color: 'gold' },
+    'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
+    'IN_PRODUCTION': { label: 'En confección', color: 'magenta' },
+    'READY': { label: 'Listo para envío', color: 'geekblue' },
     'SHIPPED': { label: 'Enviado', color: 'cyan' },
     'DELIVERED': { label: 'Entregado', color: 'green' },
     'CANCELLED': { label: 'Cancelado', color: 'red' },

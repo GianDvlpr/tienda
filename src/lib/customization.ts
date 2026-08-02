@@ -1,6 +1,6 @@
 export const CUSTOM_MEASUREMENT_MAX_DELTA_CM = 3;
 
-export const CUSTOM_ORDER_NOTICE = 'Tiempo de confección: hasta 3 días hábiles como máximo. El plazo empieza a contar desde el siguiente día hábil de confirmado el pedido. Este tiempo no incluye el plazo de entrega de la agencia. Para iniciar la confección se requiere un adelanto del 30% del costo total del pedido. Las prendas personalizadas no aplican para cambios o devoluciones por talla, color o medidas indicadas por el cliente; solo se aceptarán reclamos por defecto de fabricación o error atribuible a AURA.';
+export const CUSTOM_ORDER_NOTICE = 'Tiempo de confección: hasta 4 días hábiles como máximo. El plazo empieza a contar desde el siguiente día hábil de confirmado el pedido. Este tiempo no incluye el plazo de entrega de la agencia. Para iniciar la confección se requiere un adelanto del 30% del costo total del pedido. Las prendas personalizadas no aplican para cambios o devoluciones por talla, color o medidas indicadas por el cliente; solo se aceptarán reclamos por defecto de fabricación o error atribuible a AURA.';
 
 export const CUSTOM_MEASUREMENT_POLICY = `Cada medida puede ajustarse como máximo ${CUSTOM_MEASUREMENT_MAX_DELTA_CM} cm por encima o por debajo de la talla base seleccionada. Si la diferencia es mayor, la caída, proporción o diseño original de la prenda puede deformarse.`;
 

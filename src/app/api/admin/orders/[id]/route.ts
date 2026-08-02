@@ -6,8 +6,8 @@ import { recordAudit } from '@/lib/audit';
 export const runtime = 'nodejs';
 
 const validSalesChannels = new Set(['SHOP', 'WHATSAPP', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'OTHER']);
-const validStatuses = new Set(['PENDING_WS', 'PAID', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
-const paidStatuses = new Set(['PAID', 'CONFIRMED', 'SHIPPED', 'DELIVERED']);
+const validStatuses = new Set(['PENDING_WS', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
+const paidStatuses = new Set(['PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
 
 type OrderItemInput = {
     variant_id?: string;

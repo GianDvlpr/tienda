@@ -62,7 +62,10 @@ const salesChannelOptions = [
 const statusOptions = [
     { value: 'PENDING_WS', label: 'Pendiente de pago/contacto' },
     { value: 'PAID', label: 'Pagado' },
+    { value: 'MEASURES_CONFIRMED', label: 'Medidas confirmadas' },
     { value: 'CONFIRMED', label: 'Confirmado / En preparación' },
+    { value: 'IN_PRODUCTION', label: 'En confección' },
+    { value: 'READY', label: 'Listo para envío' },
     { value: 'SHIPPED', label: 'Enviado' },
     { value: 'DELIVERED', label: 'Entregado' },
 ];

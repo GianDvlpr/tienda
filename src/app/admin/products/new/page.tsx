@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Divider, Image, AutoComplete } from 'antd';
+import { Alert, Form, Input, InputNumber, Switch, Select, Button, Space, Typography, Card, Divider, Image, AutoComplete } from 'antd';
 import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -296,10 +296,13 @@ export default function NewProductPage() {
 
                         <Form.Item
                             noStyle
-                            shouldUpdate={(prevValues, currentValues) => prevValues.is_customizable !== currentValues.is_customizable}
+                            shouldUpdate={(prevValues, currentValues) => prevValues.is_customizable !== currentValues.is_customizable || prevValues.customization_type !== currentValues.customization_type || prevValues.customization_surcharge !== currentValues.customization_surcharge}
                         >
                             {({ getFieldValue }) => {
                                 const enabled = !!getFieldValue('is_customizable');
+                                const type = getFieldValue('customization_type');
+                                const surcharge = Number(getFieldValue('customization_surcharge') || 0);
+                                const suggestedRange = type === 'PANTS' ? 'S/ 15 a S/ 25' : 'S/ 10 a S/ 15';
                                 return (
                                     <>
                                         <Form.Item name="customization_type" label="Tipo de prenda" rules={enabled ? [{ required: true, message: 'Selecciona el tipo' }] : []}>
@@ -308,7 +311,7 @@ export default function NewProductPage() {
                                                 <Option value="UPPER">Parte superior</Option>
                                             </Select>
                                         </Form.Item>
-                                        <Form.Item name="customization_surcharge" label="Recargo personalizado (S/)" extra="Por defecto S/ 5.00 para prendas individuales.">
+                                        <Form.Item name="customization_surcharge" label="Recargo personalizado (S/)" extra="Debe cubrir revisión de medidas, atención por WhatsApp, riesgo de ajuste y confección especial.">
                                             <InputNumber disabled={!enabled} style={{ width: '100%' }} min={0} step={0.01} precision={2} prefix="S/" />
                                         </Form.Item>
                                         <Form.Item name="custom_fabric_supply_id" label="Tela para personalización" extra="Define qué colores estarán disponibles según el stock por color de esta tela.">
@@ -316,6 +319,17 @@ export default function NewProductPage() {
                                                 {fabricOptions.map((s: any) => <Option key={s.supply_id} value={s.supply_id}>{s.name}</Option>)}
                                             </Select>
                                         </Form.Item>
+                                        {enabled && (
+                                            <Alert
+                                                showIcon
+                                                type={surcharge > 0 && surcharge < 10 ? 'warning' : 'info'}
+                                                message={`Sugerencia de recargo: ${suggestedRange}`}
+                                                description={surcharge > 0 && surcharge < 10
+                                                    ? 'El recargo actual parece bajo para cubrir atención, validación de medidas y riesgo de retrabajo.'
+                                                    : 'Usa el recargo para proteger margen y capacidad de confección personalizada.'}
+                                                style={{ gridColumn: '1 / -1' }}
+                                            />
+                                        )}
                                     </>
                                 );
                             }}

@@ -13,9 +13,19 @@ import PusherClient from 'pusher-js';
 dayjs.locale('es');
 const { Title, Text } = Typography;
 
-const statusTimeline = [
+const defaultStatusTimeline = [
     { key: ['PENDING_WS', 'PAID'], title: 'Recibido', description: 'Orden generada / Pagada' },
-    { key: ['CONFIRMED'], title: 'Preparando', description: 'Empaquetando tu orden' },
+    { key: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION'], title: 'Preparando', description: 'Preparando tu orden' },
+    { key: ['READY'], title: 'Listo', description: 'Listo para despacho' },
+    { key: ['SHIPPED'], title: 'En Curso', description: 'El motorizado está en camino' },
+    { key: ['DELIVERED'], title: 'Entregado', description: 'Pedido finalizado' }
+];
+
+const customStatusTimeline = [
+    { key: ['PENDING_WS', 'PAID'], title: 'Recibido', description: 'Pedido personalizado registrado' },
+    { key: ['MEASURES_CONFIRMED'], title: 'Medidas confirmadas', description: 'Validamos tus medidas y color' },
+    { key: ['CONFIRMED', 'IN_PRODUCTION'], title: 'En confección', description: 'Tu prenda está en producción' },
+    { key: ['READY'], title: 'Listo', description: 'Listo para despacho' },
     { key: ['SHIPPED'], title: 'En Curso', description: 'El motorizado está en camino' },
     { key: ['DELIVERED'], title: 'Entregado', description: 'Pedido finalizado' }
 ];
@@ -67,6 +77,8 @@ export default function ClientTracker({ order, code }: { order: any, code: strin
         return cleaned.substring(0, cleaned.length - 4) + ' ••••';
     };
 
+    const hasCustomizedItems = (order.order_item || []).some((item: any) => item.is_customized === true || item.is_customized === 1);
+    const statusTimeline = hasCustomizedItems ? customStatusTimeline : defaultStatusTimeline;
     const isCancelled = liveStatus === 'CANCELLED';
     let currentStep = statusTimeline.findIndex(s => s.key.includes(liveStatus));
     if (currentStep === -1) currentStep = 0;

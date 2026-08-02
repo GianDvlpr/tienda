@@ -16,7 +16,10 @@ const { Title, Text } = Typography;
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
+    'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
+    'IN_PRODUCTION': { label: 'En confección', color: 'magenta' },
+    'READY': { label: 'Listo para envío', color: 'geekblue' },
     'SHIPPED': { label: 'Enviado', color: 'cyan' },
     'DELIVERED': { label: 'Entregado', color: 'green' },
     'CANCELLED': { label: 'Cancelado', color: 'red' },
@@ -45,7 +48,12 @@ type AdminOrder = {
     coupon_code?: string | null;
     total: number | string;
     status: string;
+    order_item?: { is_customized?: boolean | number }[];
 };
+
+function hasCustomizedItems(order: AdminOrder) {
+    return (order.order_item || []).some((item) => item.is_customized === true || item.is_customized === 1);
+}
 
 export default function AdminOrdersPage() {
     const { data: orders, error, isLoading, mutate, isValidating } = useSWR<AdminOrder[]>('/api/admin/orders', fetcher, {
@@ -58,7 +66,12 @@ export default function AdminOrdersPage() {
             title: 'Código',
             dataIndex: 'code',
             key: 'code',
-            render: (code: string) => <Text strong>{code}</Text>,
+            render: (code: string, record) => (
+                <Space orientation="vertical" size={2}>
+                    <Text strong>{code}</Text>
+                    {hasCustomizedItems(record) && <Tag color="gold" style={{ width: 'fit-content' }}>Personalizado</Tag>}
+                </Space>
+            ),
         },
         {
             title: 'Fecha',

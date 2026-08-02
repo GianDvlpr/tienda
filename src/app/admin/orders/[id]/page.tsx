@@ -16,7 +16,10 @@ import ImageUploader from '@/components/admin/ImageUploader';
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
+    'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
+    'IN_PRODUCTION': { label: 'En confección', color: 'magenta' },
+    'READY': { label: 'Listo para envío', color: 'geekblue' },
     'SHIPPED': { label: 'Enviado', color: 'cyan' },
     'DELIVERED': { label: 'Entregado', color: 'green' },
     'CANCELLED': { label: 'Cancelado', color: 'red' },
@@ -45,7 +48,10 @@ const salesChannelOptions = [
 const statusOptions = [
     { value: 'PENDING_WS', label: 'Pendiente WhatsApp' },
     { value: 'PAID', label: 'Orden generada / Pagada' },
+    { value: 'MEASURES_CONFIRMED', label: 'Medidas confirmadas' },
     { value: 'CONFIRMED', label: 'Confirmado / En Preparación' },
+    { value: 'IN_PRODUCTION', label: 'En confección' },
+    { value: 'READY', label: 'Listo para envío' },
     { value: 'SHIPPED', label: 'Enviado / En Tránsito' },
     { value: 'DELIVERED', label: 'Entregado' },
     { value: 'CANCELLED', label: 'Cancelado' },
@@ -546,6 +552,7 @@ export default function OrderDetailPage() {
     }
 
     const salesChannel = salesChannelMap[order.sales_channel || 'SHOP'] || { label: order.sales_channel || 'Shop', color: 'default' };
+    const hasCustomizedOrderItems = (order.order_item || []).some((item) => item.is_customized === true || item.is_customized === 1);
 
     const itemsColumns: ColumnsType<OrderItem> = [
         {
@@ -686,6 +693,7 @@ export default function OrderDetailPage() {
                         {statusMap[order.status]?.label || order.status}
                     </Tag>
                     <Tag color={salesChannel.color}>{salesChannel.label}</Tag>
+                    {hasCustomizedOrderItems && <Tag color="gold">Personalizado</Tag>}
                 </Space>
                 <Space>
                     <Button icon={<PrinterOutlined />} onClick={handlePrint}>
@@ -707,6 +715,15 @@ export default function OrderDetailPage() {
                     )}
                 </Space>
             </div>
+
+            {hasCustomizedOrderItems && (
+                <Alert
+                    showIcon
+                    type="warning"
+                    message="Pedido personalizado"
+                    description="Confirma medidas, color y adelanto antes de pasar el pedido a En confección. Usa los estados Medidas confirmadas, En confección y Listo para envío para controlar el avance operativo."
+                />
+            )}
 
             <Row gutter={[24, 24]}>
                 <Col xs={24} md={16}>

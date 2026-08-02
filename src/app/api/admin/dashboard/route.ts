@@ -64,7 +64,7 @@ export async function GET() {
         // 5.1 Revenue Trend (Last 14 days)
         const recentOrdersForTrend = await prisma.order_header.findMany({
             where: {
-                status: { in: ['CONFIRMED', 'SHIPPED', 'DELIVERED'] },
+                status: { in: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED'] },
                 created_at: { gte: fourteenDaysAgo }
             },
             select: {
@@ -124,7 +124,7 @@ export async function GET() {
         const salesItems = await prisma.order_item.findMany({
             where: {
                 order_header: {
-                    status: { in: ['CONFIRMED', 'SHIPPED', 'DELIVERED'] }
+                    status: { in: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED'] }
                 }
             },
             select: {

@@ -38,7 +38,7 @@ export default function TermsPage() {
 
             <Title level={4}>4. PRENDAS PERSONALIZADAS</Title>
             <Paragraph>
-                Algunas prendas pueden solicitarse con medidas o colores personalizados. Estos pedidos se gestionan por WhatsApp y requieren confirmación de medidas antes de iniciar la confección. El plazo de confección es de hasta 3 días hábiles como máximo desde el siguiente día hábil de confirmado el pedido, sin incluir el tiempo de entrega de la agencia.
+                Algunas prendas pueden solicitarse con medidas o colores personalizados. Estos pedidos se gestionan por WhatsApp y requieren confirmación de medidas antes de iniciar la confección. El plazo de confección es de hasta 4 días hábiles como máximo desde el siguiente día hábil de confirmado el pedido, sin incluir el tiempo de entrega de la agencia.
             </Paragraph>
             <Paragraph>
                 Cada medida personalizada puede aumentar o reducirse como máximo <Text strong>3 cm</Text> respecto a la talla base seleccionada. Cambios mayores pueden deformar la caída, proporción o diseño original de la prenda, por lo que AURA podrá solicitar confirmación adicional o rechazar el ajuste.

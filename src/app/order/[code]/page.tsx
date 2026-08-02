@@ -13,6 +13,18 @@ type OrderInfo = {
     createdAt: string;
 };
 
+const statusLabels: Record<string, string> = {
+    PENDING_WS: 'Pendiente por WhatsApp',
+    PAID: 'Orden generada / pagada',
+    MEASURES_CONFIRMED: 'Medidas confirmadas',
+    CONFIRMED: 'Confirmado',
+    IN_PRODUCTION: 'En confección',
+    READY: 'Listo para envío',
+    SHIPPED: 'Enviado',
+    DELIVERED: 'Entregado',
+    CANCELLED: 'Cancelado',
+};
+
 export default function OrderPage() {
     const params = useParams<{ code: string }>();
     const code = params.code;
@@ -62,7 +74,7 @@ export default function OrderPage() {
             <Space orientation="vertical" size={10} style={{ width: '100%' }}>
                 <Title level={3} style={{ marginTop: 0 }}>Pedido creado ✅</Title>
                 <Text>Tu código: <Text strong>{data.code}</Text></Text>
-                <Text>Estado: <Text strong>{data.status}</Text></Text>
+                <Text>Estado: <Text strong>{statusLabels[data.status] || data.status}</Text></Text>
                 <Text>Total: <Text strong>{data.total}</Text></Text>
                 <Text type="secondary">
                     Importante: si pagas por Yape/Plin, envía el comprobante por WhatsApp indicando tu código.
