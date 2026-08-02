@@ -703,7 +703,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                     }}
                                                                     onClick={() => openBundleCustomization(bundle)}
                                                                 >
-                                                                    Personalizar conjunto (+{formatPEN(Number(bundle.customization_surcharge ?? 8))})
+                                                                    Personalizar conjunto (+{formatPEN(Number(bundle.customization_surcharge ?? 20))})
                                                                 </Button>
 
 
