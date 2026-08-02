@@ -35,7 +35,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     name,
                     description,
                     discount_amount: discountAmount,
-                    customization_surcharge: Number(customization_surcharge ?? 8),
+                    customization_surcharge: Number(customization_surcharge ?? 20),
                     is_active: is_active ?? true,
                 }
             });
@@ -66,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 include: { items: true }
             });
 
-            return { ...updatedBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 8) };
+            return { ...updatedBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 20) };
         });
 
 

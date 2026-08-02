@@ -327,7 +327,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         }
 
         const groupId = `bundle-${customBundle.bundle_id}-${Date.now()}`;
-        const bundleSurcharge = Number(customBundle.customization_surcharge ?? 8);
+        const bundleSurcharge = Number(customBundle.customization_surcharge ?? 20);
         lines.forEach((line, index) => {
             addCartItem({
                 cartItemId: `${line.variantId}:custom-bundle:${groupId}`,
@@ -874,7 +874,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                         <Alert type="info" showIcon message={CUSTOM_ORDER_NOTICE} />
                         <Alert type="warning" showIcon message={CUSTOM_MEASUREMENT_POLICY} />
                         <Text type="secondary">
-                            Se aplicará un solo recargo de conjunto personalizado de {formatPEN(Number(customBundle.customization_surcharge ?? 8))}.
+                            Se aplicará un solo recargo de conjunto personalizado de {formatPEN(Number(customBundle.customization_surcharge ?? 20))}.
                         </Text>
                         {[
                             {

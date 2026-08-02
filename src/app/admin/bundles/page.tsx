@@ -133,7 +133,7 @@ export default function AdminBundlesPage() {
                     {Number(record.tier_3_price || 0) > 0 && (
                         <Text type="success">3 conjuntos por S/ {Number(record.tier_3_price).toFixed(2)}</Text>
                     )}
-                    <Text type="secondary">Personalizado: + S/ {Number(record.customization_surcharge ?? 8).toFixed(2)}</Text>
+                    <Text type="secondary">Personalizado: + S/ {Number(record.customization_surcharge ??20).toFixed(2)}</Text>
                 </Space>
             )
         },

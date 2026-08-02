@@ -38,7 +38,7 @@ export async function GET() {
             bundle_price: tiersByBundleId.get(String(b.bundle_id))?.bundle_price ?? null,
             tier_2_price: tiersByBundleId.get(String(b.bundle_id))?.tier_2_price ?? null,
             tier_3_price: tiersByBundleId.get(String(b.bundle_id))?.tier_3_price ?? null,
-            customization_surcharge: tiersByBundleId.get(String(b.bundle_id))?.customization_surcharge ?? 8,
+            customization_surcharge: tiersByBundleId.get(String(b.bundle_id))?.customization_surcharge ?? 20,
             requiredProductIds: b.items.map((i: any) => i.product_id)
         })));
     } catch (e: any) {

@@ -66,7 +66,7 @@ export async function POST(req: Request) {
                 name,
                 description,
                 discount_amount: discountAmount,
-                customization_surcharge: Number(customization_surcharge ?? 8),
+                customization_surcharge: Number(customization_surcharge ?? 20),
                 is_active: is_active ?? true,
                 items: {
                     create: product_ids.map((id: string) => ({
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
             newData: newBundle
         });
 
-        return NextResponse.json({ ...newBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 8) });
+        return NextResponse.json({ ...newBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 20) });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }

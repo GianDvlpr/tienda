@@ -289,7 +289,7 @@ export async function POST(req: Request) {
             if (!matchingBundle) fail('El conjunto personalizado no está disponible o fue modificado');
 
             const bundleTiers = tiersByBundleId.get(String(matchingBundle.bundle_id));
-            groupSurchargeByItemIndex.set(contexts[0].index, Number(bundleTiers?.customization_surcharge ?? 8));
+            groupSurchargeByItemIndex.set(contexts[0].index, Number(bundleTiers?.customization_surcharge ?? 20));
             groupLabelByGroupId.set(groupId, `Conjunto personalizado: ${matchingBundle.name}`);
         }
 
