@@ -502,11 +502,7 @@ export default function AdminLinksPage() {
                         <Form.Item name="subtitle" label="Subtitulo">
                             <Input placeholder="Moda femenina exclusiva..." />
                         </Form.Item>
-
-                        <Form.Item name="background_color" label="Color de fondo">
-                            <Input type="color" />
-                        </Form.Item>
-
+                        
                         <Form.Item name="avatar_url" label="URL del logo principal">
                             <Input placeholder="https://..." />
                         </Form.Item>
@@ -521,6 +517,10 @@ export default function AdminLinksPage() {
 
                         <Form.Item label="Subir imagen de fondo">
                             <ImageUploader onUploadSuccess={handleBackgroundUpload} buttonText="Subir Fondo" />
+                        </Form.Item>
+
+                        <Form.Item name="background_color" label="Color de fondo">
+                            <Input type="color" />
                         </Form.Item>
                     </div>
 
