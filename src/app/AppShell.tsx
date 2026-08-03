@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import ShopHeader from "@/components/shop/ShopHeader";
 import ShopFooter from "@/components/shop/ShopFooter";
 import QuickViewDrawer from "@/components/shop/QuickViewDrawer";
+import StoreAnalytics from "@/components/analytics/StoreAnalytics";
 import { usePathname } from "next/navigation";
 
 const { Content } = Layout;
@@ -20,6 +21,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Layout style={{ minHeight: "100vh" }}>
             {showPublicShell && (
                 <>
+                    <Suspense fallback={null}>
+                        <StoreAnalytics />
+                    </Suspense>
                     <Suspense fallback={<div style={{ height: 80 }} />}>
                         <ShopHeader />
                     </Suspense>

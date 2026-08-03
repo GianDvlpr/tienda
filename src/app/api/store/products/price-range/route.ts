@@ -10,32 +10,22 @@ export async function GET(req: NextRequest) {
     const onlyInStock = (url.searchParams.get('onlyInStock') ?? '0') === '1';
 
     try {
-        const rows = await prisma.$queryRaw<{ minPrice: any; maxPrice: any }[]>`
-      SELECT
-        MIN(COALESCE(NULLIF(v.price, 0), p.base_price, 0)) AS minPrice,
-        MAX(COALESCE(NULLIF(v.price, 0), p.base_price, 0)) AS maxPrice
-      FROM dbo.product_variant v
-      JOIN dbo.product p ON p.product_id = v.product_id
-      WHERE
-        p.is_active = 1
-        AND v.is_active = 1
-        AND (${onlyInStock ? 1 : 0} = 0 OR v.stock > 0)
-        AND (
-          ${collection} IS NULL
-          OR EXISTS (
-            SELECT 1
-            FROM dbo.collection c
-            JOIN dbo.product_collection pc ON pc.collection_id = c.collection_id
-            WHERE pc.product_id = p.product_id
-              AND c.slug = ${collection}
-              AND c.is_active = 1
-          )
-        );
-    `;
-
-        const r = rows?.[0] ?? {};
-        const min = Number(r.minPrice ?? 0);
-        const max = Number(r.maxPrice ?? 0);
+        const variants = await prisma.product_variant.findMany({
+            where: {
+                is_active: true,
+                ...(onlyInStock ? { stock: { gt: 0 } } : {}),
+                product: {
+                    is_active: true,
+                    ...(collection ? {
+                        product_collection: { some: { collection: { slug: collection, is_active: true } } }
+                    } : {}),
+                },
+            },
+            include: { product: { select: { base_price: true } } },
+        });
+        const prices = variants.map((variant) => Number(variant.price || variant.product.base_price || 0));
+        const min = prices.length ? Math.min(...prices) : 0;
+        const max = prices.length ? Math.max(...prices) : 0;
 
         return NextResponse.json({
             minPrice: Number.isFinite(min) ? min : 0,

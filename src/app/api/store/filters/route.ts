@@ -10,55 +10,26 @@ export async function GET(req: NextRequest) {
     const onlyInStock = (url.searchParams.get('onlyInStock') ?? '0') === '1';
 
     try {
-        const sizesRows = await prisma.$queryRaw<{ size: string }[]>`
-      SELECT DISTINCT v.size
-      FROM dbo.product_variant v
-      JOIN dbo.product p ON p.product_id = v.product_id
-      WHERE
-        p.is_active = 1
-        AND v.is_active = 1
-        AND (
-          ${collection} IS NULL
-          OR EXISTS (
-            SELECT 1
-            FROM dbo.collection c
-            JOIN dbo.product_collection pc ON pc.collection_id = c.collection_id
-            WHERE pc.product_id = p.product_id
-              AND c.slug = ${collection}
-              AND c.is_active = 1
-          )
-        )
-        AND (${onlyInStock ? 1 : 0} = 0 OR v.stock > 0)
-        AND v.size IS NOT NULL AND LTRIM(RTRIM(v.size)) <> ''
-      ORDER BY v.size ASC;
-    `;
+        const variants = await prisma.product_variant.findMany({
+            where: {
+                is_active: true,
+                ...(onlyInStock ? { stock: { gt: 0 } } : {}),
+                product: {
+                    is_active: true,
+                    ...(collection ? {
+                        product_collection: { some: { collection: { slug: collection, is_active: true } } }
+                    } : {}),
+                },
+            },
+            select: { size: true, color: true },
+        });
 
-        const colorsRows = await prisma.$queryRaw<{ color: string }[]>`
-      SELECT DISTINCT v.color
-      FROM dbo.product_variant v
-      JOIN dbo.product p ON p.product_id = v.product_id
-      WHERE
-        p.is_active = 1
-        AND v.is_active = 1
-        AND (
-          ${collection} IS NULL
-          OR EXISTS (
-            SELECT 1
-            FROM dbo.collection c
-            JOIN dbo.product_collection pc ON pc.collection_id = c.collection_id
-            WHERE pc.product_id = p.product_id
-              AND c.slug = ${collection}
-              AND c.is_active = 1
-          )
-        )
-        AND (${onlyInStock ? 1 : 0} = 0 OR v.stock > 0)
-        AND v.color IS NOT NULL AND LTRIM(RTRIM(v.color)) <> ''
-      ORDER BY v.color ASC;
-    `;
+        const sizes = Array.from(new Set(variants.map((variant) => String(variant.size || '').trim()).filter(Boolean))).sort();
+        const colors = Array.from(new Set(variants.map((variant) => String(variant.color || '').trim()).filter(Boolean))).sort();
 
         return NextResponse.json({
-            sizes: sizesRows.map((r) => String(r.size)),
-            colors: colorsRows.map((r) => String(r.color)),
+            sizes,
+            colors,
         });
     } catch (e: any) {
         return NextResponse.json(

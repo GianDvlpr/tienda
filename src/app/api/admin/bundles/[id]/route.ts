@@ -35,16 +35,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     name,
                     description,
                     discount_amount: discountAmount,
+                    bundle_price: bundlePrice,
+                    tier_2_price: tier2Price,
+                    tier_3_price: tier3Price,
                     customization_surcharge: Number(customization_surcharge ?? 20),
                     is_active: is_active ?? true,
                 }
             });
-
-            await tx.$executeRaw`
-                UPDATE dbo.bundle_promotion
-                SET bundle_price = ${bundlePrice}, tier_2_price = ${tier2Price}, tier_3_price = ${tier3Price}
-                WHERE bundle_id = ${id};
-            `;
 
             // Si se pasaron product_ids nuevos, regenerar items
             if (product_ids) {
@@ -66,7 +63,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 include: { items: true }
             });
 
-            return { ...updatedBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 20) };
+            return updatedBundle;
         });
 
 

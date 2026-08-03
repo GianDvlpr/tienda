@@ -5,18 +5,11 @@ export const runtime = 'nodejs';
 
 export async function GET(_req: NextRequest) {
     try {
-        const rows = await prisma.$queryRawUnsafe<any[]>(
-            `
-      SELECT
-        collection_id,
-        slug,
-        name,
-        description
-      FROM dbo.collection
-      WHERE is_active = 1
-      ORDER BY name ASC;
-      `
-        );
+        const rows = await prisma.collection.findMany({
+            where: { is_active: true },
+            orderBy: { name: 'asc' },
+            select: { collection_id: true, slug: true, name: true, description: true },
+        });
 
         return NextResponse.json({
             items: rows.map((r) => ({

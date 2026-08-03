@@ -31,18 +31,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         });
         if (!product) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
 
-        const productExtraRows = await prisma.$queryRaw<{ custom_fabric_supply_id: string | null }[]>`
-            SELECT custom_fabric_supply_id FROM dbo.product WHERE product_id = ${id};
-        `;
+        const images = await prisma.product_image.findMany({
+            where: { product_id: id },
+            orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
+        });
 
-        const images = await prisma.$queryRaw<any[]>`
-            SELECT image_id, product_id, url, public_id, color, sort_order, created_at
-            FROM dbo.product_image
-            WHERE product_id = ${id}
-            ORDER BY sort_order ASC, created_at DESC;
-        `;
-
-        return NextResponse.json({ ...product, custom_fabric_supply_id: productExtraRows[0]?.custom_fabric_supply_id ?? null, product_image: images });
+        return NextResponse.json({ ...product, custom_fabric_supply_id: product.custom_fabric_supply_id ?? null, product_image: images });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -118,23 +112,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     is_customizable: !!is_customizable,
                     customization_type: is_customizable ? customization_type : null,
                     customization_surcharge: Number(customization_surcharge ?? 5),
+                    custom_fabric_supply_id: is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null,
                 }
             });
-
-            const customFabricSupplyId = is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null;
-            if (customFabricSupplyId) {
-                await tx.$executeRaw`
-                    UPDATE dbo.product
-                    SET custom_fabric_supply_id = ${customFabricSupplyId}
-                    WHERE product_id = ${id};
-                `;
-            } else {
-                await tx.$executeRaw`
-                    UPDATE dbo.product
-                    SET custom_fabric_supply_id = NULL
-                    WHERE product_id = ${id};
-                `;
-            }
 
 
             // 2. Sync Collections by diff instead of recreating all rows

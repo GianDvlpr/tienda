@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Healthcheck {
@@ -12,13 +13,13 @@ model Healthcheck {
 }
 
 model collection {
-  collection_id      String               @id(map: "PK_collection") @default(dbgenerated("newsequentialid()"), map: "DF_collection_id") @db.UniqueIdentifier
-  slug               String               @unique(map: "UX_collection_slug") @db.NVarChar(180)
-  name               String               @db.NVarChar(200)
-  description        String?              @db.NVarChar(Max)
-  is_active          Boolean              @default(true, map: "DF_collection_is_active")
-  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_collection_created_at")
-  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_collection_updated_at")
+  collection_id      String               @id(map: "PK_collection") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug               String               @unique(map: "UX_collection_slug") @db.VarChar(180)
+  name               String               @db.VarChar(200)
+  description        String?              @db.Text
+  is_active          Boolean              @default(true)
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @default(now())
   product_collection product_collection[]
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_collection_active")
@@ -26,11 +27,11 @@ model collection {
 }
 
 model customer {
-  customer_id  String         @id(map: "PK_customer") @default(dbgenerated("newsequentialid()"), map: "DF_customer_id") @db.UniqueIdentifier
-  full_name    String         @db.NVarChar(200)
-  phone        String?        @db.NVarChar(30)
-  email        String?        @db.NVarChar(200)
-  created_at   DateTime       @default(dbgenerated("sysutcdatetime()"), map: "DF_customer_created_at")
+  customer_id  String         @id(map: "PK_customer") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name    String         @db.VarChar(200)
+  phone        String?        @db.VarChar(30)
+  email        String?        @db.VarChar(200)
+  created_at   DateTime       @default(now())
   order_header order_header[]
 
   @@index([email], map: "IX_customer_email")
@@ -38,16 +39,16 @@ model customer {
 }
 
 model inventory_movement {
-  movement_id     String          @id(map: "PK_inventory_movement") @default(dbgenerated("newsequentialid()"), map: "DF_inventory_movement_id") @db.UniqueIdentifier
-  variant_id      String          @db.UniqueIdentifier
-  movement_type   String          @db.NVarChar(20)
+  movement_id     String          @id(map: "PK_inventory_movement") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variant_id      String          @db.Uuid
+  movement_type   String          @db.VarChar(20)
   qty             Int
   stock_before    Int
   stock_after     Int
-  reason          String?         @db.NVarChar(250)
-  order_id        String?         @db.UniqueIdentifier
-  order_item_id   String?         @db.UniqueIdentifier
-  created_at      DateTime        @default(dbgenerated("sysutcdatetime()"), map: "DF_inventory_movement_created_at")
+  reason          String?         @db.VarChar(250)
+  order_id        String?         @db.Uuid
+  order_item_id   String?         @db.Uuid
+  created_at      DateTime        @default(now())
   order_header    order_header?   @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_movement_order")
   order_item      order_item?     @relation(fields: [order_item_id], references: [order_item_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_movement_order_item")
   product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_movement_variant")
@@ -57,32 +58,32 @@ model inventory_movement {
 }
 
 model order_header {
-  order_id           String               @id(map: "PK_order_header") @default(dbgenerated("newsequentialid()"), map: "DF_order_id") @db.UniqueIdentifier
-  code               String               @unique(map: "UX_order_code") @db.NVarChar(30)
-  status             String               @db.NVarChar(30)
-  customer_id        String?              @db.UniqueIdentifier
-  shipping_name      String               @db.NVarChar(200)
-  shipping_dni       String?              @db.NVarChar(20)
-  shipping_phone     String               @db.NVarChar(30)
-  shipping_address   String               @db.NVarChar(500)
-  shipping_city      String?              @db.NVarChar(120)
-  shipping_reference String?              @db.NVarChar(250)
+  order_id           String               @id(map: "PK_order_header") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               String               @unique(map: "UX_order_code") @db.VarChar(30)
+  status             String               @db.VarChar(30)
+  customer_id        String?              @db.Uuid
+  shipping_name      String               @db.VarChar(200)
+  shipping_dni       String?              @db.VarChar(20)
+  shipping_phone     String               @db.VarChar(30)
+  shipping_address   String               @db.VarChar(500)
+  shipping_city      String?              @db.VarChar(120)
+  shipping_reference String?              @db.VarChar(250)
   notes              String?
   subtotal           Decimal              @db.Decimal(18, 2)
-  shipping_cost      Decimal              @default(0, map: "DF_order_shipping_cost") @db.Decimal(18, 2)
-  discount_total     Decimal              @default(0, map: "DF_order_discount_total") @db.Decimal(18, 2)
-  bundle_discount    Decimal?             @default(0, map: "DF_order_bundle_discount") @db.Decimal(18, 2)
-  coupon_discount    Decimal?             @default(0, map: "DF_order_coupon_discount") @db.Decimal(18, 2)
-  coupon_code        String?              @db.NVarChar(50)
+  shipping_cost      Decimal              @default(0) @db.Decimal(18, 2)
+  discount_total     Decimal              @default(0) @db.Decimal(18, 2)
+  bundle_discount    Decimal?             @default(0) @db.Decimal(18, 2)
+  coupon_discount    Decimal?             @default(0) @db.Decimal(18, 2)
+  coupon_code        String?              @db.VarChar(50)
   total              Decimal              @db.Decimal(18, 2)
-  currency           String               @default("PEN", map: "DF_order_currency") @db.Char(3)
-  payment_method     String?              @db.NVarChar(30)
-  payment_reference  String?              @db.NVarChar(120)
-  sales_channel      String               @default("SHOP", map: "DF_order_sales_channel") @db.NVarChar(30)
-  external_reference String?              @db.NVarChar(200)
+  currency           String               @default("PEN") @db.Char(3)
+  payment_method     String?              @db.VarChar(30)
+  payment_reference  String?              @db.VarChar(120)
+  sales_channel      String               @default("SHOP") @db.VarChar(30)
+  external_reference String?              @db.VarChar(200)
   paid_at            DateTime?
-  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_created_at")
-  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_updated_at")
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @default(now())
   inventory_movement inventory_movement[]
   customer           customer?            @relation(fields: [customer_id], references: [customer_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_customer")
   order_item         order_item[]
@@ -95,14 +96,14 @@ model order_header {
 }
 
 model order_photo {
-  photo_id           String       @id(map: "PK_order_photo") @default(dbgenerated("newsequentialid()"), map: "DF_order_photo_id") @db.UniqueIdentifier
-  order_id           String       @db.UniqueIdentifier
-  url                String       @db.NVarChar(500)
-  public_id          String?      @db.NVarChar(300)
-  caption            String?      @db.NVarChar(250)
-  is_public_tracking Boolean      @default(false, map: "DF_order_photo_public_tracking")
-  created_at         DateTime     @default(dbgenerated("sysutcdatetime()"), map: "DF_order_photo_created_at")
-  updated_at         DateTime     @default(dbgenerated("sysutcdatetime()"), map: "DF_order_photo_updated_at")
+  photo_id           String       @id(map: "PK_order_photo") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id           String       @db.Uuid
+  url                String       @db.VarChar(500)
+  public_id          String?      @db.VarChar(300)
+  caption            String?      @db.VarChar(250)
+  is_public_tracking Boolean      @default(false)
+  created_at         DateTime     @default(now())
+  updated_at         DateTime     @default(now())
   order_header       order_header @relation(fields: [order_id], references: [order_id], onUpdate: NoAction, map: "FK_order_photo_order")
 
   @@index([order_id, created_at(sort: Desc)], map: "IX_order_photo_order_created")
@@ -110,64 +111,63 @@ model order_photo {
 }
 
 model order_item {
-  order_item_id      String               @id(map: "PK_order_item") @default(dbgenerated("newsequentialid()"), map: "DF_order_item_id") @db.UniqueIdentifier
-  order_id           String               @db.UniqueIdentifier
-  variant_id         String               @db.UniqueIdentifier
-  qty                Int
-  unit_price         Decimal              @db.Decimal(18, 2)
-  line_total         Decimal              @db.Decimal(18, 2)
-  product_name       String               @db.NVarChar(250)
-  variant_size       String               @db.NVarChar(50)
-  variant_color      String               @db.NVarChar(80)
-  sku                String               @db.NVarChar(80)
-  image_url          String?              @db.NVarChar(500)
-  is_customized      Boolean              @default(false, map: "DF_order_item_is_customized")
-  custom_measurements_json String?         @db.NVarChar(Max)
-  customization_surcharge Decimal?        @default(0, map: "DF_order_item_customization_surcharge") @db.Decimal(18, 2)
-  customization_group_id String?           @db.NVarChar(80)
-  customization_group_label String?        @db.NVarChar(200)
-  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_order_item_created_at")
-  inventory_movement inventory_movement[]
-  order_header       order_header         @relation(fields: [order_id], references: [order_id], onUpdate: NoAction, map: "FK_item_order")
-  product_variant    product_variant      @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_item_variant")
+  order_item_id             String               @id(map: "PK_order_item") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                  String               @db.Uuid
+  variant_id                String               @db.Uuid
+  qty                       Int
+  unit_price                Decimal              @db.Decimal(18, 2)
+  line_total                Decimal              @db.Decimal(18, 2)
+  product_name              String               @db.VarChar(250)
+  variant_size              String               @db.VarChar(50)
+  variant_color             String               @db.VarChar(80)
+  sku                       String               @db.VarChar(80)
+  image_url                 String?              @db.VarChar(500)
+  is_customized             Boolean              @default(false)
+  custom_measurements_json  String?              @db.Text
+  customization_surcharge   Decimal?             @default(0) @db.Decimal(18, 2)
+  customization_group_id    String?              @db.VarChar(80)
+  customization_group_label String?              @db.VarChar(200)
+  created_at                DateTime             @default(now())
+  inventory_movement        inventory_movement[]
+  order_header              order_header         @relation(fields: [order_id], references: [order_id], onUpdate: NoAction, map: "FK_item_order")
+  product_variant           product_variant      @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_item_variant")
 
   @@index([order_id], map: "IX_order_item_order")
   @@index([variant_id], map: "IX_order_item_variant")
 }
 
 model product {
-  product_id         String               @id(map: "PK_product") @default(dbgenerated("newsequentialid()"), map: "DF_product_id") @db.UniqueIdentifier
-  slug               String               @unique(map: "UX_product_slug") @db.NVarChar(180)
-  name               String               @db.NVarChar(250)
-  description        String?              @db.NVarChar(Max)
-  is_active          Boolean              @default(true, map: "DF_product_is_active")
-  base_price         Decimal?             @db.Decimal(18, 2)
-  base_cost          Decimal?             @db.Decimal(18, 2)
-  size_guide_url     String?              @db.NVarChar(500)
-  size_guide_json    String?              @db.NVarChar(Max)
-  is_customizable    Boolean              @default(false, map: "DF_product_is_customizable")
-  customization_type String?              @db.NVarChar(30)
-  customization_surcharge Decimal         @default(5, map: "DF_product_customization_surcharge") @db.Decimal(18, 2)
-  custom_fabric_supply_id String?         @db.UniqueIdentifier
+  product_id              String   @id(map: "PK_product") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                    String   @unique(map: "UX_product_slug") @db.VarChar(180)
+  name                    String   @db.VarChar(250)
+  description             String?  @db.Text
+  is_active               Boolean  @default(true)
+  base_price              Decimal? @db.Decimal(18, 2)
+  base_cost               Decimal? @db.Decimal(18, 2)
+  size_guide_url          String?  @db.VarChar(500)
+  size_guide_json         String?  @db.Text
+  is_customizable         Boolean  @default(false)
+  customization_type      String?  @db.VarChar(30)
+  customization_surcharge Decimal  @default(5) @db.Decimal(18, 2)
+  custom_fabric_supply_id String?  @db.Uuid
 
-  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_created_at")
-  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_product_updated_at")
-  product_collection product_collection[]
-  product_image      product_image[]
+  created_at          DateTime                @default(now())
+  updated_at          DateTime                @default(now())
+  product_collection  product_collection[]
+  product_image       product_image[]
   product_variant     product_variant[]
   product_bom_supply  product_bom_supply[]
   product_bom_service product_bom_service[]
   production_lot      production_lot[]
   bundle_items        bundle_promotion_item[]
 
-
   @@index([is_active, created_at(sort: Desc)], map: "IX_product_active")
 }
 
 model product_collection {
-  product_id    String     @db.UniqueIdentifier
-  collection_id String     @db.UniqueIdentifier
-  created_at    DateTime   @default(dbgenerated("sysutcdatetime()"), map: "DF_product_collection_created_at")
+  product_id    String     @db.Uuid
+  collection_id String     @db.Uuid
+  created_at    DateTime   @default(now())
   collection    collection @relation(fields: [collection_id], references: [collection_id], onUpdate: NoAction, map: "FK_pc_collection")
   product       product    @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_pc_product")
 
@@ -177,13 +177,13 @@ model product_collection {
 }
 
 model product_image {
-  image_id   String   @id(map: "PK_product_image") @default(dbgenerated("newsequentialid()"), map: "DF_image_id") @db.UniqueIdentifier
-  product_id String   @db.UniqueIdentifier
-  url        String   @db.NVarChar(500)
-  public_id  String   @unique(map: "UX_image_public_id") @db.NVarChar(300)
-  color      String?  @db.NVarChar(80)
-  sort_order Int      @default(0, map: "DF_image_sort_order")
-  created_at DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_image_created_at")
+  image_id   String   @id(map: "PK_product_image") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id String   @db.Uuid
+  url        String   @db.VarChar(500)
+  public_id  String   @unique(map: "UX_image_public_id") @db.VarChar(300)
+  color      String?  @db.VarChar(80)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
   product    product  @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_image_product")
 
   @@index([product_id, sort_order, created_at(sort: Desc)], map: "IX_image_product")
@@ -191,17 +191,17 @@ model product_image {
 }
 
 model product_variant {
-  variant_id         String               @id(map: "PK_product_variant") @default(dbgenerated("newsequentialid()"), map: "DF_variant_id") @db.UniqueIdentifier
-  product_id         String               @db.UniqueIdentifier
-  sku                String               @unique(map: "UX_variant_sku") @db.NVarChar(80)
-  size               String               @db.NVarChar(50)
-  color              String               @db.NVarChar(80)
+  variant_id         String               @id(map: "PK_product_variant") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id         String               @db.Uuid
+  sku                String               @unique(map: "UX_variant_sku") @db.VarChar(80)
+  size               String               @db.VarChar(50)
+  color              String               @db.VarChar(80)
   price              Decimal?             @db.Decimal(18, 2)
   cost               Decimal?             @db.Decimal(18, 2)
-  stock              Int                  @default(0, map: "DF_variant_stock")
-  is_active          Boolean              @default(true, map: "DF_variant_is_active")
-  created_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_variant_created_at")
-  updated_at         DateTime             @default(dbgenerated("sysutcdatetime()"), map: "DF_variant_updated_at")
+  stock              Int                  @default(0)
+  is_active          Boolean              @default(true)
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @default(now())
   inventory_movement inventory_movement[]
   order_item         order_item[]
   product            product              @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "FK_variant_product")
@@ -213,13 +213,13 @@ model product_variant {
 }
 
 model stock_reservation {
-  reservation_id  String          @id(map: "PK_stock_reservation") @default(dbgenerated("newsequentialid()"), map: "DF_stock_reservation_id") @db.UniqueIdentifier
-  variant_id      String          @db.UniqueIdentifier
-  order_id        String?         @db.UniqueIdentifier
+  reservation_id  String          @id(map: "PK_stock_reservation") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  variant_id      String          @db.Uuid
+  order_id        String?         @db.Uuid
   qty             Int
-  status          String          @db.NVarChar(20)
+  status          String          @db.VarChar(20)
   expires_at      DateTime
-  created_at      DateTime        @default(dbgenerated("sysutcdatetime()"), map: "DF_stock_reservation_created_at")
+  created_at      DateTime        @default(now())
   released_at     DateTime?
   order_header    order_header?   @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reservation_order")
   product_variant product_variant @relation(fields: [variant_id], references: [variant_id], onUpdate: NoAction, map: "FK_reservation_variant")
@@ -229,100 +229,100 @@ model stock_reservation {
 }
 
 model hero_slide {
-  slide_id    String   @id(map: "PK_hero_slide") @default(dbgenerated("newsequentialid()"), map: "DF_hero_slide_id") @db.UniqueIdentifier
-  image_url   String   @db.NVarChar(500)
-  title       String?  @db.NVarChar(100)
-  subtitle    String?  @db.NVarChar(100)
-  button_text String?  @db.NVarChar(50)
-  link_url    String?  @db.NVarChar(300)
-  sort_order  Int      @default(0, map: "DF_hero_slide_sort_order")
-  is_active   Boolean  @default(true, map: "DF_hero_slide_is_active")
-  created_at  DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_hero_slide_created_at")
-  updated_at  DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_hero_slide_updated_at")
+  slide_id    String   @id(map: "PK_hero_slide") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  image_url   String   @db.VarChar(500)
+  title       String?  @db.VarChar(100)
+  subtitle    String?  @db.VarChar(100)
+  button_text String?  @db.VarChar(50)
+  link_url    String?  @db.VarChar(300)
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
 
   @@index([is_active, sort_order], map: "IX_hero_slide_active_order")
 }
 
 model admin_user {
-  user_id       String   @id(map: "PK_admin_user") @default(dbgenerated("newsequentialid()"), map: "DF_admin_user_id") @db.UniqueIdentifier
-  username      String   @unique(map: "UX_admin_username") @db.NVarChar(100)
-  password_hash String   @db.NVarChar(255)
-  full_name     String   @db.NVarChar(200)
-  role          String   @default("ADMIN", map: "DF_admin_role") @db.NVarChar(50)
-  is_active     Boolean  @default(true, map: "DF_admin_is_active")
-  created_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_created_at")
-  updated_at    DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_admin_updated_at")
+  user_id       String      @id(map: "PK_admin_user") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username      String      @unique(map: "UX_admin_username") @db.VarChar(100)
+  password_hash String      @db.VarChar(255)
+  full_name     String      @db.VarChar(200)
+  role          String      @default("ADMIN") @db.VarChar(50)
+  is_active     Boolean     @default(true)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @default(now())
   audit_log     audit_log[]
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_admin_active")
 }
 
 model complaint {
-  complaint_id     String   @id(map: "PK_complaint") @default(dbgenerated("newsequentialid()"), map: "DF_complaint_id") @db.UniqueIdentifier
+  complaint_id     String   @id(map: "PK_complaint") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   complaint_number Int      @default(autoincrement())
-  full_name        String   @db.NVarChar(200)
-  document_type    String   @db.NVarChar(20)
-  document_number  String   @db.NVarChar(20)
-  address          String   @db.NVarChar(500)
-  phone            String   @db.NVarChar(30)
-  email            String   @db.NVarChar(200)
-  parent_full_name String?  @db.NVarChar(200)
-  type             String   @db.NVarChar(20)
+  full_name        String   @db.VarChar(200)
+  document_type    String   @db.VarChar(20)
+  document_number  String   @db.VarChar(20)
+  address          String   @db.VarChar(500)
+  phone            String   @db.VarChar(30)
+  email            String   @db.VarChar(200)
+  parent_full_name String?  @db.VarChar(200)
+  type             String   @db.VarChar(20)
   amount           Decimal? @db.Decimal(18, 2)
-  description      String   @db.NVarChar(Max)
-  claim_type       String   @db.NVarChar(20)
-  claim_detail     String   @db.NVarChar(Max)
-  consumer_request String   @db.NVarChar(Max)
-  status           String   @default("PENDIENTE", map: "DF_complaint_status") @db.NVarChar(20)
-  created_at       DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_complaint_created_at")
+  description      String   @db.Text
+  claim_type       String   @db.VarChar(20)
+  claim_detail     String   @db.Text
+  consumer_request String   @db.Text
+  status           String   @default("PENDIENTE") @db.VarChar(20)
+  created_at       DateTime @default(now())
 
   @@index([complaint_number], map: "IX_complaint_number")
   @@index([created_at(sort: Desc)], map: "IX_complaint_created")
 }
 
 model coupon {
-  coupon_id      String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  code           String   @unique(map: "UX_coupon_code") @db.NVarChar(50)
-  discount_type  String   @db.NVarChar(20) // 'PERCENTAGE' or 'FIXED'
-  discount_value Decimal  @db.Decimal(18, 2)
-  min_purchase   Decimal? @db.Decimal(18, 2)
+  coupon_id      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code           String    @unique(map: "UX_coupon_code") @db.VarChar(50)
+  discount_type  String    @db.VarChar(20) // 'PERCENTAGE' or 'FIXED'
+  discount_value Decimal   @db.Decimal(18, 2)
+  min_purchase   Decimal?  @db.Decimal(18, 2)
   starts_at      DateTime?
   expires_at     DateTime?
   usage_limit    Int?
-  usage_count    Int      @default(0)
-  is_active      Boolean  @default(true)
-  created_at     DateTime @default(dbgenerated("sysutcdatetime()"))
-  updated_at     DateTime @default(dbgenerated("sysutcdatetime()"))
+  usage_count    Int       @default(0)
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @default(now())
 
   @@index([code, is_active])
 }
 
 model supply {
-  supply_id        String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  name             String   @db.NVarChar(200)
-  type             String   @db.NVarChar(50) // 'TELA', 'AVIO', 'EMPAQUE', etc
-  unit             String   @db.NVarChar(20) // 'MT', 'UND', 'KG'
-  unit_cost        Decimal  @db.Decimal(18, 4)
-  stock            Decimal  @default(0) @db.Decimal(18, 4)
-  min_stock        Decimal  @default(0) @db.Decimal(18, 4)
-  is_active        Boolean  @default(true)
-  created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
-  updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
-  
+  supply_id  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @db.VarChar(200)
+  type       String   @db.VarChar(50) // 'TELA', 'AVIO', 'EMPAQUE', etc
+  unit       String   @db.VarChar(20) // 'MT', 'UND', 'KG'
+  unit_cost  Decimal  @db.Decimal(18, 4)
+  stock      Decimal  @default(0) @db.Decimal(18, 4)
+  min_stock  Decimal  @default(0) @db.Decimal(18, 4)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
   product_bom_supply product_bom_supply[]
   supply_movement    supply_movement[]
   supply_color_stock supply_color_stock[]
 }
 
 model custom_color {
-  color_id     String               @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  name         String               @unique @db.NVarChar(100)
-  hex          String               @db.NVarChar(20)
-  sort_order   Int                  @default(0)
-  is_available Boolean              @default(true)
-  is_active    Boolean              @default(true)
-  created_at   DateTime             @default(dbgenerated("sysutcdatetime()"))
-  updated_at   DateTime             @default(dbgenerated("sysutcdatetime()"))
+  color_id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @unique @db.VarChar(100)
+  hex          String   @db.VarChar(20)
+  sort_order   Int      @default(0)
+  is_available Boolean  @default(true)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now())
 
   supply_color_stock supply_color_stock[]
 
@@ -330,152 +330,192 @@ model custom_color {
 }
 
 model supply_color_stock {
-  supply_color_id   String       @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  supply_id         String       @db.UniqueIdentifier
-  color_id          String       @db.UniqueIdentifier
-  stock             Decimal      @default(0) @db.Decimal(18, 4)
-  min_stock         Decimal      @default(0) @db.Decimal(18, 4)
-  unit_cost_override Decimal?    @db.Decimal(18, 4)
-  is_available      Boolean      @default(true)
-  is_active         Boolean      @default(true)
-  created_at        DateTime     @default(dbgenerated("sysutcdatetime()"))
-  updated_at        DateTime     @default(dbgenerated("sysutcdatetime()"))
+  supply_color_id    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supply_id          String   @db.Uuid
+  color_id           String   @db.Uuid
+  stock              Decimal  @default(0) @db.Decimal(18, 4)
+  min_stock          Decimal  @default(0) @db.Decimal(18, 4)
+  unit_cost_override Decimal? @db.Decimal(18, 4)
+  is_available       Boolean  @default(true)
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now())
 
-  supply            supply       @relation(fields: [supply_id], references: [supply_id], onDelete: Cascade)
-  color             custom_color @relation(fields: [color_id], references: [color_id], onDelete: Cascade)
+  supply supply       @relation(fields: [supply_id], references: [supply_id], onDelete: Cascade)
+  color  custom_color @relation(fields: [color_id], references: [color_id], onDelete: Cascade)
 
   @@unique([supply_id, color_id])
   @@index([color_id])
 }
 
 model service {
-  service_id       String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  name             String   @db.NVarChar(200)
-  unit_cost        Decimal  @db.Decimal(18, 2)
-  is_active        Boolean  @default(true)
-  created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
-  updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
-  
+  service_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @db.VarChar(200)
+  unit_cost  Decimal  @db.Decimal(18, 2)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
   product_bom_service product_bom_service[]
 }
 
 model product_bom_supply {
-  id               String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  product_id       String   @db.UniqueIdentifier
-  supply_id        String   @db.UniqueIdentifier
-  size             String?  @db.NVarChar(50)  // If null, applies to all sizes
-  quantity         Decimal  @db.Decimal(18, 4)
-  varies_by_color  Boolean  @default(false)
-  
-  product          product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
-  supply           supply   @relation(fields: [supply_id], references: [supply_id], onDelete: Cascade)
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id      String  @db.Uuid
+  supply_id       String  @db.Uuid
+  size            String? @db.VarChar(50) // If null, applies to all sizes
+  quantity        Decimal @db.Decimal(18, 4)
+  varies_by_color Boolean @default(false)
+
+  product product @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  supply  supply  @relation(fields: [supply_id], references: [supply_id], onDelete: Cascade)
 
   @@index([product_id])
 }
 
 model product_bom_service {
-  id               String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  product_id       String   @db.UniqueIdentifier
-  service_id       String   @db.UniqueIdentifier
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id         String   @db.Uuid
+  service_id         String   @db.Uuid
   quantity           Decimal  @db.Decimal(18, 2)
   unit_cost_override Decimal? @db.Decimal(18, 2)
-  
-  product          product  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
-  service          service  @relation(fields: [service_id], references: [service_id], onDelete: Cascade)
-  
+
+  product product @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  service service @relation(fields: [service_id], references: [service_id], onDelete: Cascade)
+
   @@index([product_id])
 }
 
 model production_lot {
-  lot_id           String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  code             String   @unique @db.NVarChar(50)
-  product_id       String   @db.UniqueIdentifier
-  status           String   @db.NVarChar(30) // 'PENDIENTE', 'PRODUCIDO'
-  total_cost       Decimal  @default(0) @db.Decimal(18, 2)
-  notes            String?  @db.NVarChar(Max)
-  created_at       DateTime @default(dbgenerated("sysutcdatetime()"))
-  updated_at       DateTime @default(dbgenerated("sysutcdatetime()"))
-  
-  product          product  @relation(fields: [product_id], references: [product_id], onDelete: NoAction)
-  items            production_lot_item[]
-  consumptions     production_lot_consumption[]
-  supply_movement  supply_movement[]
+  lot_id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String   @unique @db.VarChar(50)
+  product_id String   @db.Uuid
+  status     String   @db.VarChar(30) // 'PENDIENTE', 'PRODUCIDO'
+  total_cost Decimal  @default(0) @db.Decimal(18, 2)
+  notes      String?  @db.Text
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  product         product                      @relation(fields: [product_id], references: [product_id], onDelete: NoAction)
+  items           production_lot_item[]
+  consumptions    production_lot_consumption[]
+  supply_movement supply_movement[]
 }
 
 model production_lot_item {
-  item_id          String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  lot_id           String   @db.UniqueIdentifier
-  color            String   @db.NVarChar(80)
-  size             String   @db.NVarChar(50)
-  qty              Int
-  
-  lot              production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+  item_id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lot_id  String @db.Uuid
+  color   String @db.VarChar(80)
+  size    String @db.VarChar(50)
+  qty     Int
+
+  lot production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
 }
 
 model production_lot_consumption {
-  consump_id       String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  lot_id           String   @db.UniqueIdentifier
-  supply_id        String   @db.UniqueIdentifier
-  color            String?  @db.NVarChar(80) // Optional, if the supply consumption is split by color
-  quantity         Decimal  @db.Decimal(18, 4)
-  unit_cost        Decimal  @db.Decimal(18, 4)
-  
-  lot              production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+  consump_id String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lot_id     String  @db.Uuid
+  supply_id  String  @db.Uuid
+  color      String? @db.VarChar(80) // Optional, if the supply consumption is split by color
+  quantity   Decimal @db.Decimal(18, 4)
+  unit_cost  Decimal @db.Decimal(18, 4)
+
+  lot production_lot @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
 }
 
 model supply_movement {
-  movement_id     String          @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  supply_id       String          @db.UniqueIdentifier
-  movement_type   String          @db.NVarChar(20) // 'IN', 'OUT'
-  qty             Decimal         @db.Decimal(18, 4)
-  stock_before    Decimal         @db.Decimal(18, 4)
-  stock_after     Decimal         @db.Decimal(18, 4)
-  reason          String?         @db.NVarChar(250)
-  lot_id          String?         @db.UniqueIdentifier
-  created_at      DateTime        @default(dbgenerated("sysutcdatetime()"))
-  
-  supply          supply          @relation(fields: [supply_id], references: [supply_id], onDelete: NoAction)
-  lot             production_lot? @relation(fields: [lot_id], references: [lot_id], onDelete: NoAction)
-  
+  movement_id   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  supply_id     String   @db.Uuid
+  movement_type String   @db.VarChar(20) // 'IN', 'OUT'
+  qty           Decimal  @db.Decimal(18, 4)
+  stock_before  Decimal  @db.Decimal(18, 4)
+  stock_after   Decimal  @db.Decimal(18, 4)
+  reason        String?  @db.VarChar(250)
+  lot_id        String?  @db.Uuid
+  created_at    DateTime @default(now())
+
+  supply supply          @relation(fields: [supply_id], references: [supply_id], onDelete: NoAction)
+  lot    production_lot? @relation(fields: [lot_id], references: [lot_id], onDelete: NoAction)
+
   @@index([supply_id, created_at(sort: Desc)])
 }
 
 model audit_log {
-  log_id      String   @id @default(dbgenerated("newsequentialid()"), map: "DF_audit_log_id") @db.UniqueIdentifier
-  user_id     String   @db.UniqueIdentifier
-  action      String   @db.NVarChar(50)   // 'CREATE', 'UPDATE', 'DELETE'
-  entity_type String   @db.NVarChar(100)  // 'product', 'order', 'supply', etc.
-  entity_id   String   @db.NVarChar(100)
-  old_values  String?  @db.NVarChar(Max)  // JSON state BEFORE
-  new_values  String?  @db.NVarChar(Max)  // JSON state AFTER
-  created_at  DateTime @default(dbgenerated("sysutcdatetime()"), map: "DF_audit_log_created_at")
-  
-  admin_user  admin_user @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, onDelete: NoAction, map: "FK_audit_user")
+  log_id      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  action      String   @db.VarChar(50) // 'CREATE', 'UPDATE', 'DELETE'
+  entity_type String   @db.VarChar(100) // 'product', 'order', 'supply', etc.
+  entity_id   String   @db.VarChar(100)
+  old_values  String?  @db.Text // JSON state BEFORE
+  new_values  String?  @db.Text // JSON state AFTER
+  created_at  DateTime @default(now())
+
+  admin_user admin_user @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, onDelete: NoAction, map: "FK_audit_user")
+}
+
+model analytics_session {
+  session_id      String            @id(map: "PK_analytics_session") @db.VarChar(64)
+  first_seen_at   DateTime          @default(now())
+  last_seen_at    DateTime          @default(now())
+  landing_path    String?           @db.VarChar(500)
+  referrer        String?           @db.VarChar(1000)
+  utm_source      String?           @db.VarChar(120)
+  utm_medium      String?           @db.VarChar(120)
+  utm_campaign    String?           @db.VarChar(180)
+  country         String?           @db.VarChar(80)
+  city            String?           @db.VarChar(120)
+  device_type     String?           @db.VarChar(30)
+  browser         String?           @db.VarChar(80)
+  os              String?           @db.VarChar(80)
+  analytics_event analytics_event[]
+
+  @@index([last_seen_at(sort: Desc)], map: "IX_analytics_session_last_seen")
+  @@index([utm_source, first_seen_at(sort: Desc)], map: "IX_analytics_session_utm_source")
+}
+
+model analytics_event {
+  event_id          String            @id(map: "PK_analytics_event") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id        String            @db.VarChar(64)
+  event_type        String            @db.VarChar(50)
+  path              String            @db.VarChar(500)
+  product_id        String?           @db.Uuid
+  product_slug      String?           @db.VarChar(180)
+  product_name      String?           @db.VarChar(250)
+  bundle_id         String?           @db.Uuid
+  bundle_name       String?           @db.VarChar(200)
+  metadata          String?           @db.Text
+  created_at        DateTime          @default(now())
+  analytics_session analytics_session @relation(fields: [session_id], references: [session_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_analytics_event_session")
+
+  @@index([event_type, created_at(sort: Desc)], map: "IX_analytics_event_type_created")
+  @@index([product_id, event_type, created_at(sort: Desc)], map: "IX_analytics_event_product")
+  @@index([bundle_id, event_type, created_at(sort: Desc)], map: "IX_analytics_event_bundle")
+  @@index([path, created_at(sort: Desc)], map: "IX_analytics_event_path")
 }
 
 model bundle_promotion {
-  bundle_id       String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  name            String   @db.NVarChar(200)
-  description     String?  @db.NVarChar(Max)
-  discount_amount Decimal  @db.Decimal(18, 2)
-  bundle_price    Decimal? @db.Decimal(18, 2)
-  tier_2_price    Decimal? @db.Decimal(18, 2)
-  tier_3_price    Decimal? @db.Decimal(18, 2)
-  customization_surcharge Decimal @default(8, map: "DF_bundle_customization_surcharge") @db.Decimal(18, 2)
-  is_active       Boolean  @default(true)
-  created_at      DateTime @default(dbgenerated("sysutcdatetime()"))
-  updated_at      DateTime @default(dbgenerated("sysutcdatetime()"))
-  
-  items           bundle_promotion_item[]
+  bundle_id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                    String   @db.VarChar(200)
+  description             String?  @db.Text
+  discount_amount         Decimal  @db.Decimal(18, 2)
+  bundle_price            Decimal? @db.Decimal(18, 2)
+  tier_2_price            Decimal? @db.Decimal(18, 2)
+  tier_3_price            Decimal? @db.Decimal(18, 2)
+  customization_surcharge Decimal  @default(8) @db.Decimal(18, 2)
+  is_active               Boolean  @default(true)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @default(now())
+
+  items bundle_promotion_item[]
 }
 
 model bundle_promotion_item {
-  id                String   @id @default(dbgenerated("newsequentialid()")) @db.UniqueIdentifier
-  bundle_id         String   @db.UniqueIdentifier
-  product_id        String   @db.UniqueIdentifier
-  
-  bundle            bundle_promotion @relation(fields: [bundle_id], references: [bundle_id], onDelete: Cascade)
-  product           product          @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
-  
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bundle_id  String @db.Uuid
+  product_id String @db.Uuid
+
+  bundle  bundle_promotion @relation(fields: [bundle_id], references: [bundle_id], onDelete: Cascade)
+  product product          @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
   @@unique([bundle_id, product_id])
 }

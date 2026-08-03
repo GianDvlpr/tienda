@@ -56,6 +56,7 @@ export async function POST(req: Request) {
                     is_customizable: !!is_customizable,
                     customization_type: is_customizable ? customization_type : null,
                     customization_surcharge: Number(customization_surcharge ?? 5),
+                    custom_fabric_supply_id: is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null,
 
 
                     product_collection: {
@@ -75,32 +76,16 @@ export async function POST(req: Request) {
                 }
             });
 
-            for (const [idx, img] of (images || []).entries()) {
-                await tx.$executeRaw`
-                    INSERT INTO dbo.product_image (product_id, url, public_id, color, sort_order)
-                    VALUES (
-                        ${product.product_id},
-                        ${img.url},
-                        ${img.public_id || `img_${Date.now()}_${idx}`},
-                        ${String(img.color || '').trim() || null},
-                        ${img.sort_order ?? idx}
-                    );
-                `;
-            }
+            const imageRows = (images || []).map((img: any, idx: number) => ({
+                product_id: product.product_id,
+                url: img.url,
+                public_id: img.public_id || `img_${Date.now()}_${idx}`,
+                color: String(img.color || '').trim() || null,
+                sort_order: img.sort_order ?? idx,
+            })).filter((img: any) => img.url);
 
-            const customFabricSupplyId = is_customizable && custom_fabric_supply_id ? custom_fabric_supply_id : null;
-            if (customFabricSupplyId) {
-                await tx.$executeRaw`
-                    UPDATE dbo.product
-                    SET custom_fabric_supply_id = ${customFabricSupplyId}
-                    WHERE product_id = ${product.product_id};
-                `;
-            } else {
-                await tx.$executeRaw`
-                    UPDATE dbo.product
-                    SET custom_fabric_supply_id = NULL
-                    WHERE product_id = ${product.product_id};
-                `;
+            if (imageRows.length > 0) {
+                await tx.product_image.createMany({ data: imageRows });
             }
 
             return product;

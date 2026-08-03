@@ -31,6 +31,7 @@ export default function AdminDashboardPage() {
     const [visibleCharts, setVisibleCharts] = React.useState<string[]>(['revenueTrend', 'topProducts']);
     const { data, isLoading, error } = useSWR<any>('/api/admin/dashboard', fetcher);
     const { data: supplyAlerts, isLoading: loadingAlerts } = useSWR<any[]>('/api/admin/dashboard/alerts', fetcher);
+    const { data: traffic, isLoading: loadingTraffic } = useSWR<any>('/api/admin/analytics?range=30d', fetcher);
 
     if (error) {
         return <Alert title="Error al cargar analíticas" type="error" />;
@@ -121,6 +122,94 @@ export default function AdminDashboardPage() {
                                 styles={{ content: { fontSize: 20, color: '#C89F53' } }}
                             />
                         </Link>
+                    </Card>
+                </Col>
+            </Row>
+
+            <Row justify="space-between" align="middle" style={{ marginTop: 40, marginBottom: 20 }}>
+                <Col>
+                    <Title level={3} style={{ margin: 0 }}>Tráfico y Visualizaciones</Title>
+                </Col>
+                <Col>
+                    <Text type="secondary">Últimos 30 días</Text>
+                </Col>
+            </Row>
+
+            <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} md={6}>
+                    <Card loading={loadingTraffic} variant="borderless">
+                        <Statistic title="Visitantes" value={traffic?.totals?.sessions ?? 0} />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Card loading={loadingTraffic} variant="borderless">
+                        <Statistic title="Páginas vistas" value={traffic?.totals?.pageViews ?? 0} />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Card loading={loadingTraffic} variant="borderless">
+                        <Statistic title="Productos vistos" value={traffic?.totals?.productViews ?? 0} />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Card loading={loadingTraffic} variant="borderless">
+                        <Statistic title="Conjuntos vistos" value={traffic?.totals?.bundleViews ?? 0} />
+                    </Card>
+                </Col>
+            </Row>
+
+            <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+                <Col xs={24} lg={12}>
+                    <Card title="Visitas por día" variant="borderless" loading={loadingTraffic} style={{ height: 360 }}>
+                        <ResponsiveContainer width="100%" height={280}>
+                            <AreaChart data={traffic?.visitsByDay ?? []}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                                <Tooltip />
+                                <Area type="monotone" dataKey="visits" name="Visitantes" stroke="#C89F53" fill="#C89F53" fillOpacity={0.12} strokeWidth={3} />
+                                <Area type="monotone" dataKey="pageViews" name="Páginas vistas" stroke="#2B2B2B" fill="#2B2B2B" fillOpacity={0.06} strokeWidth={2} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card title="Origen de visitas" variant="borderless" loading={loadingTraffic} style={{ height: 360 }}>
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={traffic?.topSources ?? []} layout="vertical" margin={{ left: 30 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11 }} />
+                                <Tooltip formatter={(val: any) => [val, 'Visitantes']} />
+                                <Bar dataKey="value" name="Visitantes" fill="#8E794F" radius={[0, 4, 4, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card title="Productos más vistos" variant="borderless" loading={loadingTraffic} style={{ height: 360 }}>
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={traffic?.topProducts ?? []} layout="vertical" margin={{ left: 40 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
+                                <Tooltip formatter={(val: any) => [val, 'Vistas']} />
+                                <Bar dataKey="value" name="Vistas" fill="#C89F53" radius={[0, 4, 4, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card title="Conjuntos más vistos" variant="borderless" loading={loadingTraffic} style={{ height: 360 }}>
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={traffic?.topBundles ?? []} layout="vertical" margin={{ left: 40 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
+                                <Tooltip formatter={(val: any) => [val, 'Vistas']} />
+                                <Bar dataKey="value" name="Vistas" fill="#2B2B2B" radius={[0, 4, 4, 0]} barSize={22} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </Card>
                 </Col>
             </Row>

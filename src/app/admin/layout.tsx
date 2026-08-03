@@ -30,6 +30,10 @@ import OrderNotificationListener from '@/components/admin/OrderNotificationListe
 
 const { Header, Sider, Content } = Layout;
 
+type AdminUser = {
+  role: 'ADMIN' | 'SELLER';
+};
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
@@ -41,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
   const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
 
-  const { data: user } = useSWR<any>('/api/admin/me', fetcher);
+  const { data: user } = useSWR<AdminUser>('/api/admin/me', fetcher);
 
   useEffect(() => {
     document.body.classList.add('admin-shell');
@@ -52,9 +56,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <Layout style={{ minHeight: '100vh', background: colorBgContainer }}>{children}</Layout>;
   }
 
-  const handleLogout = () => {
-    // Para desloguear solo borramos la cookie (idealmente con una ruta de API pero basta con borrarla)
-    document.cookie = 'admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
   };
 

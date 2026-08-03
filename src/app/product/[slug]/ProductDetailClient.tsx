@@ -16,6 +16,7 @@ import { useWishlistStore } from '@/store/wishlist.store';
 import { useUIStore } from '@/store/ui.store';
 import { sortSizes } from '@/lib/sizes';
 import { CUSTOM_COLOR_OPTIONS, CUSTOM_MEASUREMENT_LABELS, CUSTOM_MEASUREMENT_POLICY, CUSTOM_ORDER_NOTICE, getAvailableCustomColorName, getMeasurementDeltaErrors, getMeasurementsForSize, parseMeasurementCm, parseSizeGuideJson, type CustomColorOption } from '@/lib/customization';
+import { trackStoreEvent, type StoreAnalyticsEventType } from '@/lib/analytics-client';
 
 
 const { Title, Text, Paragraph } = Typography;
@@ -37,6 +38,55 @@ function getBundleDescription(bundle: BundlePromotion, otherItemNames: string[])
 
     if (offers.length > 0) return `Lleva este producto junto a ${otherItemNames.join(', ')}: ${offers.join(' · ')}.`;
     return `Lleva este producto junto a ${otherItemNames.join(', ')} y arma tu conjunto.`;
+}
+
+function BundleAnalyticsView({
+    bundle,
+    productId,
+    productSlug,
+    productName,
+    children,
+}: {
+    bundle: BundlePromotion;
+    productId: string;
+    productSlug: string;
+    productName: string;
+    children: React.ReactNode;
+}) {
+    const ref = useRef<HTMLDivElement | null>(null);
+    const tracked = useRef(false);
+
+    useEffect(() => {
+        const node = ref.current;
+        if (!node || tracked.current) return;
+
+        const trackView = () => {
+            if (tracked.current) return;
+            tracked.current = true;
+            trackStoreEvent({
+                eventType: 'bundle_view',
+                product: { id: productId, slug: productSlug, name: productName },
+                bundle: { id: bundle.bundle_id, name: bundle.name },
+            });
+        };
+
+        if (!('IntersectionObserver' in window)) {
+            trackView();
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                trackView();
+                observer.disconnect();
+            }
+        }, { threshold: 0.35 });
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [bundle.bundle_id, bundle.name, productId, productName, productSlug]);
+
+    return <div ref={ref}>{children}</div>;
 }
 
 interface ProductDetailClientProps {
@@ -67,6 +117,37 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     const [customBundleMeasurements, setCustomBundleMeasurements] = useState<Record<string, Record<string, string>>>({});
     const [customBundleColors, setCustomBundleColors] = useState<Record<string, string>>({});
     const hasAutoOpenedCustomization = useRef(false);
+    const trackedProductId = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (trackedProductId.current === initialData.product.productId) return;
+        trackedProductId.current = initialData.product.productId;
+
+        trackStoreEvent({
+            eventType: 'product_view',
+            product: {
+                id: initialData.product.productId,
+                slug: initialData.product.slug,
+                name: initialData.product.name,
+            },
+        });
+    }, [initialData.product.name, initialData.product.productId, initialData.product.slug]);
+
+    const trackBundleEvent = (eventType: StoreAnalyticsEventType, bundle: BundlePromotion, metadata?: Record<string, unknown>) => {
+        trackStoreEvent({
+            eventType,
+            product: {
+                id: initialData.product.productId,
+                slug: initialData.product.slug,
+                name: initialData.product.name,
+            },
+            bundle: {
+                id: bundle.bundle_id,
+                name: bundle.name,
+            },
+            metadata,
+        });
+    };
 
     useEffect(() => {
         if (!initialData) return;
@@ -247,6 +328,8 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
     };
 
     const openBundleCustomization = (bundle: BundlePromotion) => {
+        trackBundleEvent('bundle_click', bundle, { action: 'open_customization' });
+
         if (!selectedVariant || !canAdd) {
             toast.warning('Elige una talla y color disponible');
             return;
@@ -348,6 +431,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             }, 1);
         });
 
+        trackBundleEvent('bundle_add_to_cart_custom', customBundle, { items: lines.length });
         setCustomBundle(null);
         setCartOpen(true);
         toast.success('Conjunto personalizado agregado a tu carrito');
@@ -604,15 +688,21 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                         {initialData.bundles.map(bundle => {
                                             const otherItems = bundle.items.filter(i => i.productId !== initialData.product.productId);
                                             return (
-                                                <Card 
-                                                    key={bundle.bundle_id} 
-                                                    size="small" 
-                                                    style={{ 
-                                                        borderColor: 'rgba(200, 159, 83, 0.4)', 
-                                                        background: 'transparent',
-                                                        marginBottom: 16
-                                                    }}
+                                                <BundleAnalyticsView
+                                                    key={bundle.bundle_id}
+                                                    bundle={bundle}
+                                                    productId={initialData.product.productId}
+                                                    productSlug={initialData.product.slug}
+                                                    productName={initialData.product.name}
                                                 >
+                                                    <Card 
+                                                        size="small" 
+                                                        style={{ 
+                                                            borderColor: 'rgba(200, 159, 83, 0.4)', 
+                                                            background: 'transparent',
+                                                            marginBottom: 16
+                                                        }}
+                                                    >
 
                                                     <Space orientation="vertical" style={{ width: '100%', gap: 8 }}>
                                                         <Text strong>{bundle.name}</Text>
@@ -622,7 +712,11 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                         
                                                         <Flex gap="small" wrap="wrap" align="center" style={{ marginTop: 8 }}>
                                                             {otherItems.map(item => (
-                                                                <Link key={item.productId} href={`/product/${item.slug}`}>
+                                                                <Link
+                                                                    key={item.productId}
+                                                                    href={`/product/${item.slug}`}
+                                                                    onClick={() => trackBundleEvent('bundle_click', bundle, { action: 'product_link', targetProductId: item.productId })}
+                                                                >
                                                                     <Card size="small" hoverable style={{ width: 120 }}>
                                                                         <div style={{ textAlign: 'center' }}>
                                                                             <img 
@@ -652,7 +746,9 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                         width: isMobile ? '100%' : undefined,
                                                                         boxShadow: '0 2px 8px rgba(200, 159, 83, 0.2)'
                                                                     }}
-                                                                    onClick={() => {
+                                                                     onClick={() => {
+                                                                        trackBundleEvent('bundle_add_to_cart', bundle, { items: otherItems.length + 1 });
+
                                                                         // 1. Add current product (selected variant)
                                                                         if (selectedVariant) {
                                                                             addCartItem({
@@ -711,7 +807,8 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                             </div>
                                                         </Flex>
                                                     </Space>
-                                                </Card>
+                                                    </Card>
+                                                </BundleAnalyticsView>
                                             )
                                         })}
                                     </div>

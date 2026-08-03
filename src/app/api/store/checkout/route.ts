@@ -1,20 +1,11 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
-import fs from 'fs';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 import { CUSTOM_MEASUREMENT_LABELS, getMeasurementDeltaErrors, getMeasurementsForSize } from '@/lib/customization';
 
-const LOG_FILE = 'c:\\IP\\tienda\\tmp\\checkout.log';
-
 function logToFile(msg: string) {
-    try {
-        const timestamp = new Date().toISOString();
-        fs.appendFileSync(LOG_FILE, `[${timestamp}] ${msg}\n`);
-    } catch (error) {
-        console.error('Checkout log error:', error);
-    }
+    console.info(`[CHECKOUT] ${msg}`);
 }
 
 type CheckoutItem = {
@@ -47,14 +38,6 @@ type CheckoutBody = {
 
 type DbNumeric = number | string | { toString(): string } | null;
 
-type BundleTierRow = {
-    bundle_id: string | number | { toString(): string };
-    bundle_price: DbNumeric;
-    tier_2_price: DbNumeric;
-    tier_3_price: DbNumeric;
-    customization_surcharge: DbNumeric;
-};
-
 type ServerOrderItem = {
     variantId: string;
     productId: string;
@@ -71,24 +54,6 @@ type ServerOrderItem = {
     customizationSurcharge: number;
     customizationGroupId: string | null;
     customizationGroupLabel: string | null;
-};
-
-type VariantCheckoutRow = {
-    variant_id: string;
-    product_id: string;
-    sku: string | null;
-    size: string | null;
-    color: string | null;
-    price: DbNumeric;
-    stock: number | string | null;
-    variant_is_active: boolean | number | string | null;
-    product_name: string;
-    product_base_price: DbNumeric;
-    product_is_active: boolean | number | string | null;
-    is_customizable: boolean | number | string | null;
-    customization_type: string | null;
-    customization_surcharge: DbNumeric;
-    size_guide_json: string | null;
 };
 
 type VariantForCheckout = {
@@ -179,45 +144,28 @@ export async function POST(req: Request) {
             fail('El carrito contiene una variante inválida');
         }
 
-        const variantRows = await prisma.$queryRaw<VariantCheckoutRow[]>`
-            SELECT
-                v.variant_id,
-                v.product_id,
-                v.sku,
-                v.size,
-                v.color,
-                COALESCE(NULLIF(v.price, 0), p.base_price, 0) AS price,
-                v.stock,
-                v.is_active AS variant_is_active,
-                p.name AS product_name,
-                COALESCE(p.base_price, 0) AS product_base_price,
-                p.is_active AS product_is_active,
-                p.is_customizable,
-                p.customization_type,
-                p.customization_surcharge,
-                p.size_guide_json
-            FROM dbo.product_variant v
-            JOIN dbo.product p ON p.product_id = v.product_id
-            WHERE v.variant_id IN (${Prisma.join(variantIds)});
-        `;
+        const variantRows = await prisma.product_variant.findMany({
+            where: { variant_id: { in: variantIds } },
+            include: { product: true },
+        });
         const variantsInCart: VariantForCheckout[] = variantRows.map((row) => ({
             variant_id: String(row.variant_id),
             product_id: String(row.product_id),
             sku: String(row.sku || ''),
             size: String(row.size || ''),
             color: String(row.color || ''),
-            price: Number(row.price ?? row.product_base_price ?? 0),
+            price: Number(row.price || row.product.base_price || 0),
             stock: Number(row.stock ?? 0),
-            is_active: toBoolean(row.variant_is_active),
+            is_active: toBoolean(row.is_active),
             product: {
                 product_id: String(row.product_id),
-                name: String(row.product_name),
-                base_price: Number(row.product_base_price ?? 0),
-                is_active: toBoolean(row.product_is_active),
-                is_customizable: toBoolean(row.is_customizable),
-                customization_type: row.customization_type,
-                customization_surcharge: Number(row.customization_surcharge ?? 5),
-                size_guide_json: row.size_guide_json ?? null,
+                name: String(row.product.name),
+                base_price: Number(row.product.base_price ?? 0),
+                is_active: toBoolean(row.product.is_active),
+                is_customizable: toBoolean(row.product.is_customizable),
+                customization_type: row.product.customization_type,
+                customization_surcharge: Number(row.product.customization_surcharge ?? 5),
+                size_guide_json: row.product.size_guide_json ?? null,
             },
         }));
         const variantsById = new Map(variantsInCart.map((variant) => [normalizeId(variant.variant_id), variant]));
@@ -229,18 +177,13 @@ export async function POST(req: Request) {
             include: { items: true }
         });
 
-        const tierRows = await prisma.$queryRaw<BundleTierRow[]>`
-            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price, customization_surcharge
-            FROM dbo.bundle_promotion
-            WHERE is_active = 1;
-        `;
-        const tiersByBundleId = new Map(tierRows.map((row) => [
-            String(row.bundle_id),
+        const tiersByBundleId = new Map(activeBundles.map((bundle) => [
+            String(bundle.bundle_id),
             {
-                bundle_price: row.bundle_price === null ? null : Number(row.bundle_price),
-                tier_2_price: row.tier_2_price === null ? null : Number(row.tier_2_price),
-                tier_3_price: row.tier_3_price === null ? null : Number(row.tier_3_price),
-                customization_surcharge: row.customization_surcharge === null ? 8 : Number(row.customization_surcharge),
+                bundle_price: bundle.bundle_price === null ? null : Number(bundle.bundle_price),
+                tier_2_price: bundle.tier_2_price === null ? null : Number(bundle.tier_2_price),
+                tier_3_price: bundle.tier_3_price === null ? null : Number(bundle.tier_3_price),
+                customization_surcharge: bundle.customization_surcharge === null ? 8 : Number(bundle.customization_surcharge),
             }
         ]));
 
@@ -488,41 +431,25 @@ export async function POST(req: Request) {
 
             // 2. Create order items with server-calculated prices
             for (const item of serverItems) {
-                await tx.$executeRaw`
-                    INSERT INTO dbo.order_item (
-                        order_id,
-                        variant_id,
-                        qty,
-                        unit_price,
-                        line_total,
-                        product_name,
-                        variant_size,
-                        variant_color,
-                        sku,
-                        image_url,
-                        is_customized,
-                        custom_measurements_json,
-                        customization_surcharge,
-                        customization_group_id,
-                        customization_group_label
-                    ) VALUES (
-                        ${header.order_id},
-                        ${item.variantId},
-                        ${item.qty},
-                        ${item.unitPrice},
-                        ${item.lineTotal},
-                        ${item.name},
-                        ${item.size},
-                        ${item.color},
-                        ${item.sku},
-                        ${item.imageUrl},
-                        ${item.isCustomized},
-                        ${item.isCustomized && item.customMeasurements ? JSON.stringify(item.customMeasurements) : null},
-                        ${item.customizationSurcharge},
-                        ${item.customizationGroupId},
-                        ${item.customizationGroupLabel}
-                    );
-                `;
+                await tx.order_item.create({
+                    data: {
+                        order_id: header.order_id,
+                        variant_id: item.variantId,
+                        qty: item.qty,
+                        unit_price: item.unitPrice,
+                        line_total: item.lineTotal,
+                        product_name: item.name,
+                        variant_size: item.size,
+                        variant_color: item.color,
+                        sku: item.sku,
+                        image_url: item.imageUrl,
+                        is_customized: item.isCustomized,
+                        custom_measurements_json: item.isCustomized && item.customMeasurements ? JSON.stringify(item.customMeasurements) : null,
+                        customization_surcharge: item.customizationSurcharge,
+                        customization_group_id: item.customizationGroupId,
+                        customization_group_label: item.customizationGroupLabel,
+                    }
+                });
 
                 if (item.isCustomized) continue;
 

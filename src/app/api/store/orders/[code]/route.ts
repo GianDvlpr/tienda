@@ -10,17 +10,10 @@ export async function GET(
   const resolvedParams = await params;
   const code = resolvedParams.code;
 
-  const rows = await prisma.$queryRaw<any[]>`
-    SELECT TOP 1
-      code,
-      status,
-      total,
-      created_at AS createdAt
-    FROM dbo.order_header
-    WHERE code = ${code};
-  `;
-
-  const r = rows?.[0];
+  const r = await prisma.order_header.findUnique({
+    where: { code },
+    select: { code: true, status: true, total: true, created_at: true },
+  });
 
   if (!r) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -30,6 +23,6 @@ export async function GET(
     code: r.code,
     status: r.status,
     total: Number(r.total ?? 0),
-    createdAt: r.createdAt,
+    createdAt: r.created_at,
   });
 }

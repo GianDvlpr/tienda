@@ -18,16 +18,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const caption = body.caption === undefined ? null : normalizeText(body.caption) || null;
         const isPublicTracking = body.is_public_tracking === true || body.isPublicTracking === true;
 
-        const result = await prisma.$executeRaw`
-            UPDATE dbo.order_photo
-            SET caption = ${caption},
-                is_public_tracking = ${isPublicTracking},
-                updated_at = sysutcdatetime()
-            WHERE order_id = ${id}
-              AND photo_id = ${photoId}
-        `;
+        const result = await prisma.order_photo.updateMany({
+            where: { order_id: id, photo_id: photoId },
+            data: { caption, is_public_tracking: isPublicTracking, updated_at: new Date() },
+        });
 
-        if (result === 0) {
+        if (result.count === 0) {
             return NextResponse.json({ error: 'Foto no encontrada' }, { status: 404 });
         }
 
@@ -41,13 +37,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     try {
         const { id, photoId } = await params;
 
-        const result = await prisma.$executeRaw`
-            DELETE FROM dbo.order_photo
-            WHERE order_id = ${id}
-              AND photo_id = ${photoId}
-        `;
+        const result = await prisma.order_photo.deleteMany({
+            where: { order_id: id, photo_id: photoId },
+        });
 
-        if (result === 0) {
+        if (result.count === 0) {
             return NextResponse.json({ error: 'Foto no encontrada' }, { status: 404 });
         }
 

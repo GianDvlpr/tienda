@@ -6,16 +6,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const slug = decodeURIComponent(resolvedParams.slug);
 
     try {
-        const productRows = await prisma.$queryRaw<any[]>`
-            SELECT TOP 1 p.name, p.description, i.url as image_url
-            FROM dbo.product p
-            OUTER APPLY (
-                SELECT TOP 1 url FROM dbo.product_image WHERE product_id = p.product_id ORDER BY sort_order ASC
-            ) i
-            WHERE p.slug = ${slug} AND p.is_active = 1
-        `;
-
-        const p = productRows?.[0];
+        const p = await prisma.product.findFirst({
+            where: { slug, is_active: true },
+            select: {
+                name: true,
+                description: true,
+                product_image: { orderBy: { sort_order: 'asc' }, take: 1, select: { url: true } },
+            },
+        });
 
         if (!p) {
             return { title: 'Producto no encontrado | Aura Boutique' };
@@ -23,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
         const title = `${p.name} | Aura Boutique`;
         const description = p.description || `Visualiza ${p.name} y mucho más en Aura Boutique.`;
-        const images = p.image_url ? [p.image_url] : [];
+        const images = p.product_image[0]?.url ? [p.product_image[0].url] : [];
 
         return {
             title,

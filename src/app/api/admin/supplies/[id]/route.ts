@@ -9,17 +9,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
         const supply = await prisma.supply.findUnique({ where: { supply_id: id } });
         if (!supply) return NextResponse.json({ error: 'Insumo no encontrado' }, { status: 404 });
 
-        const [movementCount, bomCount, consumptionRows] = await Promise.all([
+        const [movementCount, bomCount, consumptionCount] = await Promise.all([
             prisma.supply_movement.count({ where: { supply_id: id } }),
             prisma.product_bom_supply.count({ where: { supply_id: id } }),
-            prisma.$queryRaw<{ total: number | string }[]>`
-                SELECT COUNT(*) AS total
-                FROM dbo.production_lot_consumption
-                WHERE supply_id = ${id};
-            `,
+            prisma.production_lot_consumption.count({ where: { supply_id: id } }),
         ]);
 
-        const consumptionCount = Number(consumptionRows[0]?.total || 0);
         const hasHistory = movementCount > 0 || bomCount > 0 || consumptionCount > 0;
 
         if (hasHistory) {

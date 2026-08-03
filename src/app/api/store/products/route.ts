@@ -41,10 +41,10 @@ type CountRow = {
     total: number | string | null;
 };
 
-function safeCsvArray(param?: string): string | null {
-    if (!param) return null;
+function safeCsvArray(param?: string): string[] {
+    if (!param) return [];
     const arr = param.split(',').map((value) => value.trim()).filter(Boolean);
-    return arr.length ? arr.join(',') : null;
+    return arr.length ? arr : [];
 }
 
 export async function GET(req: NextRequest) {
@@ -63,147 +63,82 @@ export async function GET(req: NextRequest) {
     const sizesCsv = safeCsvArray(qp.sizes);
     const colorsCsv = safeCsvArray(qp.colors);
 
-    const onlyInStockBit = qp.onlyInStock ? 1 : 0;
-    const customizableBit = qp.customizable ? 1 : 0;
     const sort = qp.sort ?? 'NEW';
 
     try {
-        const offset = (qp.page - 1) * qp.pageSize;
         const collection = qp.collection ?? null;
         const q = qp.q ?? null;
         const minPrice = qp.minPrice ?? null;
         const maxPrice = qp.maxPrice ?? null;
 
-        const items = await prisma.$queryRaw<ProductRow[]>`
-            WITH filtered_products AS (
-                SELECT p.product_id, p.slug, p.name, p.base_price, p.created_at, p.is_customizable, p.customization_surcharge
-                FROM dbo.product p
-                WHERE p.is_active = 1
-                  AND (${customizableBit} = 0 OR p.is_customizable = 1)
-                  AND (
-                    CAST(${collection} AS NVARCHAR(255)) IS NULL
-                    OR EXISTS (
-                        SELECT 1
-                        FROM dbo.product_collection pc
-                        JOIN dbo.collection c ON c.collection_id = pc.collection_id
-                        WHERE pc.product_id = p.product_id
-                          AND c.slug = CAST(${collection} AS NVARCHAR(255))
-                          AND c.is_active = 1
-                    )
-                  )
-                  AND (
-                    CAST(${q} AS NVARCHAR(MAX)) IS NULL
-                    OR p.name LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
-                    OR p.description LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
-                  )
-                  AND EXISTS (
-                    SELECT 1
-                    FROM dbo.product_variant v
-                    WHERE v.product_id = p.product_id
-                      AND v.is_active = 1
-                      AND (${minPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) >= ${minPrice})
-                      AND (${maxPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) <= ${maxPrice})
-                      AND (${sizesCsv} IS NULL OR v.size IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${sizesCsv} AS NVARCHAR(MAX)), N''), N',')))
-                      AND (${colorsCsv} IS NULL OR v.color IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${colorsCsv} AS NVARCHAR(MAX)), N''), N',')))
-                      AND (${onlyInStockBit} = 0 OR v.stock > 0)
-                  )
-            )
-            SELECT
-                fp.product_id,
-                fp.slug,
-                fp.name,
-                fp.is_customizable,
-                fp.customization_surcharge,
-                price_stats.min_price,
-                price_stats.max_price,
-                price_stats.variants_in_stock,
-                images.primary_image_url,
-                images.secondary_image_url
-            FROM filtered_products fp
-            OUTER APPLY (
-                SELECT
-                    MIN(priced_variants.variant_price) AS min_price,
-                    MAX(priced_variants.variant_price) AS max_price,
-                    SUM(CASE WHEN priced_variants.stock > 0 THEN 1 ELSE 0 END) AS variants_in_stock
-                FROM (
-                    SELECT
-                        COALESCE(NULLIF(v.price, 0), fp.base_price, 0) AS variant_price,
-                        v.stock
-                    FROM dbo.product_variant v
-                    WHERE v.product_id = fp.product_id
-                      AND v.is_active = 1
-                ) priced_variants
-            ) price_stats
-            OUTER APPLY (
-                SELECT
-                    MAX(CASE WHEN ranked.rn = 1 THEN ranked.url END) AS primary_image_url,
-                    MAX(CASE WHEN ranked.rn = 2 THEN ranked.url END) AS secondary_image_url
-                FROM (
-                    SELECT url, ROW_NUMBER() OVER (ORDER BY sort_order ASC, created_at DESC) AS rn
-                    FROM dbo.product_image
-                    WHERE product_id = fp.product_id
-                ) ranked
-                WHERE ranked.rn <= 2
-            ) images
-            ORDER BY
-                CASE WHEN ${sort} = 'PRICE_ASC' THEN price_stats.min_price END ASC,
-                CASE WHEN ${sort} = 'PRICE_DESC' THEN price_stats.min_price END DESC,
-                CASE WHEN ${sort} = 'NAME_ASC' THEN fp.name END ASC,
-                CASE WHEN ${sort} = 'NAME_DESC' THEN fp.name END DESC,
-                CASE WHEN ${sort} = 'NEW' THEN fp.created_at END DESC,
-                fp.created_at DESC
-            OFFSET ${offset} ROWS FETCH NEXT ${qp.pageSize} ROWS ONLY;
-        `;
+        const products = await prisma.product.findMany({
+            where: {
+                is_active: true,
+                ...(qp.customizable ? { is_customizable: true } : {}),
+                ...(collection ? {
+                    product_collection: {
+                        some: {
+                            collection: { slug: collection, is_active: true }
+                        }
+                    }
+                } : {}),
+                ...(q ? {
+                    OR: [
+                        { name: { contains: q, mode: 'insensitive' } },
+                        { description: { contains: q, mode: 'insensitive' } },
+                    ]
+                } : {}),
+                product_variant: {
+                    some: {
+                        is_active: true,
+                        ...(sizesCsv.length ? { size: { in: sizesCsv } } : {}),
+                        ...(colorsCsv.length ? { color: { in: colorsCsv } } : {}),
+                        ...(qp.onlyInStock ? { stock: { gt: 0 } } : {}),
+                    }
+                }
+            },
+            include: {
+                product_variant: { where: { is_active: true } },
+                product_image: { orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }], take: 2 },
+            },
+        });
 
-        const totalRows = await prisma.$queryRaw<CountRow[]>`
-            SELECT COUNT(*) AS total
-            FROM dbo.product p
-            WHERE p.is_active = 1
-              AND (${customizableBit} = 0 OR p.is_customizable = 1)
-              AND (
-                CAST(${collection} AS NVARCHAR(255)) IS NULL
-                OR EXISTS (
-                    SELECT 1
-                    FROM dbo.product_collection pc
-                    JOIN dbo.collection c ON c.collection_id = pc.collection_id
-                    WHERE pc.product_id = p.product_id
-                      AND c.slug = CAST(${collection} AS NVARCHAR(255))
-                      AND c.is_active = 1
-                )
-              )
-              AND (
-                CAST(${q} AS NVARCHAR(MAX)) IS NULL
-                OR p.name LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
-                OR p.description LIKE CONCAT(N'%', CAST(${q} AS NVARCHAR(MAX)), N'%')
-              )
-              AND EXISTS (
-                SELECT 1
-                FROM dbo.product_variant v
-                WHERE v.product_id = p.product_id
-                  AND v.is_active = 1
-                  AND (${minPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) >= ${minPrice})
-                  AND (${maxPrice} IS NULL OR COALESCE(NULLIF(v.price, 0), p.base_price, 0) <= ${maxPrice})
-                  AND (${sizesCsv} IS NULL OR v.size IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${sizesCsv} AS NVARCHAR(MAX)), N''), N',')))
-                  AND (${colorsCsv} IS NULL OR v.color IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(COALESCE(CAST(${colorsCsv} AS NVARCHAR(MAX)), N''), N',')))
-                  AND (${onlyInStockBit} = 0 OR v.stock > 0)
-              );
-        `;
+        const mappedItems = products.map((product) => {
+            const variantPrices = product.product_variant.map((variant) => Number(variant.price || product.base_price || 0));
+            const minProductPrice = variantPrices.length ? Math.min(...variantPrices) : Number(product.base_price || 0);
+            const maxProductPrice = variantPrices.length ? Math.max(...variantPrices) : Number(product.base_price || 0);
 
-        const total = Number(totalRows?.[0]?.total ?? 0);
+            return {
+                productId: product.product_id,
+                slug: product.slug,
+                name: product.name,
+                minPrice: minProductPrice,
+                maxPrice: maxProductPrice,
+                variantsInStock: product.product_variant.filter((variant) => variant.stock > 0).length,
+                primaryImageUrl: product.product_image[0]?.url ?? null,
+                secondaryImageUrl: product.product_image[1]?.url ?? null,
+                isCustomizable: Boolean(product.is_customizable),
+                customizationSurcharge: Number(product.customization_surcharge ?? 5),
+                createdAt: product.created_at,
+            };
+        }).filter((product) => (
+            (minPrice === null || product.maxPrice >= minPrice)
+            && (maxPrice === null || product.minPrice <= maxPrice)
+        ));
+
+        mappedItems.sort((a, b) => {
+            if (sort === 'PRICE_ASC') return a.minPrice - b.minPrice;
+            if (sort === 'PRICE_DESC') return b.minPrice - a.minPrice;
+            if (sort === 'NAME_ASC') return a.name.localeCompare(b.name);
+            if (sort === 'NAME_DESC') return b.name.localeCompare(a.name);
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        const total = mappedItems.length;
+        const items = mappedItems.slice((qp.page - 1) * qp.pageSize, qp.page * qp.pageSize);
 
         return NextResponse.json({
-            items: items.map((r) => ({
-                productId: r.product_id,
-                slug: r.slug,
-                name: r.name,
-                minPrice: Number(r.min_price ?? 0),
-                maxPrice: Number(r.max_price ?? 0),
-                variantsInStock: Number(r.variants_in_stock ?? 0),
-                primaryImageUrl: r.primary_image_url ?? null,
-                secondaryImageUrl: r.secondary_image_url ?? null,
-                isCustomizable: Boolean(r.is_customizable),
-                customizationSurcharge: Number(r.customization_surcharge ?? 5),
-            })),
+            items: items.map(({ createdAt, ...item }) => item),
             total,
             page: qp.page,
             pageSize: qp.pageSize,

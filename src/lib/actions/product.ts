@@ -5,57 +5,26 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
     const normalizedSlug = decodeURIComponent(String(slug)).trim().toLowerCase();
 
     try {
-        const productRows = await prisma.$queryRaw<any[]>`
-            SELECT TOP 1
-                p.product_id,
-                p.slug,
-                p.name,
-                p.description,
-                p.size_guide_url,
-                p.size_guide_json,
-                p.is_customizable,
-                p.customization_type,
-                p.customization_surcharge,
-                p.custom_fabric_supply_id,
-                COALESCE(p.base_price, 0) AS base_price,
-                c.name AS collection_name,
-                c.slug AS collection_slug
-            FROM dbo.product p
-            OUTER APPLY (
-                SELECT TOP 1 col.name, col.slug
-                FROM dbo.product_collection pc
-                JOIN dbo.collection col ON col.collection_id = pc.collection_id
-                WHERE pc.product_id = p.product_id
-            ) c
-            WHERE LOWER(LTRIM(RTRIM(p.slug))) = CONVERT(NVARCHAR(180), ${normalizedSlug})
-                AND p.is_active = 1;
-        `;
-
-        const p = productRows?.[0];
+        const p = await prisma.product.findFirst({
+            where: {
+                slug: { equals: normalizedSlug, mode: 'insensitive' },
+                is_active: true,
+            },
+            include: {
+                product_collection: {
+                    take: 1,
+                    include: { collection: true },
+                },
+                product_image: {
+                    orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
+                },
+                product_variant: {
+                    where: { is_active: true },
+                    orderBy: [{ size: 'asc' }, { color: 'asc' }],
+                },
+            },
+        });
         if (!p) return null;
-
-        // 2) Images
-        const images = await prisma.$queryRaw<any[]>`
-            SELECT image_id, url, public_id, color, sort_order
-            FROM dbo.product_image
-            WHERE product_id = ${p.product_id}
-            ORDER BY sort_order ASC, created_at DESC;
-        `;
-
-        // 3) Variants
-        const variants = await prisma.$queryRaw<any[]>`
-            SELECT
-                v.variant_id,
-                v.sku,
-                v.size,
-                v.color,
-                COALESCE(NULLIF(v.price, 0), p.base_price, 0) AS price,
-                v.stock
-            FROM dbo.product_variant v
-            JOIN dbo.product p ON p.product_id = v.product_id
-            WHERE v.product_id = ${p.product_id} AND v.is_active = 1
-            ORDER BY v.size ASC, v.color ASC;
-        `;
 
         const bundleRows = await (prisma as any).bundle_promotion.findMany({
             where: {
@@ -93,19 +62,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 }
             }
         });
-        const bundleTierRows = await prisma.$queryRaw<any[]>`
-            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price
-            FROM dbo.bundle_promotion
-            WHERE is_active = 1;
-        `;
-        const tiersByBundleId = new Map(bundleTierRows.map((row) => [
-            String(row.bundle_id),
-            {
-                bundle_price: row.bundle_price === null ? null : Number(row.bundle_price),
-                tier_2_price: row.tier_2_price === null ? null : Number(row.tier_2_price),
-                tier_3_price: row.tier_3_price === null ? null : Number(row.tier_3_price),
-            }
-        ]));
+        const collection = p.product_collection[0]?.collection ?? null;
 
         return {
             product: {
@@ -116,28 +73,28 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 size_guide_url: p.size_guide_url ?? null,
                 size_guide_json: p.size_guide_json ?? null,
                 isCustomizable: Boolean(p.is_customizable),
-                customizationType: p.customization_type ?? null,
+                customizationType: p.customization_type === 'PANTS' || p.customization_type === 'UPPER' ? p.customization_type : null,
                 customizationSurcharge: Number(p.customization_surcharge ?? 5),
                 customFabricSupplyId: p.custom_fabric_supply_id ?? null,
                 basePrice: Number(p.base_price ?? 0),
-                collection: p.collection_name ? {
-                    name: p.collection_name,
-                    slug: p.collection_slug
+                collection: collection ? {
+                    name: collection.name,
+                    slug: collection.slug
                 } : null
             },
-            images: (images ?? []).map((r: any) => ({
+            images: (p.product_image ?? []).map((r: any) => ({
                 imageId: r.image_id,
                 url: r.url,
                 publicId: r.public_id,
                 color: r.color ?? null,
                 sortOrder: Number(r.sort_order ?? 0),
             })),
-            variants: (variants ?? []).map((r: any) => ({
+            variants: (p.product_variant ?? []).map((r: any) => ({
                 variantId: r.variant_id,
                 sku: r.sku,
                 size: r.size,
                 color: r.color,
-                price: Number(r.price ?? 0),
+                price: Number(r.price || p.base_price || 0),
                 stock: Number(r.stock ?? 0),
             })),
             bundles: bundleRows.map((b: any) => ({
@@ -145,9 +102,9 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                 name: b.name,
                 description: b.description,
                 discount_amount: Number(b.discount_amount),
-                bundle_price: tiersByBundleId.get(String(b.bundle_id))?.bundle_price ?? null,
-                tier_2_price: tiersByBundleId.get(String(b.bundle_id))?.tier_2_price ?? null,
-                tier_3_price: tiersByBundleId.get(String(b.bundle_id))?.tier_3_price ?? null,
+                bundle_price: b.bundle_price === null ? null : Number(b.bundle_price),
+                tier_2_price: b.tier_2_price === null ? null : Number(b.tier_2_price),
+                tier_3_price: b.tier_3_price === null ? null : Number(b.tier_3_price),
                 items: b.items.filter((i:any) => i.product.is_active).map((item: any) => {
                     const firstVariant = item.product.product_variant?.[0];
                     return {
@@ -162,7 +119,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
                         color: firstVariant?.color || 'UN',
                         sku: firstVariant?.sku || '',
                         isCustomizable: Boolean(item.product.is_customizable),
-                        customizationType: item.product.customization_type ?? null,
+                        customizationType: item.product.customization_type === 'PANTS' || item.product.customization_type === 'UPPER' ? item.product.customization_type : null,
                         customizationSurcharge: Number(item.product.customization_surcharge ?? 5),
                         sizeGuideJson: item.product.size_guide_json ?? null,
                     };
@@ -180,9 +137,10 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailRespo
 
 export async function getActiveProductSlugs(): Promise<string[]> {
     try {
-        const rows = await prisma.$queryRaw<any[]>`
-            SELECT slug FROM dbo.product WHERE is_active = 1;
-        `;
+        const rows = await prisma.product.findMany({
+            where: { is_active: true },
+            select: { slug: true },
+        });
         return rows.map(r => r.slug);
     } catch (e) {
         console.error('Error fetching active product slugs:', e);

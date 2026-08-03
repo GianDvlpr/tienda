@@ -25,24 +25,7 @@ export async function GET() {
             orderBy: { created_at: 'desc' }
         });
 
-        const tierRows = await prisma.$queryRaw<any[]>`
-            SELECT bundle_id, bundle_price, tier_2_price, tier_3_price, customization_surcharge
-            FROM dbo.bundle_promotion;
-        `;
-        const tiersByBundleId = new Map(tierRows.map((row) => [
-            String(row.bundle_id),
-            {
-                bundle_price: row.bundle_price === null ? null : Number(row.bundle_price),
-                tier_2_price: row.tier_2_price === null ? null : Number(row.tier_2_price),
-                tier_3_price: row.tier_3_price === null ? null : Number(row.tier_3_price),
-                customization_surcharge: row.customization_surcharge === null ? 8 : Number(row.customization_surcharge),
-            }
-        ]));
-
-        return NextResponse.json(bundles.map((bundle: any) => ({
-            ...bundle,
-            ...(tiersByBundleId.get(String(bundle.bundle_id)) || { bundle_price: null, tier_2_price: null, tier_3_price: null })
-        })));
+        return NextResponse.json(bundles);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -66,6 +49,9 @@ export async function POST(req: Request) {
                 name,
                 description,
                 discount_amount: discountAmount,
+                bundle_price: bundlePrice,
+                tier_2_price: tier2Price,
+                tier_3_price: tier3Price,
                 customization_surcharge: Number(customization_surcharge ?? 20),
                 is_active: is_active ?? true,
                 items: {
@@ -77,12 +63,6 @@ export async function POST(req: Request) {
             include: { items: true }
         });
 
-        await prisma.$executeRaw`
-            UPDATE dbo.bundle_promotion
-            SET bundle_price = ${bundlePrice}, tier_2_price = ${tier2Price}, tier_3_price = ${tier3Price}
-            WHERE bundle_id = ${newBundle.bundle_id};
-        `;
-
 
         // Auditoría
         await recordAudit({
@@ -92,7 +72,7 @@ export async function POST(req: Request) {
             newData: newBundle
         });
 
-        return NextResponse.json({ ...newBundle, bundle_price: bundlePrice, tier_2_price: tier2Price, tier_3_price: tier3Price, customization_surcharge: Number(customization_surcharge ?? 20) });
+        return NextResponse.json(newBundle);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }

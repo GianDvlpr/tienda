@@ -3,33 +3,18 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {
-        const supplies = await prisma.$queryRaw<any[]>`
-            SELECT supply_id, name, unit, unit_cost, stock, min_stock, is_active
-            FROM dbo.supply
-            WHERE type = N'TELA'
-            ORDER BY name ASC;
-        `;
-        const stocks = await prisma.$queryRaw<any[]>`
-            SELECT scs.supply_color_id, scs.supply_id, scs.color_id, scs.stock, scs.min_stock, scs.unit_cost_override,
-                   scs.is_available, scs.is_active, c.name AS color_name, c.hex AS color_hex, c.sort_order AS color_sort_order
-            FROM dbo.supply_color_stock scs
-            JOIN dbo.custom_color c ON c.color_id = scs.color_id
-            ORDER BY c.sort_order ASC, c.name ASC;
-        `;
-
-        const stocksBySupply = new Map<string, any[]>();
-        stocks.forEach((row) => {
-            const item = {
-                ...row,
-                color: { color_id: row.color_id, name: row.color_name, hex: row.color_hex, sort_order: row.color_sort_order }
-            };
-            stocksBySupply.set(String(row.supply_id), [...(stocksBySupply.get(String(row.supply_id)) || []), item]);
+        const supplies = await prisma.supply.findMany({
+            where: { type: 'TELA' },
+            orderBy: { name: 'asc' },
+            include: {
+                supply_color_stock: {
+                    include: { color: true },
+                    orderBy: [{ color: { sort_order: 'asc' } }, { color: { name: 'asc' } }],
+                }
+            }
         });
 
-        return NextResponse.json(supplies.map((supply) => ({
-            ...supply,
-            supply_color_stock: stocksBySupply.get(String(supply.supply_id)) || []
-        })));
+        return NextResponse.json(supplies);
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -47,32 +32,38 @@ export async function POST(req: Request) {
         const savedRows: any[] = [];
 
         for (const colorId of colorIds) {
-            const existing = await prisma.$queryRaw<any[]>`
-                SELECT supply_color_id FROM dbo.supply_color_stock WHERE supply_id = ${body.supply_id} AND color_id = ${colorId};
-            `;
-
-            const rows = existing.length > 0
-                ? await prisma.$queryRaw<any[]>`
-                    UPDATE dbo.supply_color_stock
-                    SET stock = ${Number(body.stock || 0)}, min_stock = ${Number(body.min_stock || 0)}, unit_cost_override = ${unitCostOverride},
-                        is_available = ${body.is_available ?? true}, is_active = ${body.is_active ?? true}, updated_at = sysutcdatetime()
-                    OUTPUT INSERTED.*
-                    WHERE supply_id = ${body.supply_id} AND color_id = ${colorId};
-                `
-                : await prisma.$queryRaw<any[]>`
-                    INSERT INTO dbo.supply_color_stock (supply_id, color_id, stock, min_stock, unit_cost_override, is_available, is_active)
-                    OUTPUT INSERTED.*
-                    VALUES (${body.supply_id}, ${colorId}, ${Number(body.stock || 0)}, ${Number(body.min_stock || 0)}, ${unitCostOverride}, ${body.is_available ?? true}, ${body.is_active ?? true});
-                `;
-            savedRows.push(rows[0]);
+            const row = await prisma.supply_color_stock.upsert({
+                where: { supply_id_color_id: { supply_id: body.supply_id, color_id: colorId } },
+                create: {
+                    supply_id: body.supply_id,
+                    color_id: colorId,
+                    stock: Number(body.stock || 0),
+                    min_stock: Number(body.min_stock || 0),
+                    unit_cost_override: unitCostOverride,
+                    is_available: body.is_available ?? true,
+                    is_active: body.is_active ?? true,
+                },
+                update: {
+                    stock: Number(body.stock || 0),
+                    min_stock: Number(body.min_stock || 0),
+                    unit_cost_override: unitCostOverride,
+                    is_available: body.is_available ?? true,
+                    is_active: body.is_active ?? true,
+                    updated_at: new Date(),
+                },
+            });
+            savedRows.push(row);
         }
 
-        await prisma.$executeRaw`
-            UPDATE dbo.supply
-            SET stock = COALESCE((SELECT SUM(stock) FROM dbo.supply_color_stock WHERE supply_id = ${body.supply_id} AND is_active = 1), 0),
-                updated_at = sysutcdatetime()
-            WHERE supply_id = ${body.supply_id};
-        `;
+        const activeRows = await prisma.supply_color_stock.findMany({
+            where: { supply_id: body.supply_id, is_active: true },
+            select: { stock: true },
+        });
+        const totalStock = activeRows.reduce((sum, row) => sum + Number(row.stock || 0), 0);
+        await prisma.supply.update({
+            where: { supply_id: body.supply_id },
+            data: { stock: totalStock, updated_at: new Date() },
+        });
 
         return NextResponse.json({ success: true, items: savedRows });
     } catch (e: any) {
