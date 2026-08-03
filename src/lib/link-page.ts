@@ -5,6 +5,8 @@ export const LINK_PAGE_SETTINGS_KEY = 'main';
 export const defaultLinkPageSettings = {
     settings_key: LINK_PAGE_SETTINGS_KEY,
     title: 'Aura Boutique',
+    logo_text: 'Aura',
+    eyebrow_text: 'Links oficiales',
     subtitle: 'Moda femenina exclusiva con envios a todo el Peru',
     avatar_url: null as string | null,
     announcement: 'Nuevo catalogo disponible',
@@ -12,6 +14,7 @@ export const defaultLinkPageSettings = {
     announcement_logo_url: null as string | null,
     is_announcement_active: true,
     is_active: true,
+    footer_text: 'Aura Boutique',
     created_at: new Date(0),
     updated_at: new Date(0),
 };

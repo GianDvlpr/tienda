@@ -246,6 +246,8 @@ model hero_slide {
 model link_page_settings {
   settings_key           String   @id @default("main") @db.VarChar(30)
   title                  String   @default("Aura Boutique") @db.VarChar(120)
+  logo_text              String   @default("Aura") @db.VarChar(80)
+  eyebrow_text           String   @default("Links oficiales") @db.VarChar(80)
   subtitle               String?  @db.VarChar(250)
   avatar_url             String?  @db.VarChar(500)
   announcement           String?  @db.VarChar(300)
@@ -253,6 +255,7 @@ model link_page_settings {
   announcement_logo_url  String?  @db.VarChar(500)
   is_announcement_active Boolean  @default(false)
   is_active              Boolean  @default(true)
+  footer_text            String   @default("Aura Boutique") @db.VarChar(120)
   created_at             DateTime @default(now())
   updated_at             DateTime @default(now())
 }

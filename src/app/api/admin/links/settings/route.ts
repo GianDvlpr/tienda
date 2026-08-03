@@ -65,6 +65,8 @@ export async function PUT(req: Request) {
             create: {
                 settings_key: LINK_PAGE_SETTINGS_KEY,
                 title,
+                logo_text: cleanString(body.logo_text, 80) ?? defaultLinkPageSettings.logo_text,
+                eyebrow_text: cleanString(body.eyebrow_text, 80) ?? defaultLinkPageSettings.eyebrow_text,
                 subtitle: cleanString(body.subtitle, 250),
                 avatar_url,
                 announcement: cleanString(body.announcement, 300),
@@ -72,9 +74,12 @@ export async function PUT(req: Request) {
                 announcement_logo_url,
                 is_announcement_active: body.is_announcement_active ?? defaultLinkPageSettings.is_announcement_active,
                 is_active: body.is_active ?? defaultLinkPageSettings.is_active,
+                footer_text: cleanString(body.footer_text, 120) ?? defaultLinkPageSettings.footer_text,
             },
             update: {
                 title,
+                logo_text: cleanString(body.logo_text, 80) ?? defaultLinkPageSettings.logo_text,
+                eyebrow_text: cleanString(body.eyebrow_text, 80) ?? defaultLinkPageSettings.eyebrow_text,
                 subtitle: cleanString(body.subtitle, 250),
                 avatar_url,
                 announcement: cleanString(body.announcement, 300),
@@ -82,6 +87,7 @@ export async function PUT(req: Request) {
                 announcement_logo_url,
                 is_announcement_active: body.is_announcement_active ?? false,
                 is_active: body.is_active ?? true,
+                footer_text: cleanString(body.footer_text, 120) ?? defaultLinkPageSettings.footer_text,
                 updated_at: new Date(),
             },
         });

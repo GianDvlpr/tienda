@@ -26,6 +26,8 @@ const linkTypeOptions = [
 type LinkPageSettings = {
     settings_key: string;
     title: string;
+    logo_text: string;
+    eyebrow_text: string;
     subtitle: string | null;
     avatar_url: string | null;
     announcement: string | null;
@@ -33,6 +35,7 @@ type LinkPageSettings = {
     announcement_logo_url: string | null;
     is_announcement_active: boolean;
     is_active: boolean;
+    footer_text: string;
 };
 
 type LinkItem = {
@@ -260,6 +263,14 @@ export default function AdminLinksPage() {
                             <Input placeholder="Aura Boutique" />
                         </Form.Item>
 
+                        <Form.Item name="logo_text" label="Texto del logo si no hay imagen">
+                            <Input placeholder="Aura" />
+                        </Form.Item>
+
+                        <Form.Item name="eyebrow_text" label="Texto superior pequeno">
+                            <Input placeholder="Links oficiales" />
+                        </Form.Item>
+
                         <Form.Item name="subtitle" label="Subtitulo">
                             <Input placeholder="Moda femenina exclusiva..." />
                         </Form.Item>
@@ -272,6 +283,10 @@ export default function AdminLinksPage() {
                             <ImageUploader onUploadSuccess={handleAvatarUpload} buttonText="Subir Logo" />
                         </Form.Item>
                     </div>
+
+                    <Form.Item name="footer_text" label="Texto del pie de la pagina">
+                        <Input placeholder="Aura Boutique" />
+                    </Form.Item>
 
                     <Form.Item name="announcement" label="Anuncio superior">
                         <TextArea rows={2} placeholder="Ej. Nueva coleccion disponible" />

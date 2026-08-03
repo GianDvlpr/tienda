@@ -55,11 +55,11 @@ export default async function LinksPage() {
                             <img className={styles.avatarImage} src={settings.avatar_url} alt={settings.title} />
                         ) : (
                             <div className={styles.avatarFallback} aria-hidden="true">
-                                <span>Aura</span>
+                                <span>{settings.logo_text}</span>
                             </div>
                         )}
                     </div>
-                    <p className={styles.kicker}>Links oficiales</p>
+                    <p className={styles.kicker}>{settings.eyebrow_text}</p>
                     <h1>{settings.title}</h1>
                     {settings.subtitle && <p className={styles.subtitle}>{settings.subtitle}</p>}
                 </div>
@@ -125,7 +125,7 @@ export default async function LinksPage() {
                 </div>
 
                 <footer className={styles.footer}>
-                    <span>Aura Boutique</span>
+                    <span>{settings.footer_text}</span>
                     <a href="/shop">Ir al catalogo</a>
                 </footer>
             </section>
