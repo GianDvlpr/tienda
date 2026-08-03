@@ -684,19 +684,34 @@ export default function OrderDetailPage() {
 
     return (
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Space>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 320px', flexWrap: 'wrap', minWidth: 0 }}>
                     <Link href="/admin/orders">
                         <Button icon={<LeftOutlined />}>Volver</Button>
                     </Link>
-                    <Title level={4} style={{ margin: 0 }}>Pedido {order.code}</Title>
+                    <Title level={4} style={{ margin: 0, minWidth: 0, maxWidth: '100%', lineHeight: 1.25 }}>
+                        <span>Pedido </span>
+                        <Text
+                            code
+                            strong
+                            style={{
+                                fontSize: 'inherit',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                overflowWrap: 'anywhere',
+                                lineHeight: 1.25,
+                            }}
+                        >
+                            {order.code}
+                        </Text>
+                    </Title>
                     <Tag color={statusMap[order.status]?.color || 'default'}>
                         {statusMap[order.status]?.label || order.status}
                     </Tag>
                     <Tag color={salesChannel.color}>{salesChannel.label}</Tag>
                     {hasCustomizedOrderItems && <Tag color="gold">Personalizado</Tag>}
-                </Space>
-                <Space>
+                </div>
+                <Space wrap style={{ justifyContent: 'flex-end', flex: '1 1 260px' }}>
                     <Button icon={<PrinterOutlined />} onClick={handlePrint}>
                         Imprimir Etiqueta
                     </Button>

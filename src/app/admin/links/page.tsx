@@ -507,16 +507,16 @@ export default function AdminLinksPage() {
                             <Input type="color" />
                         </Form.Item>
 
-                        <Form.Item name="background_image_url" label="URL de imagen de fondo">
-                            <Input placeholder="https://..." />
-                        </Form.Item>
-
                         <Form.Item name="avatar_url" label="URL del logo principal">
                             <Input placeholder="https://..." />
                         </Form.Item>
 
                         <Form.Item label="Subir logo principal">
                             <ImageUploader onUploadSuccess={handleAvatarUpload} buttonText="Subir Logo" />
+                        </Form.Item>
+
+                        <Form.Item name="background_image_url" label="URL de imagen de fondo">
+                            <Input placeholder="https://..." />
                         </Form.Item>
 
                         <Form.Item label="Subir imagen de fondo">
@@ -589,21 +589,20 @@ export default function AdminLinksPage() {
                 </Form>
             </Card>
 
-            <Card title="QR visual" style={{ marginBottom: 24 }}>
-                <Space size="large" wrap>
-                    <Space direction="vertical" align="center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={getQrUrl(linksUrl)} alt="QR de links" width={160} height={160} style={{ borderRadius: 16, border: '1px solid #eee', padding: 8, background: '#fff' }} />
-                        <Text strong>/links</Text>
-                        <Text copyable={{ text: linksUrl }} type="secondary">{linksUrl}</Text>
-                    </Space>
-                    <Space direction="vertical" align="center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={getQrUrl(pdfUrl)} alt="QR de catalogo PDF" width={160} height={160} style={{ borderRadius: 16, border: '1px solid #eee', padding: 8, background: '#fff' }} />
-                        <Text strong>Catalogo PDF</Text>
-                        <Text copyable={{ text: pdfUrl }} type="secondary">{pdfUrl}</Text>
-                    </Space>
-                </Space>
+            <Card title="Links" style={{ marginBottom: 24 }}>
+                <Table
+                    columns={columns}
+                    dataSource={items}
+                    loading={loadingItems}
+                    rowKey="link_id"
+                    pagination={false}
+                    onRow={(record) => ({
+                        draggable: true,
+                        onDragStart: () => setDraggingId(record.link_id),
+                        onDragOver: (event) => event.preventDefault(),
+                        onDrop: () => handleReorder(record.link_id),
+                    })}
+                />
             </Card>
 
             <Card title="Vista previa" style={{ marginBottom: 24 }}>
@@ -653,19 +652,22 @@ export default function AdminLinksPage() {
                 </div>
             </Card>
 
-            <Table
-                columns={columns}
-                dataSource={items}
-                loading={loadingItems}
-                rowKey="link_id"
-                pagination={false}
-                onRow={(record) => ({
-                    draggable: true,
-                    onDragStart: () => setDraggingId(record.link_id),
-                    onDragOver: (event) => event.preventDefault(),
-                    onDrop: () => handleReorder(record.link_id),
-                })}
-            />
+            <Card title="QR visual" style={{ marginBottom: 24 }}>
+                <Space size="large" wrap>
+                    <Space direction="vertical" align="center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={getQrUrl(linksUrl)} alt="QR de links" width={160} height={160} style={{ borderRadius: 16, border: '1px solid #eee', padding: 8, background: '#fff' }} />
+                        <Text strong>/links</Text>
+                        <Text copyable={{ text: linksUrl }} type="secondary">{linksUrl}</Text>
+                    </Space>
+                    <Space direction="vertical" align="center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={getQrUrl(pdfUrl)} alt="QR de catalogo PDF" width={160} height={160} style={{ borderRadius: 16, border: '1px solid #eee', padding: 8, background: '#fff' }} />
+                        <Text strong>Catalogo PDF</Text>
+                        <Text copyable={{ text: pdfUrl }} type="secondary">{pdfUrl}</Text>
+                    </Space>
+                </Space>
+            </Card>
 
             <Modal
                 title={editingItem ? 'Editar Enlace' : 'Nuevo Enlace'}
