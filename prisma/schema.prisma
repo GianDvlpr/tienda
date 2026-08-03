@@ -243,6 +243,35 @@ model hero_slide {
   @@index([is_active, sort_order], map: "IX_hero_slide_active_order")
 }
 
+model link_page_settings {
+  settings_key           String   @id @default("main") @db.VarChar(30)
+  title                  String   @default("Aura Boutique") @db.VarChar(120)
+  subtitle               String?  @db.VarChar(250)
+  avatar_url             String?  @db.VarChar(500)
+  announcement           String?  @db.VarChar(300)
+  announcement_url       String?  @db.VarChar(500)
+  is_announcement_active Boolean  @default(false)
+  is_active              Boolean  @default(true)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @default(now())
+}
+
+model link_page_item {
+  link_id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String   @db.VarChar(120)
+  description String?  @db.VarChar(250)
+  url         String   @db.VarChar(500)
+  link_type   String   @default("CUSTOM") @db.VarChar(40)
+  sort_order  Int      @default(0)
+  is_featured Boolean  @default(false)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
+
+  @@index([is_active, sort_order], map: "IX_link_page_item_active_order")
+  @@index([sort_order, created_at(sort: Desc)], map: "IX_link_page_item_order")
+}
+
 model admin_user {
   user_id       String      @id(map: "PK_admin_user") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username      String      @unique(map: "UX_admin_username") @db.VarChar(100)

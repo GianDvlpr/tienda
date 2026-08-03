@@ -14,22 +14,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isAdmin = pathname.startsWith('/admin');
     const isTrack = pathname.startsWith('/track');
+    const isLinks = pathname === '/links';
 
-    const showPublicShell = !isAdmin && !isTrack;
+    const trackPublicPage = !isAdmin && !isTrack;
+    const showPublicShell = trackPublicPage && !isLinks;
 
     return (
         <Layout style={{ minHeight: "100vh" }}>
-            {showPublicShell && (
-                <>
-                    <Suspense fallback={null}>
-                        <StoreAnalytics />
-                    </Suspense>
-                    <Suspense fallback={<div style={{ height: 80 }} />}>
-                        <ShopHeader />
-                    </Suspense>
-                    <QuickViewDrawer />
-                </>
+            {trackPublicPage && (
+                <Suspense fallback={null}>
+                    <StoreAnalytics />
+                </Suspense>
             )}
+
+            {showPublicShell && (
+                <Suspense fallback={<div style={{ height: 80 }} />}>
+                    <ShopHeader />
+                </Suspense>
+            )}
+
+            {showPublicShell && <QuickViewDrawer />}
 
             <Content style={{ width: "100%", margin: 0, padding: 0 }}>
                 {children}

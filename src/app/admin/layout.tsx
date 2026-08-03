@@ -19,6 +19,7 @@ import {
   ToolOutlined,
   ExperimentOutlined,
   GiftOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 
 import { useRouter, usePathname } from 'next/navigation';
@@ -106,6 +107,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       key: '/admin/slider',
       icon: <PictureOutlined />,
       label: <Link href="/admin/slider">Slider Principal</Link>,
+    },
+    {
+      key: '/admin/links',
+      icon: <LinkOutlined />,
+      label: <Link href="/admin/links">Pagina de Links</Link>,
     },
     {
       key: '/admin/users',
