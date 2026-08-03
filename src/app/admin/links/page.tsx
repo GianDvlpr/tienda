@@ -31,6 +31,29 @@ const themeOptions = [
     { label: 'Campana especial', value: 'CAMPAIGN' },
 ];
 
+const buttonStyleOptions = [
+    { label: 'Redondeado suave', value: 'ROUNDED' },
+    { label: 'Pill ovalado', value: 'PILL' },
+    { label: 'Rectangular editorial', value: 'EDITORIAL' },
+    { label: 'Glass transparente', value: 'GLASS' },
+    { label: 'Solido premium', value: 'SOLID' },
+];
+
+const statusOptions = [
+    { label: 'Activo', value: 'ACTIVE' },
+    { label: 'Proximamente', value: 'COMING_SOON' },
+    { label: 'Agotado', value: 'SOLD_OUT' },
+    { label: 'No disponible', value: 'DISABLED' },
+];
+
+const seasonalPresets = [
+    { label: 'San Valentin', value: 'VALENTINE', theme: 'ROSE', button_style: 'PILL', background_color: '#fff4f2', announcement: 'Especial de San Valentin' },
+    { label: 'Navidad', value: 'CHRISTMAS', theme: 'DARK_GOLD', button_style: 'SOLID', background_color: '#120f0d', announcement: 'Coleccion de temporada navidena' },
+    { label: 'Black Friday', value: 'BLACK_FRIDAY', theme: 'DARK_GOLD', button_style: 'EDITORIAL', background_color: '#050505', announcement: 'Ofertas por tiempo limitado' },
+    { label: 'Verano', value: 'SUMMER', theme: 'BOUTIQUE', button_style: 'ROUNDED', background_color: '#f8efe5', announcement: 'Nueva coleccion de verano' },
+    { label: 'Lanzamiento', value: 'LAUNCH', theme: 'CAMPAIGN', button_style: 'GLASS', background_color: '#28120d', announcement: 'Nuevo lanzamiento disponible' },
+];
+
 const previewThemeStyles: Record<string, { page: React.CSSProperties; card: React.CSSProperties; accent: string; button: React.CSSProperties; text: string; muted: string }> = {
     BOUTIQUE: {
         page: { background: 'linear-gradient(145deg, #f8efe5, #fdf9f2 48%, #efe0cc)', color: '#211a16' },
@@ -80,9 +103,13 @@ type LinkPageSettings = {
     logo_text: string;
     eyebrow_text: string;
     theme: string;
+    button_style: string;
     background_image_url: string | null;
     background_color: string | null;
     enable_animations: boolean;
+    og_title: string | null;
+    og_description: string | null;
+    og_image_url: string | null;
     subtitle: string | null;
     avatar_url: string | null;
     announcement: string | null;
@@ -104,6 +131,7 @@ type LinkItem = {
     text_color: string | null;
     badge_text: string | null;
     link_type: string;
+    availability_status: string;
     sort_order: number;
     is_featured: boolean;
     is_active: boolean;
@@ -131,16 +159,23 @@ export default function AdminLinksPage() {
     const [savingItem, setSavingItem] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<LinkItem | null>(null);
+    const [draggingId, setDraggingId] = useState<string | null>(null);
     const watchedSettings = Form.useWatch([], settingsForm) as Partial<LinkPageSettingsForm> | undefined;
+    const linksUrl = 'https://auraboutique.me/links';
+    const pdfUrl = 'https://auraboutique.me/catalogo.pdf';
 
     const previewSettings: LinkPageSettingsForm = {
         title: 'Aura Boutique',
         logo_text: 'Aura',
         eyebrow_text: 'Links oficiales',
         theme: 'BOUTIQUE',
+        button_style: 'ROUNDED',
         background_image_url: null,
         background_color: null,
         enable_animations: true,
+        og_title: null,
+        og_description: null,
+        og_image_url: null,
         subtitle: null,
         avatar_url: null,
         announcement: null,
@@ -187,6 +222,7 @@ export default function AdminLinksPage() {
         itemForm.resetFields();
         itemForm.setFieldsValue({
             link_type: 'CUSTOM',
+            availability_status: 'ACTIVE',
             sort_order: (items?.length ?? 0) * 10 + 10,
             is_featured: false,
             is_active: true,
@@ -267,7 +303,78 @@ export default function AdminLinksPage() {
         toast.success('Banner destacado subido correctamente');
     };
 
+    const handleOgImageUpload = (url: string) => {
+        settingsForm.setFieldValue('og_image_url', url);
+        toast.success('Imagen para compartir subida correctamente');
+    };
+
+    const useLogoAsOgImage = () => {
+        const avatarUrl = settingsForm.getFieldValue('avatar_url');
+        if (!avatarUrl) {
+            toast.error('Primero configura o sube un logo principal');
+            return;
+        }
+        settingsForm.setFieldValue('og_image_url', avatarUrl);
+        toast.success('Logo principal configurado como imagen para compartir');
+    };
+
+    const applySeasonalPreset = (presetValue: string) => {
+        const preset = seasonalPresets.find((item) => item.value === presetValue);
+        if (!preset) return;
+
+        settingsForm.setFieldsValue({
+            theme: preset.theme,
+            button_style: preset.button_style,
+            background_color: preset.background_color,
+            announcement: preset.announcement,
+            is_announcement_active: true,
+            enable_animations: true,
+        });
+        toast.success(`Preset aplicado: ${preset.label}`);
+    };
+
+    const getQrUrl = (url: string) => `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(url)}`;
+
+    const handleReorder = async (targetId: string) => {
+        if (!draggingId || draggingId === targetId || !items) return;
+
+        const ordered = [...items].sort((a, b) => a.sort_order - b.sort_order);
+        const fromIndex = ordered.findIndex((item) => item.link_id === draggingId);
+        const toIndex = ordered.findIndex((item) => item.link_id === targetId);
+        if (fromIndex < 0 || toIndex < 0) return;
+
+        const [moved] = ordered.splice(fromIndex, 1);
+        ordered.splice(toIndex, 0, moved);
+
+        try {
+            await Promise.all(ordered.map((item, index) => {
+                const sortOrder = (index + 1) * 10;
+                if (item.sort_order === sortOrder) return Promise.resolve();
+
+                return fetch(`/api/admin/links/items/${item.link_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...item, sort_order: sortOrder }),
+                }).then(async (res) => {
+                    if (!res.ok) throw new Error(await readApiError(res, 'Error actualizando orden'));
+                });
+            }));
+            toast.success('Orden actualizado');
+            mutateItems();
+        } catch (e: unknown) {
+            toast.error(getErrorMessage(e));
+        } finally {
+            setDraggingId(null);
+        }
+    };
+
     const columns: TableColumnsType<LinkItem> = [
+        {
+            title: '',
+            key: 'drag',
+            width: 44,
+            render: () => <Text type="secondary" style={{ cursor: 'grab', fontSize: 18 }}>::</Text>,
+        },
         {
             title: 'Logo',
             dataIndex: 'icon_url',
@@ -362,6 +469,15 @@ export default function AdminLinksPage() {
 
             <Card title="Perfil y anuncio" loading={loadingSettings} style={{ marginBottom: 24 }}>
                 <Form layout="vertical" form={settingsForm} onFinish={handleSaveSettings}>
+                    <Form.Item label="Preset de temporada">
+                        <Select
+                            placeholder="Aplicar preset rapido"
+                            options={seasonalPresets.map((preset) => ({ label: preset.label, value: preset.value }))}
+                            onChange={applySeasonalPreset}
+                            allowClear
+                        />
+                    </Form.Item>
+
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
                         <Form.Item name="title" label="Titulo" rules={[{ required: true, message: 'Requerido' }]}>
                             <Input placeholder="Aura Boutique" />
@@ -369,6 +485,10 @@ export default function AdminLinksPage() {
 
                         <Form.Item name="theme" label="Tema visual">
                             <Select options={themeOptions} />
+                        </Form.Item>
+
+                        <Form.Item name="button_style" label="Estilo de botones">
+                            <Select options={buttonStyleOptions} />
                         </Form.Item>
 
                         <Form.Item name="logo_text" label="Texto del logo si no hay imagen">
@@ -403,6 +523,29 @@ export default function AdminLinksPage() {
                             <ImageUploader onUploadSuccess={handleBackgroundUpload} buttonText="Subir Fondo" />
                         </Form.Item>
                     </div>
+
+                    <Card size="small" title="Open Graph para compartir" style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                            <Form.Item name="og_title" label="Titulo al compartir">
+                                <Input placeholder="Aura Boutique | Links Oficiales" />
+                            </Form.Item>
+
+                            <Form.Item name="og_description" label="Descripcion al compartir">
+                                <Input placeholder="Catalogo, redes y contacto oficial" />
+                            </Form.Item>
+
+                            <Form.Item name="og_image_url" label="URL imagen al compartir">
+                                <Input placeholder="https://..." />
+                            </Form.Item>
+
+                            <Form.Item label="Imagen para compartir">
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <ImageUploader onUploadSuccess={handleOgImageUpload} buttonText="Subir Imagen" />
+                                    <Button onClick={useLogoAsOgImage}>Usar logo</Button>
+                                </Space.Compact>
+                            </Form.Item>
+                        </div>
+                    </Card>
 
                     <Form.Item name="footer_text" label="Texto del pie de la pagina">
                         <Input placeholder="Aura Boutique" />
@@ -444,6 +587,23 @@ export default function AdminLinksPage() {
                         <Button type="primary" htmlType="submit" loading={savingSettings}>Guardar Configuracion</Button>
                     </Form.Item>
                 </Form>
+            </Card>
+
+            <Card title="QR visual" style={{ marginBottom: 24 }}>
+                <Space size="large" wrap>
+                    <Space direction="vertical" align="center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={getQrUrl(linksUrl)} alt="QR de links" width={160} height={160} style={{ borderRadius: 16, border: '1px solid #eee', padding: 8, background: '#fff' }} />
+                        <Text strong>/links</Text>
+                        <Text copyable={{ text: linksUrl }} type="secondary">{linksUrl}</Text>
+                    </Space>
+                    <Space direction="vertical" align="center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={getQrUrl(pdfUrl)} alt="QR de catalogo PDF" width={160} height={160} style={{ borderRadius: 16, border: '1px solid #eee', padding: 8, background: '#fff' }} />
+                        <Text strong>Catalogo PDF</Text>
+                        <Text copyable={{ text: pdfUrl }} type="secondary">{pdfUrl}</Text>
+                    </Space>
+                </Space>
             </Card>
 
             <Card title="Vista previa" style={{ marginBottom: 24 }}>
@@ -499,6 +659,12 @@ export default function AdminLinksPage() {
                 loading={loadingItems}
                 rowKey="link_id"
                 pagination={false}
+                onRow={(record) => ({
+                    draggable: true,
+                    onDragStart: () => setDraggingId(record.link_id),
+                    onDragOver: (event) => event.preventDefault(),
+                    onDrop: () => handleReorder(record.link_id),
+                })}
             />
 
             <Modal
@@ -559,6 +725,10 @@ export default function AdminLinksPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
                         <Form.Item name="link_type" label="Tipo">
                             <Select options={linkTypeOptions} />
+                        </Form.Item>
+
+                        <Form.Item name="availability_status" label="Estado visual">
+                            <Select options={statusOptions} />
                         </Form.Item>
 
                         <Form.Item name="sort_order" label="Orden">

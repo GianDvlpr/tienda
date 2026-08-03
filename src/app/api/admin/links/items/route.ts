@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 
 const allowedTypes = new Set(['CATALOG', 'WHATSAPP', 'INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'EMAIL', 'ANNOUNCEMENT', 'CUSTOM']);
+const allowedStatuses = new Set(['ACTIVE', 'COMING_SOON', 'SOLD_OUT', 'DISABLED']);
 
 function cleanString(value: unknown, maxLength: number) {
     if (typeof value !== 'string') return null;
@@ -38,6 +39,11 @@ function cleanSortOrder(value: unknown) {
 function cleanLinkType(value: unknown) {
     const linkType = cleanString(value, 40)?.toUpperCase() ?? 'CUSTOM';
     return allowedTypes.has(linkType) ? linkType : 'CUSTOM';
+}
+
+function cleanAvailabilityStatus(value: unknown) {
+    const status = cleanString(value, 30)?.toUpperCase() ?? 'ACTIVE';
+    return allowedStatuses.has(status) ? status : 'ACTIVE';
 }
 
 function getErrorMessage(error: unknown) {
@@ -96,6 +102,7 @@ export async function POST(req: Request) {
                 text_color,
                 badge_text: cleanString(body.badge_text, 40),
                 link_type: cleanLinkType(body.link_type),
+                availability_status: cleanAvailabilityStatus(body.availability_status),
                 sort_order: cleanSortOrder(body.sort_order),
                 is_featured: body.is_featured ?? false,
                 is_active: body.is_active ?? true,

@@ -322,6 +322,47 @@
     transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease;
 }
 
+.buttonPill .linkItem {
+    border-radius: 999px;
+}
+
+.buttonPill .linkType,
+.buttonPill .linkIcon {
+    border-radius: 999px;
+}
+
+.buttonEditorial .linkItem {
+    border-radius: 8px;
+    border-left: 4px solid var(--accent);
+    box-shadow: 0 10px 22px rgba(80, 48, 25, 0.08);
+}
+
+.buttonEditorial .linkType,
+.buttonEditorial .linkIcon {
+    border-radius: 6px;
+}
+
+.buttonGlass .linkItem {
+    border-color: rgba(255, 255, 255, 0.34);
+    background: color-mix(in srgb, var(--button-bg) 46%, transparent);
+    backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.buttonSolid .linkItem {
+    border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+    background: var(--button-icon-bg);
+    color: var(--button-icon-text);
+}
+
+.buttonSolid .linkText small,
+.buttonSolid .linkArrow {
+    color: color-mix(in srgb, var(--button-icon-text) 72%, transparent);
+}
+
+.buttonRounded .linkItem {
+    border-radius: 24px;
+}
+
 .linkItem::after {
     content: "";
     position: absolute;
@@ -378,6 +419,37 @@
     font-weight: 900;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+}
+
+.statusPill {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 3;
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    border-radius: 999px;
+    color: #ffffff;
+    background: rgba(24, 18, 14, 0.72);
+    backdrop-filter: blur(10px);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.unavailableLink {
+    cursor: not-allowed;
+    opacity: 0.68;
+    filter: grayscale(0.28);
+}
+
+.unavailableLink:hover {
+    transform: none;
 }
 
 .featuredImage {

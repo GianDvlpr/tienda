@@ -5,6 +5,7 @@ import { defaultLinkPageSettings, getEffectiveLinkPageSettings, LINK_PAGE_SETTIN
 export const runtime = 'nodejs';
 
 const allowedThemes = new Set(['BOUTIQUE', 'DARK_GOLD', 'ROSE', 'MINIMAL', 'CAMPAIGN']);
+const allowedButtonStyles = new Set(['ROUNDED', 'PILL', 'EDITORIAL', 'GLASS', 'SOLID']);
 
 function cleanString(value: unknown, maxLength: number) {
     if (typeof value !== 'string') return null;
@@ -28,6 +29,11 @@ function cleanUrl(value: unknown) {
 function cleanTheme(value: unknown) {
     const theme = cleanString(value, 30)?.toUpperCase() ?? defaultLinkPageSettings.theme;
     return allowedThemes.has(theme) ? theme : defaultLinkPageSettings.theme;
+}
+
+function cleanButtonStyle(value: unknown) {
+    const buttonStyle = cleanString(value, 30)?.toUpperCase() ?? defaultLinkPageSettings.button_style;
+    return allowedButtonStyles.has(buttonStyle) ? buttonStyle : defaultLinkPageSettings.button_style;
 }
 
 function cleanColor(value: unknown) {
@@ -83,6 +89,11 @@ export async function PUT(req: Request) {
             return NextResponse.json({ error: 'El color de fondo debe estar en formato hex, por ejemplo #f8efe5' }, { status: 400 });
         }
 
+        const og_image_url = cleanUrl(body.og_image_url);
+        if (body.og_image_url && !og_image_url) {
+            return NextResponse.json({ error: 'La URL de la imagen para compartir no es valida' }, { status: 400 });
+        }
+
         const settings = await prisma.link_page_settings.upsert({
             where: { settings_key: LINK_PAGE_SETTINGS_KEY },
             create: {
@@ -91,9 +102,13 @@ export async function PUT(req: Request) {
                 logo_text: cleanString(body.logo_text, 80) ?? defaultLinkPageSettings.logo_text,
                 eyebrow_text: cleanString(body.eyebrow_text, 80) ?? defaultLinkPageSettings.eyebrow_text,
                 theme: cleanTheme(body.theme),
+                button_style: cleanButtonStyle(body.button_style),
                 background_image_url,
                 background_color,
                 enable_animations: body.enable_animations ?? defaultLinkPageSettings.enable_animations,
+                og_title: cleanString(body.og_title, 120),
+                og_description: cleanString(body.og_description, 250),
+                og_image_url,
                 subtitle: cleanString(body.subtitle, 250),
                 avatar_url,
                 announcement: cleanString(body.announcement, 300),
@@ -108,9 +123,13 @@ export async function PUT(req: Request) {
                 logo_text: cleanString(body.logo_text, 80) ?? defaultLinkPageSettings.logo_text,
                 eyebrow_text: cleanString(body.eyebrow_text, 80) ?? defaultLinkPageSettings.eyebrow_text,
                 theme: cleanTheme(body.theme),
+                button_style: cleanButtonStyle(body.button_style),
                 background_image_url,
                 background_color,
                 enable_animations: body.enable_animations ?? true,
+                og_title: cleanString(body.og_title, 120),
+                og_description: cleanString(body.og_description, 250),
+                og_image_url,
                 subtitle: cleanString(body.subtitle, 250),
                 avatar_url,
                 announcement: cleanString(body.announcement, 300),

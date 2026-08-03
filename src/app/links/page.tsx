@@ -1,19 +1,38 @@
 import type { Metadata } from 'next';
 import type { CSSProperties } from 'react';
-import { getPublicLinkPage } from '@/lib/link-page';
+import { getEffectiveLinkPageSettings, getPublicLinkPage } from '@/lib/link-page';
 import styles from './links.module.css';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-    title: 'Links Oficiales | Aura Boutique',
-    description: 'Accede al catalogo, redes sociales, contacto y anuncios oficiales de Aura Boutique.',
-    openGraph: {
-        title: 'Aura Boutique | Links Oficiales',
-        description: 'Catalogo, redes sociales, contacto y novedades de Aura Boutique.',
-        url: 'https://auraboutique.me/links',
-    },
-};
+const baseUrl = 'https://auraboutique.me';
+
+export async function generateMetadata(): Promise<Metadata> {
+    const settings = await getEffectiveLinkPageSettings();
+    const title = settings.og_title || `${settings.title} | Links Oficiales`;
+    const description = settings.og_description || settings.subtitle || 'Catalogo, redes sociales, contacto y novedades de Aura Boutique.';
+    const image = settings.og_image_url || settings.avatar_url || '/logo-aura.png';
+
+    return {
+        metadataBase: new URL(baseUrl),
+        title,
+        description,
+        openGraph: {
+            title,
+            description,
+            url: `${baseUrl}/links`,
+            siteName: 'Aura Boutique',
+            images: [{ url: image, width: 1024, height: 1024, alt: title }],
+            type: 'website',
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: [image],
+        },
+    };
+}
 
 const typeLabels: Record<string, string> = {
     CATALOG: 'CAT',
@@ -32,6 +51,20 @@ const themeClasses: Record<string, string> = {
     ROSE: styles.themeRose,
     MINIMAL: styles.themeMinimal,
     CAMPAIGN: styles.themeCampaign,
+};
+
+const buttonStyleClasses: Record<string, string> = {
+    ROUNDED: styles.buttonRounded,
+    PILL: styles.buttonPill,
+    EDITORIAL: styles.buttonEditorial,
+    GLASS: styles.buttonGlass,
+    SOLID: styles.buttonSolid,
+};
+
+const statusLabels: Record<string, string> = {
+    COMING_SOON: 'Proximamente',
+    SOLD_OUT: 'Agotado',
+    DISABLED: 'No disponible',
 };
 
 function isExternalUrl(url: string) {
@@ -94,6 +127,7 @@ export default async function LinksPage() {
     const pageClassName = [
         styles.page,
         themeClasses[settings.theme] ?? styles.themeBoutique,
+        buttonStyleClasses[settings.button_style] ?? styles.buttonRounded,
         settings.enable_animations ? styles.withAnimations : '',
     ].filter(Boolean).join(' ');
 
@@ -145,14 +179,16 @@ export default async function LinksPage() {
                 <div className={styles.linksList}>
                     {items.length > 0 ? items.map((item) => {
                         const external = isExternalUrl(item.url);
+                        const isUnavailable = item.availability_status !== 'ACTIVE';
 
                         return (
                             <a
                                 key={item.link_id}
-                                className={`${styles.linkItem} ${item.is_featured ? styles.featuredLink : ''} ${item.featured_image_url ? styles.bannerLink : ''}`}
-                                href={item.url}
-                                target={external ? '_blank' : undefined}
-                                rel={external ? 'noreferrer' : undefined}
+                                className={`${styles.linkItem} ${item.is_featured ? styles.featuredLink : ''} ${item.featured_image_url ? styles.bannerLink : ''} ${isUnavailable ? styles.unavailableLink : ''}`}
+                                href={isUnavailable ? undefined : item.url}
+                                aria-disabled={isUnavailable || undefined}
+                                target={!isUnavailable && external ? '_blank' : undefined}
+                                rel={!isUnavailable && external ? 'noreferrer' : undefined}
                                 style={{
                                     ...(item.background_color ? { background: item.background_color } : {}),
                                     ...(item.text_color ? { color: item.text_color } : {}),
@@ -166,6 +202,9 @@ export default async function LinksPage() {
                                 )}
                                 {item.is_featured && (
                                     <span className={styles.badge}>{item.badge_text || 'Destacado'}</span>
+                                )}
+                                {isUnavailable && (
+                                    <span className={styles.statusPill}>{statusLabels[item.availability_status] || 'No disponible'}</span>
                                 )}
                                 {item.icon_url ? (
                                     <span className={styles.linkIcon}>
@@ -207,7 +246,7 @@ export default async function LinksPage() {
                     <span className={styles.floatingWhatsappIcon}>
                         <DefaultTypeIcon type="WHATSAPP" />
                     </span>
-                    <span>Comprar por WhatsApp</span>
+                    <span>Estamos para ayudarte</span>
                 </a>
             )}
         </main>
