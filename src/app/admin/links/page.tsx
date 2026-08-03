@@ -23,11 +23,66 @@ const linkTypeOptions = [
     { label: 'Personalizado', value: 'CUSTOM' },
 ];
 
+const themeOptions = [
+    { label: 'Boutique claro', value: 'BOUTIQUE' },
+    { label: 'Negro/dorado premium', value: 'DARK_GOLD' },
+    { label: 'Rosa/nude elegante', value: 'ROSE' },
+    { label: 'Minimal blanco', value: 'MINIMAL' },
+    { label: 'Campana especial', value: 'CAMPAIGN' },
+];
+
+const previewThemeStyles: Record<string, { page: React.CSSProperties; card: React.CSSProperties; accent: string; button: React.CSSProperties; text: string; muted: string }> = {
+    BOUTIQUE: {
+        page: { background: 'linear-gradient(145deg, #f8efe5, #fdf9f2 48%, #efe0cc)', color: '#211a16' },
+        card: { background: 'rgba(255,252,247,0.82)', borderColor: 'rgba(255,255,255,0.72)' },
+        accent: '#c89f53',
+        button: { background: 'rgba(255,255,255,0.78)', color: '#211a16' },
+        text: '#211a16',
+        muted: 'rgba(33,26,22,0.64)',
+    },
+    DARK_GOLD: {
+        page: { background: 'linear-gradient(145deg, #0e0c0b, #211711 55%, #060504)', color: '#fff7e8' },
+        card: { background: 'rgba(18,15,13,0.84)', borderColor: 'rgba(200,159,83,0.28)' },
+        accent: '#d9b56b',
+        button: { background: 'rgba(255,247,232,0.1)', color: '#fff7e8' },
+        text: '#fff7e8',
+        muted: 'rgba(255,247,232,0.64)',
+    },
+    ROSE: {
+        page: { background: 'linear-gradient(145deg, #fff4f2, #f8dfe1 55%, #eac9bc)', color: '#3b2228' },
+        card: { background: 'rgba(255,249,250,0.84)', borderColor: 'rgba(255,255,255,0.78)' },
+        accent: '#c9858e',
+        button: { background: 'rgba(255,255,255,0.76)', color: '#3b2228' },
+        text: '#3b2228',
+        muted: 'rgba(59,34,40,0.64)',
+    },
+    MINIMAL: {
+        page: { background: 'linear-gradient(145deg, #ffffff, #f6f6f6)', color: '#111111' },
+        card: { background: 'rgba(255,255,255,0.92)', borderColor: 'rgba(17,17,17,0.08)' },
+        accent: '#111111',
+        button: { background: '#ffffff', color: '#111111' },
+        text: '#111111',
+        muted: 'rgba(17,17,17,0.58)',
+    },
+    CAMPAIGN: {
+        page: { background: 'linear-gradient(145deg, #28120d, #7c2b1b 52%, #1a0d09)', color: '#fffdf7' },
+        card: { background: 'rgba(34,17,11,0.74)', borderColor: 'rgba(255,253,247,0.2)' },
+        accent: '#ffcf5a',
+        button: { background: 'rgba(255,253,247,0.14)', color: '#fffdf7' },
+        text: '#fffdf7',
+        muted: 'rgba(255,253,247,0.66)',
+    },
+};
+
 type LinkPageSettings = {
     settings_key: string;
     title: string;
     logo_text: string;
     eyebrow_text: string;
+    theme: string;
+    background_image_url: string | null;
+    background_color: string | null;
+    enable_animations: boolean;
     subtitle: string | null;
     avatar_url: string | null;
     announcement: string | null;
@@ -44,6 +99,9 @@ type LinkItem = {
     description: string | null;
     url: string;
     icon_url: string | null;
+    featured_image_url: string | null;
+    background_color: string | null;
+    text_color: string | null;
     link_type: string;
     sort_order: number;
     is_featured: boolean;
@@ -72,6 +130,29 @@ export default function AdminLinksPage() {
     const [savingItem, setSavingItem] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<LinkItem | null>(null);
+    const watchedSettings = Form.useWatch([], settingsForm) as Partial<LinkPageSettingsForm> | undefined;
+
+    const previewSettings: LinkPageSettingsForm = {
+        title: 'Aura Boutique',
+        logo_text: 'Aura',
+        eyebrow_text: 'Links oficiales',
+        theme: 'BOUTIQUE',
+        background_image_url: null,
+        background_color: null,
+        enable_animations: true,
+        subtitle: null,
+        avatar_url: null,
+        announcement: null,
+        announcement_url: null,
+        announcement_logo_url: null,
+        is_announcement_active: true,
+        is_active: true,
+        footer_text: 'Aura Boutique',
+        ...(settings ? { ...settings } : {}),
+        ...(watchedSettings ? { ...watchedSettings } : {}),
+    };
+    const previewTheme = previewThemeStyles[previewSettings.theme] ?? previewThemeStyles.BOUTIQUE;
+    const previewItems = (items ?? []).filter((item) => item.is_active).slice(0, 4);
 
     useEffect(() => {
         if (!settings) return;
@@ -170,9 +251,19 @@ export default function AdminLinksPage() {
         toast.success('Logo del anuncio subido correctamente');
     };
 
+    const handleBackgroundUpload = (url: string) => {
+        settingsForm.setFieldValue('background_image_url', url);
+        toast.success('Fondo subido correctamente');
+    };
+
     const handleItemLogoUpload = (url: string) => {
         itemForm.setFieldValue('icon_url', url);
         toast.success('Logo del enlace subido correctamente');
+    };
+
+    const handleFeaturedImageUpload = (url: string) => {
+        itemForm.setFieldValue('featured_image_url', url);
+        toast.success('Banner destacado subido correctamente');
     };
 
     const columns: TableColumnsType<LinkItem> = [
@@ -207,6 +298,18 @@ export default function AdminLinksPage() {
             key: 'url',
             ellipsis: true,
             render: (url: string) => <Text copyable={{ text: url }} type="secondary">{url}</Text>,
+        },
+        {
+            title: 'Colores',
+            key: 'colors',
+            width: 110,
+            render: (_value: unknown, record: LinkItem) => (
+                <Space>
+                    {record.background_color && <span title="Fondo" style={{ width: 18, height: 18, borderRadius: 6, background: record.background_color, border: '1px solid #ddd', display: 'inline-block' }} />}
+                    {record.text_color && <span title="Texto" style={{ width: 18, height: 18, borderRadius: 6, background: record.text_color, border: '1px solid #ddd', display: 'inline-block' }} />}
+                    {!record.background_color && !record.text_color && <Text type="secondary">-</Text>}
+                </Space>
+            ),
         },
         {
             title: 'Orden',
@@ -259,8 +362,12 @@ export default function AdminLinksPage() {
             <Card title="Perfil y anuncio" loading={loadingSettings} style={{ marginBottom: 24 }}>
                 <Form layout="vertical" form={settingsForm} onFinish={handleSaveSettings}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-                        <Form.Item name="title" label="Titulo" rules={[{ required: true, message: 'Requerido' }]}>
+                        <Form.Item name="title" label="Titulo" rules={[{ required: true, message: 'Requerido' }]}> 
                             <Input placeholder="Aura Boutique" />
+                        </Form.Item>
+
+                        <Form.Item name="theme" label="Tema visual">
+                            <Select options={themeOptions} />
                         </Form.Item>
 
                         <Form.Item name="logo_text" label="Texto del logo si no hay imagen">
@@ -275,12 +382,24 @@ export default function AdminLinksPage() {
                             <Input placeholder="Moda femenina exclusiva..." />
                         </Form.Item>
 
+                        <Form.Item name="background_color" label="Color de fondo">
+                            <Input type="color" />
+                        </Form.Item>
+
+                        <Form.Item name="background_image_url" label="URL de imagen de fondo">
+                            <Input placeholder="https://..." />
+                        </Form.Item>
+
                         <Form.Item name="avatar_url" label="URL del logo principal">
                             <Input placeholder="https://..." />
                         </Form.Item>
 
                         <Form.Item label="Subir logo principal">
                             <ImageUploader onUploadSuccess={handleAvatarUpload} buttonText="Subir Logo" />
+                        </Form.Item>
+
+                        <Form.Item label="Subir imagen de fondo">
+                            <ImageUploader onUploadSuccess={handleBackgroundUpload} buttonText="Subir Fondo" />
                         </Form.Item>
                     </div>
 
@@ -314,12 +433,62 @@ export default function AdminLinksPage() {
                         <Form.Item name="is_announcement_active" label="Mostrar anuncio" valuePropName="checked">
                             <Switch checkedChildren="Visible" unCheckedChildren="Oculto" />
                         </Form.Item>
+
+                        <Form.Item name="enable_animations" label="Animaciones" valuePropName="checked">
+                            <Switch checkedChildren="Activas" unCheckedChildren="Sin animacion" />
+                        </Form.Item>
                     </Space>
 
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Button type="primary" htmlType="submit" loading={savingSettings}>Guardar Configuracion</Button>
                     </Form.Item>
                 </Form>
+            </Card>
+
+            <Card title="Vista previa" style={{ marginBottom: 24 }}>
+                <div style={{ ...previewTheme.page, ...(previewSettings.background_color ? { background: previewSettings.background_color } : {}), ...(previewSettings.background_image_url ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.18), rgba(0,0,0,0.18)), url(${previewSettings.background_image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}), borderRadius: 24, padding: 18 }}>
+                    <div style={{ ...previewTheme.card, maxWidth: 360, margin: '0 auto', border: '1px solid', borderRadius: 24, padding: 18, boxShadow: '0 18px 40px rgba(0,0,0,0.16)' }}>
+                        <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                            <div style={{ width: 72, height: 72, margin: '0 auto 10px', borderRadius: 999, padding: 3, background: previewTheme.accent }}>
+                                {previewSettings.avatar_url ? (
+                                    <Image src={previewSettings.avatar_url} alt="Logo" preview={false} width={66} height={66} style={{ objectFit: 'cover', borderRadius: 999 }} />
+                                ) : (
+                                    <div style={{ width: '100%', height: '100%', borderRadius: 999, background: '#16120f', color: previewTheme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-alex-brush)', fontSize: 24 }}>
+                                        {previewSettings.logo_text}
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ color: previewTheme.accent, fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase' }}>{previewSettings.eyebrow_text}</div>
+                            <div style={{ color: previewTheme.text, fontFamily: 'var(--font-playfair)', fontSize: 28, lineHeight: 1.05 }}>{previewSettings.title}</div>
+                            {previewSettings.subtitle && <div style={{ color: previewTheme.muted, fontSize: 12, marginTop: 6 }}>{previewSettings.subtitle}</div>}
+                        </div>
+
+                        {previewSettings.is_announcement_active && previewSettings.announcement && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 16, padding: 12, marginBottom: 10, color: '#fff', background: 'linear-gradient(135deg, #1c1713, #6a4528)' }}>
+                                {previewSettings.announcement_logo_url && <Image src={previewSettings.announcement_logo_url} alt="Anuncio" preview={false} width={34} height={34} style={{ objectFit: 'cover', borderRadius: 10 }} />}
+                                <div>
+                                    <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', opacity: 0.72 }}>Anuncio</div>
+                                    <strong style={{ fontSize: 12 }}>{previewSettings.announcement}</strong>
+                                </div>
+                            </div>
+                        )}
+
+                        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                            {previewItems.map((item) => (
+                                <div key={item.link_id} style={{ ...previewTheme.button, ...(item.background_color ? { background: item.background_color } : {}), ...(item.text_color ? { color: item.text_color } : {}), minHeight: item.is_featured && item.featured_image_url ? 92 : 56, position: 'relative', overflow: 'hidden', borderRadius: 16, padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {item.is_featured && item.featured_image_url && <Image src={item.featured_image_url} alt="" preview={false} width="100%" height={92} style={{ position: 'absolute', inset: 0, objectFit: 'cover', filter: 'brightness(0.62)' }} />}
+                                    <span style={{ position: 'relative', zIndex: 1, width: 34, height: 34, borderRadius: 10, background: previewTheme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flex: '0 0 34px' }}>
+                                        {item.icon_url ? <Image src={item.icon_url} alt="" preview={false} width={34} height={34} style={{ objectFit: 'cover' }} /> : <Text style={{ color: '#111', fontSize: 10, fontWeight: 800 }}>{item.link_type.slice(0, 2)}</Text>}
+                                    </span>
+                                    <span style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
+                                        <strong style={{ color: item.is_featured && item.featured_image_url ? '#fff' : 'inherit', lineHeight: 1.1 }}>{item.title}</strong>
+                                        {item.description && <small style={{ color: item.is_featured && item.featured_image_url ? 'rgba(255,255,255,0.76)' : previewTheme.muted }}>{item.description}</small>}
+                                    </span>
+                                </div>
+                            ))}
+                        </Space>
+                    </div>
+                </div>
             </Card>
 
             <Table
@@ -358,6 +527,26 @@ export default function AdminLinksPage() {
 
                         <Form.Item label="Subir logo del enlace">
                             <ImageUploader onUploadSuccess={handleItemLogoUpload} buttonText="Subir Logo" />
+                        </Form.Item>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                        <Form.Item name="featured_image_url" label="URL del banner destacado">
+                            <Input placeholder="https://..." />
+                        </Form.Item>
+
+                        <Form.Item label="Subir banner destacado">
+                            <ImageUploader onUploadSuccess={handleFeaturedImageUpload} buttonText="Subir Banner" />
+                        </Form.Item>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                        <Form.Item name="background_color" label="Color del boton">
+                            <Input type="color" />
+                        </Form.Item>
+
+                        <Form.Item name="text_color" label="Color del texto">
+                            <Input type="color" />
                         </Form.Item>
                     </div>
 

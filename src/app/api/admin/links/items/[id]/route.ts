@@ -24,6 +24,12 @@ function cleanUrl(value: unknown) {
     }
 }
 
+function cleanColor(value: unknown) {
+    const color = cleanString(value, 20);
+    if (!color) return null;
+    return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color) ? color : null;
+}
+
 function cleanSortOrder(value: unknown) {
     const number = Number(value ?? 0);
     return Number.isFinite(number) ? Math.trunc(number) : 0;
@@ -45,6 +51,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const title = cleanString(body.title, 120);
         const url = cleanUrl(body.url);
         const icon_url = cleanUrl(body.icon_url);
+        const featured_image_url = cleanUrl(body.featured_image_url);
+        const background_color = cleanColor(body.background_color);
+        const text_color = cleanColor(body.text_color);
 
         if (!title || !url) {
             return NextResponse.json({ error: 'Titulo y URL valida son requeridos' }, { status: 400 });
@@ -54,6 +63,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             return NextResponse.json({ error: 'La URL del logo del enlace no es valida' }, { status: 400 });
         }
 
+        if (body.featured_image_url && !featured_image_url) {
+            return NextResponse.json({ error: 'La URL del banner destacado no es valida' }, { status: 400 });
+        }
+
+        if (body.background_color && !background_color) {
+            return NextResponse.json({ error: 'El color de fondo debe estar en formato hex' }, { status: 400 });
+        }
+
+        if (body.text_color && !text_color) {
+            return NextResponse.json({ error: 'El color de texto debe estar en formato hex' }, { status: 400 });
+        }
+
         const item = await prisma.link_page_item.update({
             where: { link_id: id },
             data: {
@@ -61,6 +82,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 description: cleanString(body.description, 250),
                 url,
                 icon_url,
+                featured_image_url,
+                background_color,
+                text_color,
                 link_type: cleanLinkType(body.link_type),
                 sort_order: cleanSortOrder(body.sort_order),
                 is_featured: body.is_featured ?? false,
