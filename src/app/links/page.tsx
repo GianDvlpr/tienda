@@ -29,6 +29,17 @@ function isExternalUrl(url: string) {
     return /^(https?:|mailto:|tel:)/i.test(url);
 }
 
+function renderIcon(imageUrl: string | null, label: string, className: string) {
+    if (!imageUrl) return null;
+
+    return (
+        <span className={className}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt={label} />
+        </span>
+    );
+}
+
 export default async function LinksPage() {
     const { settings, items } = await getPublicLinkPage();
     const activeAnnouncement = settings.is_announcement_active && settings.announcement;
@@ -61,13 +72,19 @@ export default async function LinksPage() {
                             target={isExternalUrl(settings.announcement_url) ? '_blank' : undefined}
                             rel={isExternalUrl(settings.announcement_url) ? 'noreferrer' : undefined}
                         >
-                            <span>Anuncio</span>
-                            <strong>{settings.announcement}</strong>
+                            {renderIcon(settings.announcement_logo_url, 'Logo del anuncio', styles.announcementLogo)}
+                            <span className={styles.announcementText}>
+                                <small>Anuncio</small>
+                                <strong>{settings.announcement}</strong>
+                            </span>
                         </a>
                     ) : (
                         <div className={styles.announcement}>
-                            <span>Anuncio</span>
-                            <strong>{settings.announcement}</strong>
+                            {renderIcon(settings.announcement_logo_url, 'Logo del anuncio', styles.announcementLogo)}
+                            <span className={styles.announcementText}>
+                                <small>Anuncio</small>
+                                <strong>{settings.announcement}</strong>
+                            </span>
                         </div>
                     )
                 )}
@@ -84,7 +101,14 @@ export default async function LinksPage() {
                                 target={external ? '_blank' : undefined}
                                 rel={external ? 'noreferrer' : undefined}
                             >
-                                <span className={styles.linkType}>{typeLabels[item.link_type] ?? 'LINK'}</span>
+                                {item.icon_url ? (
+                                    <span className={styles.linkIcon}>
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={item.icon_url} alt={item.title} />
+                                    </span>
+                                ) : (
+                                    <span className={styles.linkType}>{typeLabels[item.link_type] ?? 'LINK'}</span>
+                                )}
                                 <span className={styles.linkText}>
                                     <strong>{item.title}</strong>
                                     {item.description && <small>{item.description}</small>}

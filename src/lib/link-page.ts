@@ -9,6 +9,7 @@ export const defaultLinkPageSettings = {
     avatar_url: null as string | null,
     announcement: 'Nuevo catalogo disponible',
     announcement_url: '/shop',
+    announcement_logo_url: null as string | null,
     is_announcement_active: true,
     is_active: true,
     created_at: new Date(0),

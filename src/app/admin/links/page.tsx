@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
-import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Button, Card, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { fetcher } from '@/lib/fetcher';
@@ -30,6 +30,7 @@ type LinkPageSettings = {
     avatar_url: string | null;
     announcement: string | null;
     announcement_url: string | null;
+    announcement_logo_url: string | null;
     is_announcement_active: boolean;
     is_active: boolean;
 };
@@ -39,6 +40,7 @@ type LinkItem = {
     title: string;
     description: string | null;
     url: string;
+    icon_url: string | null;
     link_type: string;
     sort_order: number;
     is_featured: boolean;
@@ -157,10 +159,29 @@ export default function AdminLinksPage() {
 
     const handleAvatarUpload = (url: string) => {
         settingsForm.setFieldValue('avatar_url', url);
-        toast.success('Avatar subido correctamente');
+        toast.success('Logo principal subido correctamente');
+    };
+
+    const handleAnnouncementLogoUpload = (url: string) => {
+        settingsForm.setFieldValue('announcement_logo_url', url);
+        toast.success('Logo del anuncio subido correctamente');
+    };
+
+    const handleItemLogoUpload = (url: string) => {
+        itemForm.setFieldValue('icon_url', url);
+        toast.success('Logo del enlace subido correctamente');
     };
 
     const columns: TableColumnsType<LinkItem> = [
+        {
+            title: 'Logo',
+            dataIndex: 'icon_url',
+            key: 'icon_url',
+            width: 80,
+            render: (url: string | null, record: LinkItem) => url ? (
+                <Image src={url} alt={record.title} width={44} height={44} style={{ objectFit: 'cover', borderRadius: 12 }} />
+            ) : <Text type="secondary">-</Text>,
+        },
         {
             title: 'Enlace',
             key: 'title',
@@ -243,12 +264,12 @@ export default function AdminLinksPage() {
                             <Input placeholder="Moda femenina exclusiva..." />
                         </Form.Item>
 
-                        <Form.Item name="avatar_url" label="URL del avatar o logo">
+                        <Form.Item name="avatar_url" label="URL del logo principal">
                             <Input placeholder="https://..." />
                         </Form.Item>
 
-                        <Form.Item label="Subir avatar">
-                            <ImageUploader onUploadSuccess={handleAvatarUpload} buttonText="Subir Imagen" />
+                        <Form.Item label="Subir logo principal">
+                            <ImageUploader onUploadSuccess={handleAvatarUpload} buttonText="Subir Logo" />
                         </Form.Item>
                     </div>
 
@@ -259,6 +280,16 @@ export default function AdminLinksPage() {
                     <Form.Item name="announcement_url" label="URL del anuncio">
                         <Input placeholder="/shop o https://..." />
                     </Form.Item>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                        <Form.Item name="announcement_logo_url" label="URL del logo del anuncio">
+                            <Input placeholder="https://..." />
+                        </Form.Item>
+
+                        <Form.Item label="Subir logo del anuncio">
+                            <ImageUploader onUploadSuccess={handleAnnouncementLogoUpload} buttonText="Subir Logo" />
+                        </Form.Item>
+                    </div>
 
                     <Space size="large" wrap>
                         <Form.Item name="is_active" label="Pagina publica" valuePropName="checked">
@@ -304,6 +335,16 @@ export default function AdminLinksPage() {
                     <Form.Item name="url" label="URL" rules={[{ required: true, message: 'Requerido' }]}>
                         <Input placeholder="/shop, https://instagram.com/... o mailto:hola@..." />
                     </Form.Item>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+                        <Form.Item name="icon_url" label="URL del logo del enlace">
+                            <Input placeholder="https://..." />
+                        </Form.Item>
+
+                        <Form.Item label="Subir logo del enlace">
+                            <ImageUploader onUploadSuccess={handleItemLogoUpload} buttonText="Subir Logo" />
+                        </Form.Item>
+                    </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
                         <Form.Item name="link_type" label="Tipo">

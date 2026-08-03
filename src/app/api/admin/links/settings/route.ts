@@ -55,6 +55,11 @@ export async function PUT(req: Request) {
             return NextResponse.json({ error: 'La URL del anuncio no es valida' }, { status: 400 });
         }
 
+        const announcement_logo_url = cleanUrl(body.announcement_logo_url);
+        if (body.announcement_logo_url && !announcement_logo_url) {
+            return NextResponse.json({ error: 'La URL del logo del anuncio no es valida' }, { status: 400 });
+        }
+
         const settings = await prisma.link_page_settings.upsert({
             where: { settings_key: LINK_PAGE_SETTINGS_KEY },
             create: {
@@ -64,6 +69,7 @@ export async function PUT(req: Request) {
                 avatar_url,
                 announcement: cleanString(body.announcement, 300),
                 announcement_url,
+                announcement_logo_url,
                 is_announcement_active: body.is_announcement_active ?? defaultLinkPageSettings.is_announcement_active,
                 is_active: body.is_active ?? defaultLinkPageSettings.is_active,
             },
@@ -73,6 +79,7 @@ export async function PUT(req: Request) {
                 avatar_url,
                 announcement: cleanString(body.announcement, 300),
                 announcement_url,
+                announcement_logo_url,
                 is_announcement_active: body.is_announcement_active ?? false,
                 is_active: body.is_active ?? true,
                 updated_at: new Date(),

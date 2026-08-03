@@ -103,8 +103,8 @@
 
 .announcement {
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    align-items: center;
+    gap: 13px;
     margin-bottom: 16px;
     padding: 15px 17px;
     border: 1px solid rgba(200, 159, 83, 0.36);
@@ -114,7 +114,32 @@
     box-shadow: 0 18px 34px rgba(80, 48, 25, 0.18);
 }
 
-.announcement span {
+.announcementLogo {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: rgba(255, 249, 238, 0.12);
+    overflow: hidden;
+}
+
+.announcementLogo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.announcementText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.announcementText small {
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.22em;
@@ -122,7 +147,7 @@
     color: rgba(255, 249, 238, 0.7);
 }
 
-.announcement strong {
+.announcementText strong {
     font-size: 15px;
     line-height: 1.35;
 }
@@ -158,7 +183,8 @@
     border-color: rgba(200, 159, 83, 0.52);
 }
 
-.linkType {
+.linkType,
+.linkIcon {
     width: 46px;
     height: 46px;
     display: inline-flex;
@@ -170,6 +196,20 @@
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.04em;
+}
+
+.linkIcon {
+    padding: 4px;
+    background: #fffaf0;
+    border: 1px solid rgba(200, 159, 83, 0.2);
+    overflow: hidden;
+}
+
+.linkIcon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
 }
 
 .linkText {

@@ -54,9 +54,14 @@ export async function POST(req: Request) {
         const body = await req.json();
         const title = cleanString(body.title, 120);
         const url = cleanUrl(body.url);
+        const icon_url = cleanUrl(body.icon_url);
 
         if (!title || !url) {
             return NextResponse.json({ error: 'Titulo y URL valida son requeridos' }, { status: 400 });
+        }
+
+        if (body.icon_url && !icon_url) {
+            return NextResponse.json({ error: 'La URL del logo del enlace no es valida' }, { status: 400 });
         }
 
         const item = await prisma.link_page_item.create({
@@ -64,6 +69,7 @@ export async function POST(req: Request) {
                 title,
                 description: cleanString(body.description, 250),
                 url,
+                icon_url,
                 link_type: cleanLinkType(body.link_type),
                 sort_order: cleanSortOrder(body.sort_order),
                 is_featured: body.is_featured ?? false,
