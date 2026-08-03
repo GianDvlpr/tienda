@@ -273,6 +273,7 @@ model link_page_item {
   featured_image_url String? @db.VarChar(500)
   background_color String? @db.VarChar(20)
   text_color String? @db.VarChar(20)
+  badge_text String? @db.VarChar(40)
   link_type   String   @default("CUSTOM") @db.VarChar(40)
   sort_order  Int      @default(0)
   is_featured Boolean  @default(false)

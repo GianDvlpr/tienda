@@ -28,6 +28,33 @@
     background-size: cover;
 }
 
+.page::before,
+.page::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border-radius: 999px;
+    opacity: 0;
+}
+
+.page::before {
+    width: 420px;
+    height: 420px;
+    left: -160px;
+    bottom: -180px;
+    background: color-mix(in srgb, var(--accent) 34%, transparent);
+    filter: blur(34px);
+}
+
+.page::after {
+    width: 340px;
+    height: 340px;
+    right: -130px;
+    top: 18%;
+    background: rgba(255, 255, 255, 0.28);
+    filter: blur(42px);
+}
+
 .themeDarkGold {
     --page-text: #fff7e8;
     --page-muted: rgba(255, 247, 232, 0.72);
@@ -121,15 +148,38 @@
     width: min(100%, 480px);
     position: relative;
     z-index: 1;
+    overflow: hidden;
     padding: 28px;
     border: 1px solid var(--card-border);
     border-radius: 34px;
     background: var(--card-bg);
-    box-shadow: 0 28px 80px rgba(80, 48, 25, 0.18);
-    backdrop-filter: blur(18px);
+    box-shadow: 0 30px 90px rgba(80, 48, 25, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+    backdrop-filter: blur(22px) saturate(1.12);
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 34%),
+        radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%);
+}
+
+.card::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    pointer-events: none;
+    border-radius: 33px;
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .brandBlock {
+    position: relative;
+    z-index: 1;
     text-align: center;
     padding: 8px 6px 22px;
 }
@@ -194,6 +244,8 @@
 }
 
 .announcement {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 13px;
@@ -245,12 +297,16 @@
 }
 
 .linksList {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
 .linkItem {
+    position: relative;
+    overflow: hidden;
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
@@ -262,13 +318,33 @@
     color: var(--button-text);
     background: var(--button-bg);
     box-shadow: 0 12px 26px rgba(80, 48, 25, 0.08);
-    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    isolation: isolate;
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.linkItem::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.3) 42%, transparent 62%);
+    transform: translateX(-120%);
+    transition: transform 520ms ease;
 }
 
 .linkItem:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.01);
     border-color: color-mix(in srgb, var(--accent) 58%, transparent);
-    box-shadow: 0 18px 32px rgba(80, 48, 25, 0.14);
+    box-shadow: 0 20px 38px rgba(80, 48, 25, 0.16);
+    filter: saturate(1.06);
+}
+
+.linkItem:hover::after {
+    transform: translateX(120%);
+}
+
+.linkItem:active {
+    transform: translateY(0) scale(0.99);
 }
 
 .featuredLink {
@@ -281,6 +357,27 @@
     min-height: 134px;
     overflow: hidden;
     align-items: end;
+}
+
+.badge {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 2;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 999px;
+    color: #23170e;
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 68%, white));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 .featuredImage {
@@ -318,6 +415,8 @@
 
 .linkType,
 .linkIcon {
+    position: relative;
+    z-index: 1;
     width: 46px;
     height: 46px;
     display: inline-flex;
@@ -346,6 +445,8 @@
 }
 
 .linkText {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -365,11 +466,18 @@
 }
 
 .linkArrow {
+    position: relative;
+    z-index: 1;
     color: var(--accent-strong);
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+    transition: transform 180ms ease, color 180ms ease;
+}
+
+.linkItem:hover .linkArrow {
+    transform: translateX(3px);
 }
 
 .emptyState {
@@ -389,6 +497,8 @@
 }
 
 .footer {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -399,6 +509,48 @@
     font-size: 12px;
 }
 
+.floatingWhatsapp {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 10px 16px 10px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 999px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #128c7e, #25d366);
+    box-shadow: 0 18px 44px rgba(18, 140, 126, 0.34);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.floatingWhatsapp:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 24px 54px rgba(18, 140, 126, 0.42);
+    filter: saturate(1.08);
+}
+
+.floatingWhatsapp:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.floatingWhatsappIcon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: #128c7e;
+    background: #ffffff;
+}
+
 .footer a {
     color: var(--accent-strong);
     font-weight: 700;
@@ -407,8 +559,23 @@
 .withAnimations .brandBlock,
 .withAnimations .announcement,
 .withAnimations .linkItem,
-.withAnimations .footer {
+.withAnimations .footer,
+.withAnimations .floatingWhatsapp {
     animation: riseIn 560ms ease both;
+}
+
+.withAnimations::before {
+    opacity: 0.8;
+    animation: ambientGlow 10s ease-in-out infinite alternate;
+}
+
+.withAnimations::after {
+    opacity: 0.74;
+    animation: ambientGlowReverse 12s ease-in-out infinite alternate;
+}
+
+.withAnimations .glowTop {
+    animation: breatheGlow 7s ease-in-out infinite alternate;
 }
 
 .withAnimations .announcement {
@@ -421,6 +588,10 @@
 .withAnimations .linkItem:nth-child(4) { animation-delay: 300ms; }
 .withAnimations .linkItem:nth-child(n + 5) { animation-delay: 360ms; }
 
+.withAnimations .floatingWhatsapp {
+    animation-delay: 460ms;
+}
+
 @keyframes riseIn {
     from {
         opacity: 0;
@@ -432,10 +603,25 @@
     }
 }
 
+@keyframes ambientGlow {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(46px, -28px, 0) scale(1.14); }
+}
+
+@keyframes ambientGlowReverse {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-36px, 34px, 0) scale(1.1); }
+}
+
+@keyframes breatheGlow {
+    from { opacity: 0.6; transform: translateX(-50%) scale(0.95); }
+    to { opacity: 0.95; transform: translateX(-50%) scale(1.08); }
+}
+
 @media (max-width: 520px) {
     .page {
         align-items: flex-start;
-        padding: 18px 12px 28px;
+        padding: 18px 12px 94px;
     }
 
     .card {
@@ -449,5 +635,16 @@
 
     .linkArrow {
         display: none;
+    }
+
+    .floatingWhatsapp {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        justify-content: center;
+    }
+
+    .badge {
+        max-width: 54%;
     }
 }

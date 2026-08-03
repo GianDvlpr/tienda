@@ -102,6 +102,7 @@ type LinkItem = {
     featured_image_url: string | null;
     background_color: string | null;
     text_color: string | null;
+    badge_text: string | null;
     link_type: string;
     sort_order: number;
     is_featured: boolean;
@@ -323,7 +324,7 @@ export default function AdminLinksPage() {
             render: (_value: unknown, record: LinkItem) => (
                 <Space wrap>
                     <Tag color={record.is_active ? 'green' : 'red'}>{record.is_active ? 'Visible' : 'Oculto'}</Tag>
-                    {record.is_featured && <Tag color="gold">Destacado</Tag>}
+                    {record.is_featured && <Tag color="gold">{record.badge_text || 'Destacado'}</Tag>}
                 </Space>
             ),
         },
@@ -362,7 +363,7 @@ export default function AdminLinksPage() {
             <Card title="Perfil y anuncio" loading={loadingSettings} style={{ marginBottom: 24 }}>
                 <Form layout="vertical" form={settingsForm} onFinish={handleSaveSettings}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
-                        <Form.Item name="title" label="Titulo" rules={[{ required: true, message: 'Requerido' }]}> 
+                        <Form.Item name="title" label="Titulo" rules={[{ required: true, message: 'Requerido' }]}>
                             <Input placeholder="Aura Boutique" />
                         </Form.Item>
 
@@ -477,6 +478,7 @@ export default function AdminLinksPage() {
                             {previewItems.map((item) => (
                                 <div key={item.link_id} style={{ ...previewTheme.button, ...(item.background_color ? { background: item.background_color } : {}), ...(item.text_color ? { color: item.text_color } : {}), minHeight: item.is_featured && item.featured_image_url ? 92 : 56, position: 'relative', overflow: 'hidden', borderRadius: 16, padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                                     {item.is_featured && item.featured_image_url && <Image src={item.featured_image_url} alt="" preview={false} width="100%" height={92} style={{ position: 'absolute', inset: 0, objectFit: 'cover', filter: 'brightness(0.62)' }} />}
+                                    {item.is_featured && <span style={{ position: 'absolute', zIndex: 2, top: 8, right: 8, borderRadius: 999, padding: '3px 8px', color: '#23170e', background: previewTheme.accent, fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{item.badge_text || 'Destacado'}</span>}
                                     <span style={{ position: 'relative', zIndex: 1, width: 34, height: 34, borderRadius: 10, background: previewTheme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flex: '0 0 34px' }}>
                                         {item.icon_url ? <Image src={item.icon_url} alt="" preview={false} width={34} height={34} style={{ objectFit: 'cover' }} /> : <Text style={{ color: '#111', fontSize: 10, fontWeight: 800 }}>{item.link_type.slice(0, 2)}</Text>}
                                     </span>
@@ -514,6 +516,10 @@ export default function AdminLinksPage() {
 
                     <Form.Item name="description" label="Descripcion">
                         <TextArea rows={2} placeholder="Texto corto opcional" />
+                    </Form.Item>
+
+                    <Form.Item name="badge_text" label="Etiqueta destacada">
+                        <Input placeholder="Nuevo, Promo, Mas pedido..." maxLength={40} />
                     </Form.Item>
 
                     <Form.Item name="url" label="URL" rules={[{ required: true, message: 'Requerido' }]}>

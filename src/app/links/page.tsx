@@ -86,6 +86,7 @@ function DefaultTypeIcon({ type }: { type: string }) {
 export default async function LinksPage() {
     const { settings, items } = await getPublicLinkPage();
     const activeAnnouncement = settings.is_announcement_active && settings.announcement;
+    const whatsappLink = items.find((item) => item.link_type === 'WHATSAPP');
     const pageStyle: CSSProperties = {
         ...(settings.background_color ? { backgroundColor: settings.background_color } : {}),
         ...(settings.background_image_url ? { backgroundImage: `linear-gradient(rgba(20, 16, 14, 0.2), rgba(20, 16, 14, 0.2)), url(${settings.background_image_url})` } : {}),
@@ -163,6 +164,9 @@ export default async function LinksPage() {
                                         <img src={item.featured_image_url} alt="" />
                                     </span>
                                 )}
+                                {item.is_featured && (
+                                    <span className={styles.badge}>{item.badge_text || 'Destacado'}</span>
+                                )}
                                 {item.icon_url ? (
                                     <span className={styles.linkIcon}>
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -193,6 +197,19 @@ export default async function LinksPage() {
                     <a href="/shop">Ir al catalogo</a>
                 </footer>
             </section>
+            {whatsappLink && (
+                <a
+                    className={styles.floatingWhatsapp}
+                    href={whatsappLink.url}
+                    target={isExternalUrl(whatsappLink.url) ? '_blank' : undefined}
+                    rel={isExternalUrl(whatsappLink.url) ? 'noreferrer' : undefined}
+                >
+                    <span className={styles.floatingWhatsappIcon}>
+                        <DefaultTypeIcon type="WHATSAPP" />
+                    </span>
+                    <span>Comprar por WhatsApp</span>
+                </a>
+            )}
         </main>
     );
 }

@@ -94,6 +94,7 @@ export async function POST(req: Request) {
                 featured_image_url,
                 background_color,
                 text_color,
+                badge_text: cleanString(body.badge_text, 40),
                 link_type: cleanLinkType(body.link_type),
                 sort_order: cleanSortOrder(body.sort_order),
                 is_featured: body.is_featured ?? false,
