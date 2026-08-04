@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
+import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -33,6 +34,7 @@ type Product = {
 
 type SaleItem = {
     variant_id: string;
+    product_id: string;
     product_name: string;
     sku: string;
     size: string;
@@ -83,6 +85,7 @@ export default function NewAdminOrderPage() {
     const [form] = Form.useForm();
     const router = useRouter();
     const { data: products, isLoading } = useSWR<Product[]>('/api/admin/products', fetcher);
+    const { data: activeBundles } = useSWR<BundleDiscountPromotion[]>('/api/store/bundles', fetcher);
     const [selectedVariantId, setSelectedVariantId] = React.useState<string>();
     const [selectedQty, setSelectedQty] = React.useState(1);
     const [selectedPrice, setSelectedPrice] = React.useState<number | null>(null);
@@ -106,7 +109,12 @@ export default function NewAdminOrderPage() {
         })
     );
 
-    const total = items.reduce((sum, item) => sum + item.qty * item.unit_price, 0);
+    const subtotal = items.reduce((sum, item) => sum + item.qty * item.unit_price, 0);
+    const bundleDiscount = calculateBundleDiscount(
+        items.map(item => ({ productId: item.product_id, qty: item.qty, unitPrice: item.unit_price })),
+        activeBundles || []
+    );
+    const total = Math.max(0, subtotal - bundleDiscount);
 
     const handleVariantChange = (variantId: string) => {
         setSelectedVariantId(variantId);
@@ -162,6 +170,7 @@ export default function NewAdminOrderPage() {
                 ...prev,
                 {
                     variant_id: option.variant.variant_id,
+                    product_id: option.product.product_id,
                     product_name: option.product.name,
                     sku: option.variant.sku,
                     size: option.variant.size,
@@ -391,7 +400,13 @@ export default function NewAdminOrderPage() {
                         />
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, gap: 16, flexWrap: 'wrap' }}>
-                            <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(total)}</Title>
+                            <Space orientation="vertical" size={2}>
+                                <Text type="secondary">Subtotal: {formatPEN(subtotal)}</Text>
+                                {bundleDiscount > 0 && (
+                                    <Text type="success">Descuento conjunto: -{formatPEN(bundleDiscount)}</Text>
+                                )}
+                                <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(total)}</Title>
+                            </Space>
                             <Button
                                 type="primary"
                                 icon={<SaveOutlined />}

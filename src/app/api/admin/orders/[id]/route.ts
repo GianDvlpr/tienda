@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { trackerPusherServer } from '@/lib/pusher';
 import { recordAudit } from '@/lib/audit';
+import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 
 export const runtime = 'nodejs';
 
@@ -193,7 +194,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 const variantMap = new Map(variants.map(variant => [variant.variant_id, variant]));
                 let subtotal = 0;
 
-                for (const item of items) {
+                const preparedItems = items.map(item => {
                     const variant = variantMap.get(item.variantId);
                     if (!variant) {
                         throw new Error('Uno de los productos seleccionados no existe');
@@ -203,10 +204,36 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                         throw new Error(`Stock insuficiente para "${variant.product.name}" (${variant.size}, ${variant.color}). Disponibles: ${variant.stock}`);
                     }
 
-                    subtotal += item.unitPrice * item.qty;
-                }
+                    const lineTotal = item.unitPrice * item.qty;
+                    subtotal += lineTotal;
 
-                const discountTotal = Number(oldData.discount_total || 0);
+                    return { item, variant, lineTotal, productId: String(variant.product_id) };
+                });
+
+                const activeBundles = await tx.bundle_promotion.findMany({
+                    where: { is_active: true },
+                    include: { items: true }
+                });
+                const bundlePromotions: BundleDiscountPromotion[] = activeBundles.map(bundle => ({
+                    requiredProductIds: bundle.items.map(bundleItem => String(bundleItem.product_id)),
+                    discount_amount: Number(bundle.discount_amount || 0),
+                    bundle_price: bundle.bundle_price === null ? null : Number(bundle.bundle_price),
+                    tier_2_price: bundle.tier_2_price === null ? null : Number(bundle.tier_2_price),
+                    tier_3_price: bundle.tier_3_price === null ? null : Number(bundle.tier_3_price),
+                }));
+                const bundleDiscount = calculateBundleDiscount(
+                    preparedItems.map(prepared => ({
+                        productId: prepared.productId,
+                        qty: prepared.item.qty,
+                        unitPrice: prepared.item.unitPrice,
+                    })),
+                    bundlePromotions
+                );
+                const couponDiscount = Number(oldData.coupon_discount || 0);
+                const existingDiscountTotal = Number(oldData.discount_total || 0);
+                const oldBundleDiscount = Number(oldData.bundle_discount || 0);
+                const otherDiscount = Math.max(0, existingDiscountTotal - oldBundleDiscount - couponDiscount);
+                const discountTotal = bundleDiscount + couponDiscount + otherDiscount;
                 const shippingCost = Number(oldData.shipping_cost || 0);
                 const total = Math.max(0, subtotal + shippingCost - discountTotal);
 
@@ -215,15 +242,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     data: {
                         ...headerData,
                         subtotal,
+                        discount_total: discountTotal,
+                        bundle_discount: bundleDiscount,
+                        coupon_discount: couponDiscount,
                         total,
                     }
                 });
 
-                for (const item of items) {
-                    const variant = variantMap.get(item.variantId);
-                    if (!variant) throw new Error('Uno de los productos seleccionados no existe');
-
-                    const lineTotal = item.unitPrice * item.qty;
+                for (const prepared of preparedItems) {
+                    const { item, variant, lineTotal } = prepared;
                     const stockBefore = variant.stock;
                     const stockAfter = stockBefore - item.qty;
 

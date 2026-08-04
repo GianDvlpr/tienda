@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
+import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 import Link from 'next/link';
 import dayjs from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
@@ -86,6 +87,7 @@ type OrderItem = {
 
 type EditableOrderItem = {
     variant_id: string;
+    product_id?: string;
     product_name: string;
     sku: string;
     size: string;
@@ -162,6 +164,7 @@ export default function OrderDetailPage() {
     const { data: order, isLoading, mutate } = useSWR<AdminOrderDetail>(id ? `/api/admin/orders/${id}` : null, fetcher);
     const [isEditing, setIsEditing] = useState(false);
     const { data: products, isLoading: productsLoading } = useSWR<Product[]>(isEditing ? '/api/admin/products' : null, fetcher);
+    const { data: activeBundles } = useSWR<BundleDiscountPromotion[]>(isEditing ? '/api/store/bundles' : null, fetcher);
 
     const [editItems, setEditItems] = useState<EditableOrderItem[]>([]);
     const [selectedVariantId, setSelectedVariantId] = useState<string>();
@@ -189,9 +192,21 @@ export default function OrderDetailPage() {
             };
         })
     );
+    const productIdByVariant = new Map(variantOptions.map(option => [option.value, option.product.product_id]));
 
     const editSubtotal = editItems.reduce((sum, item) => sum + item.qty * item.unit_price, 0);
-    const editTotal = order ? Math.max(0, editSubtotal + Number(order.shipping_cost || 0) - Number(order.discount_total || 0)) : editSubtotal;
+    const editBundleDiscount = calculateBundleDiscount(
+        editItems.map(item => ({
+            productId: item.product_id || productIdByVariant.get(item.variant_id) || '',
+            qty: item.qty,
+            unitPrice: item.unit_price,
+        })),
+        activeBundles || []
+    );
+    const editCouponDiscount = Number(order?.coupon_discount || 0);
+    const editOtherDiscount = Math.max(0, Number(order?.discount_total || 0) - Number(order?.bundle_discount || 0) - editCouponDiscount);
+    const editDiscountTotal = editBundleDiscount + editCouponDiscount + editOtherDiscount;
+    const editTotal = order ? Math.max(0, editSubtotal + Number(order.shipping_cost || 0) - editDiscountTotal) : editSubtotal;
     const orderPhotos = order?.order_photo || [];
 
     const handleStartEdit = () => {
@@ -320,6 +335,7 @@ export default function OrderDetailPage() {
                 ...prev,
                 {
                     variant_id: option.variant.variant_id,
+                    product_id: option.product.product_id,
                     product_name: option.product.name,
                     sku: option.variant.sku,
                     size: option.variant.size,
@@ -808,9 +824,9 @@ export default function OrderDetailPage() {
                             <Space orientation="vertical" align="end" size={2}>
                                 <Text type="secondary">Subtotal: {formatPEN(isEditing ? editSubtotal : Number(order.subtotal))}</Text>
                                 
-                                {Number(order.bundle_discount || 0) > 0 && (
+                                {(isEditing ? editBundleDiscount : Number(order.bundle_discount || 0)) > 0 && (
                                     <Text type="success">
-                                        Descuento Conjunto: -{formatPEN(Number(order.bundle_discount))}
+                                        Descuento Conjunto: -{formatPEN(isEditing ? editBundleDiscount : Number(order.bundle_discount))}
                                     </Text>
                                 )}
                                 
@@ -821,7 +837,13 @@ export default function OrderDetailPage() {
                                 )}
 
                                 {/* Fallback para pedidos muy antiguos */}
-                                {!order.bundle_discount && !order.coupon_discount && Number(order.discount_total || 0) > 0 && !order.coupon_code && (
+                                {isEditing && editOtherDiscount > 0 && (
+                                     <Text type="danger">
+                                        Descuento General: -{formatPEN(editOtherDiscount)}
+                                    </Text>
+                                )}
+
+                                {!isEditing && !order.bundle_discount && !order.coupon_discount && Number(order.discount_total || 0) > 0 && !order.coupon_code && (
                                      <Text type="danger">
                                         Descuento General: -{formatPEN(Number(order.discount_total))}
                                     </Text>

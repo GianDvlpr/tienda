@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 
 export const runtime = 'nodejs';
 
@@ -153,8 +154,30 @@ export async function POST(req: Request) {
                 const lineTotal = unitPrice * item.qty;
                 subtotal += lineTotal;
 
-                return { item, variant, unitPrice, lineTotal };
+                return { item, variant, unitPrice, lineTotal, productId: String(variant.product_id) };
             });
+
+            const activeBundles = await tx.bundle_promotion.findMany({
+                where: { is_active: true },
+                include: { items: true }
+            });
+            const bundlePromotions: BundleDiscountPromotion[] = activeBundles.map(bundle => ({
+                requiredProductIds: bundle.items.map(bundleItem => String(bundleItem.product_id)),
+                discount_amount: Number(bundle.discount_amount || 0),
+                bundle_price: bundle.bundle_price === null ? null : Number(bundle.bundle_price),
+                tier_2_price: bundle.tier_2_price === null ? null : Number(bundle.tier_2_price),
+                tier_3_price: bundle.tier_3_price === null ? null : Number(bundle.tier_3_price),
+            }));
+            const bundleDiscount = calculateBundleDiscount(
+                preparedItems.map(prepared => ({
+                    productId: prepared.productId,
+                    qty: prepared.item.qty,
+                    unitPrice: prepared.unitPrice,
+                })),
+                bundlePromotions
+            );
+            const discountTotal = bundleDiscount;
+            const total = Math.max(0, subtotal - discountTotal);
 
             const header = await tx.order_header.create({
                 data: {
@@ -168,10 +191,10 @@ export async function POST(req: Request) {
                     shipping_reference: shippingReference,
                     notes,
                     subtotal,
-                    discount_total: 0,
-                    bundle_discount: 0,
+                    discount_total: discountTotal,
+                    bundle_discount: bundleDiscount,
                     coupon_discount: 0,
-                    total: subtotal,
+                    total,
                     currency: 'PEN',
                     payment_method: paymentMethod,
                     payment_reference: paymentReference,
