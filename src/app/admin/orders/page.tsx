@@ -2,16 +2,18 @@
 import { toast } from 'sonner';
 
 import React from 'react';
-import { Card, Table, Typography, Tag, Button, Space, Flex } from 'antd';
+import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col } from 'antd';
 import { EyeOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
@@ -25,6 +27,20 @@ export const statusMap: Record<string, { label: string, color: string }> = {
     'DELIVERED': { label: 'Entregado', color: 'green' },
     'CANCELLED': { label: 'Cancelado', color: 'red' },
 };
+
+const salesChannelOptions = [
+    { value: 'SHOP', label: 'Shop' },
+    { value: 'WHATSAPP', label: 'WhatsApp' },
+    { value: 'TIKTOK', label: 'TikTok' },
+    { value: 'INSTAGRAM', label: 'Instagram' },
+    { value: 'FACEBOOK', label: 'Facebook' },
+    { value: 'OTHER', label: 'Otro' },
+];
+
+const statusOptions = Object.entries(statusMap).map(([value, conf]) => ({
+    value,
+    label: conf.label,
+}));
 
 type AdminOrder = {
     order_id: string;
@@ -54,6 +70,39 @@ export default function AdminOrdersPage() {
         refreshInterval: 30000, // Cada 30 segundos
         revalidateOnFocus: true
     });
+    const [dateRange, setDateRange] = React.useState<[Dayjs | null, Dayjs | null] | null>(null);
+    const [minTotal, setMinTotal] = React.useState<number | null>(null);
+    const [maxTotal, setMaxTotal] = React.useState<number | null>(null);
+    const [statusFilter, setStatusFilter] = React.useState<string>();
+    const [channelFilter, setChannelFilter] = React.useState<string>();
+
+    const filteredOrders = React.useMemo(() => {
+        const [startDate, endDate] = dateRange || [];
+
+        return (orders || []).filter((order) => {
+            const createdAt = dayjs(order.created_at);
+            const total = Number(order.total || 0);
+
+            if (startDate && createdAt.isBefore(startDate.startOf('day'))) return false;
+            if (endDate && createdAt.isAfter(endDate.endOf('day'))) return false;
+            if (minTotal !== null && total < minTotal) return false;
+            if (maxTotal !== null && total > maxTotal) return false;
+            if (statusFilter && order.status !== statusFilter) return false;
+            if (channelFilter && (order.sales_channel || 'SHOP') !== channelFilter) return false;
+
+            return true;
+        });
+    }, [orders, dateRange, minTotal, maxTotal, statusFilter, channelFilter]);
+
+    const hasActiveFilters = Boolean(dateRange || minTotal !== null || maxTotal !== null || statusFilter || channelFilter);
+
+    const clearFilters = () => {
+        setDateRange(null);
+        setMinTotal(null);
+        setMaxTotal(null);
+        setStatusFilter(undefined);
+        setChannelFilter(undefined);
+    };
 
     const columns: ColumnsType<AdminOrder> = [
         {
@@ -157,9 +206,75 @@ export default function AdminOrdersPage() {
                 </Flex>
             }
         >
+            <div style={{ marginBottom: 16, padding: 16, border: '1px solid #f0f0f0', borderRadius: 12, background: '#fafafa' }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={12} lg={7}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Fecha</Text>
+                        <RangePicker
+                            value={dateRange}
+                            onChange={(dates) => setDateRange(dates ? [dates[0], dates[1]] : null)}
+                            format="DD/MM/YYYY"
+                            style={{ width: '100%' }}
+                            placeholder={['Desde', 'Hasta']}
+                        />
+                    </Col>
+                    <Col xs={12} md={6} lg={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Total mínimo</Text>
+                        <InputNumber
+                            value={minTotal}
+                            onChange={(value) => setMinTotal(value === null ? null : Number(value))}
+                            min={0}
+                            prefix="S/"
+                            style={{ width: '100%' }}
+                            placeholder="0"
+                        />
+                    </Col>
+                    <Col xs={12} md={6} lg={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Total máximo</Text>
+                        <InputNumber
+                            value={maxTotal}
+                            onChange={(value) => setMaxTotal(value === null ? null : Number(value))}
+                            min={0}
+                            prefix="S/"
+                            style={{ width: '100%' }}
+                            placeholder="999"
+                        />
+                    </Col>
+                    <Col xs={24} md={12} lg={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select
+                            allowClear
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            options={statusOptions}
+                            placeholder="Todos"
+                            style={{ width: '100%' }}
+                        />
+                    </Col>
+                    <Col xs={24} md={12} lg={3}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Canal</Text>
+                        <Select
+                            allowClear
+                            value={channelFilter}
+                            onChange={setChannelFilter}
+                            options={salesChannelOptions}
+                            placeholder="Todos"
+                            style={{ width: '100%' }}
+                        />
+                    </Col>
+                    <Col xs={24} lg={2}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>
+                            Limpiar
+                        </Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredOrders.length} de {orders?.length || 0} pedidos
+                </Text>
+            </div>
             <Table
                 columns={columns}
-                dataSource={orders}
+                dataSource={filteredOrders}
                 rowKey="order_id"
                 loading={isLoading}
                 pagination={{ pageSize: 12 }}
