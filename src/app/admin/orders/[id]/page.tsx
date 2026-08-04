@@ -73,6 +73,8 @@ const paymentMethodOptions = [
     { value: 'OTHER', label: 'Otro' },
 ];
 
+const DOCUMENT_LOGO_PATH = '/logo-aura.png';
+
 type OrderItem = {
     order_item_id: string;
     variant_id: string;
@@ -181,7 +183,27 @@ function getReceiptFilename(orderCode: string, extension: 'pdf' | 'png') {
     return `comprobante-${safeCode}.${extension}`;
 }
 
-function buildReceiptHtml(order: AdminOrderDetail, trackingUrl: string, qrDataUrl: string) {
+async function getDocumentLogoSrc() {
+    const absoluteLogoUrl = `${window.location.origin}${DOCUMENT_LOGO_PATH}`;
+
+    try {
+        const response = await fetch(DOCUMENT_LOGO_PATH);
+        if (!response.ok) return absoluteLogoUrl;
+
+        const blob = await response.blob();
+
+        return await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
+    } catch {
+        return absoluteLogoUrl;
+    }
+}
+
+function buildReceiptHtml(order: AdminOrderDetail, trackingUrl: string, qrDataUrl: string, logoSrc: string) {
     const rows = (order.order_item || []).map(item => {
         const customLabel = item.is_customized === true || item.is_customized === 1 ? '<span class="receipt-badge">Personalizado</span>' : '';
 
@@ -224,7 +246,9 @@ function buildReceiptHtml(order: AdminOrderDetail, trackingUrl: string, qrDataUr
                     border: 1px solid #eadfce;
                 }
                 .receipt-shell { background: #fff; border: 1px solid #eadfce; border-radius: 24px; overflow: hidden; box-shadow: 0 14px 40px rgba(52, 38, 24, 0.08); }
-                .receipt-hero { background: linear-gradient(135deg, #241711, #6c452d); color: #fff; padding: 34px 38px; display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+                .receipt-hero { background: linear-gradient(135deg, #241711, #6c452d); color: #fff; padding: 30px 38px; display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+                .brand-wrap { display: flex; align-items: center; gap: 16px; }
+                .brand-logo { width: 92px; height: 92px; border-radius: 999px; object-fit: cover; background: #fff7ee; border: 2px solid rgba(244,216,182,0.85); box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
                 .brand { font-size: 30px; font-weight: 900; letter-spacing: 1.8px; margin-bottom: 8px; }
                 .doc-label { font-size: 12px; letter-spacing: 2.4px; text-transform: uppercase; color: #f4d8b6; }
                 .code-box { border: 1px solid rgba(255,255,255,0.34); border-radius: 18px; padding: 16px 18px; text-align: right; min-width: 220px; }
@@ -260,9 +284,12 @@ function buildReceiptHtml(order: AdminOrderDetail, trackingUrl: string, qrDataUr
             </style>
             <div class="receipt-shell">
                 <div class="receipt-hero">
-                    <div>
-                        <div class="brand">AURA BOUTIQUE</div>
-                        <div class="doc-label">Comprobante de pedido</div>
+                    <div class="brand-wrap">
+                        <img class="brand-logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                        <div>
+                            <div class="brand">AURA BOUTIQUE</div>
+                            <div class="doc-label">Comprobante de pedido</div>
+                        </div>
                     </div>
                     <div class="code-box">
                         <div class="code-label">Pedido</div>
@@ -284,7 +311,6 @@ function buildReceiptHtml(order: AdminOrderDetail, trackingUrl: string, qrDataUr
                             <div class="line"><span>Estado</span><span>${escapeHtml(statusLabel)}</span></div>
                             <div class="line"><span>Canal</span><span>${escapeHtml(salesChannel)}</span></div>
                             <div class="line"><span>Pago</span><span>${escapeHtml(getPaymentMethodLabel(order.payment_method))}</span></div>
-                            <div class="line"><span>Referencia</span><span>${escapeHtml(order.payment_reference || order.external_reference || 'No registrada')}</span></div>
                         </div>
                     </div>
 
@@ -644,10 +670,12 @@ export default function OrderDetailPage() {
         }
     };
 
-    const handlePrint = () => {
+    const handlePrint = async () => {
         if (!order) return;
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
+
+        const logoSrc = await getDocumentLogoSrc();
 
         // Extraer resumen de items para impresión
         const itemsList = order.order_item?.map((item) => `<li>${item.qty}x ${item.product_name} (${item.variant_size})</li>`).join('') || '';
@@ -667,8 +695,10 @@ export default function OrderDetailPage() {
                             padding: 24px; 
                             box-sizing: border-box; 
                         }
-                        .header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px; }
-                        .header h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+                        .header { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px; }
+                        .brand-header { display: flex; align-items: center; gap: 10px; min-width: 0; }
+                        .label-logo { width: 58px; height: 58px; border-radius: 999px; object-fit: cover; border: 1px solid #000; flex: 0 0 auto; }
+                        .header h2 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; }
                         .order-code { font-size: 16px; font-weight: bold; padding: 4px 8px; border: 1px solid #000; }
                         
                         .section-title { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; margin: 12px 0 2px 0; letter-spacing: 0.5px; }
@@ -701,7 +731,10 @@ export default function OrderDetailPage() {
                 <body>
                     <div class="label">
                         <div class="header">
-                            <h2>AURA BOUTIQUE</h2>
+                            <div class="brand-header">
+                                <img class="label-logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                                <h2>AURA BOUTIQUE</h2>
+                            </div>
                             <div class="order-code">#${order.code}</div>
                         </div>
                         
@@ -774,13 +807,14 @@ export default function OrderDetailPage() {
                 light: '#ffffff',
             },
         });
+        const logoSrc = await getDocumentLogoSrc();
         const container = document.createElement('div');
         container.style.position = 'fixed';
         container.style.left = '-10000px';
         container.style.top = '0';
         container.style.width = '794px';
         container.style.background = '#fffaf3';
-        container.innerHTML = buildReceiptHtml(order, trackingUrl, qrDataUrl);
+        container.innerHTML = buildReceiptHtml(order, trackingUrl, qrDataUrl, logoSrc);
         document.body.appendChild(container);
 
         try {

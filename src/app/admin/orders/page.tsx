@@ -15,7 +15,7 @@ const { Title, Text } = Typography;
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
-    'PARTIALLY_PAID': { label: 'Adelanto / Saldo pendiente', color: 'volcano' },
+    'PARTIALLY_PAID': { label: 'Pago parcial', color: 'volcano' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
@@ -69,10 +69,11 @@ export default function AdminOrdersPage() {
             title: 'Código',
             dataIndex: 'code',
             key: 'code',
+            width: 145,
             render: (code: string, record) => (
-                <Space orientation="vertical" size={2}>
+                <Space size={4} wrap={false} style={{ whiteSpace: 'nowrap' }}>
                     <Text strong>{code}</Text>
-                    {hasCustomizedItems(record) && <Tag color="gold" style={{ width: 'fit-content' }}>Personalizado</Tag>}
+                    {hasCustomizedItems(record) && <Tag color="gold" style={{ marginInlineEnd: 0 }}>Pers.</Tag>}
                 </Space>
             ),
         },
@@ -80,29 +81,37 @@ export default function AdminOrdersPage() {
             title: 'Fecha',
             dataIndex: 'created_at',
             key: 'created_at',
+            width: 130,
             render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm'),
         },
         {
             title: 'Cliente',
             dataIndex: 'shipping_name',
             key: 'shipping_name',
+            width: 180,
+            ellipsis: true,
         },
         {
             title: 'Celular',
             dataIndex: 'shipping_phone',
             key: 'shipping_phone',
+            width: 120,
+            ellipsis: true,
         },
         {
             title: 'Canal',
             dataIndex: 'sales_channel',
             key: 'sales_channel',
+            width: 145,
             render: (channel: string | null | undefined, record) => {
                 const conf = salesChannelMap[channel || 'SHOP'] || { label: channel || 'Shop', color: 'default' };
                 return (
-                    <Space orientation="vertical" size={2}>
-                        <Tag color={conf.color}>{conf.label}</Tag>
+                    <Space size={4} wrap={false} style={{ maxWidth: 125, whiteSpace: 'nowrap' }}>
+                        <Tag color={conf.color} style={{ marginInlineEnd: 0 }}>{conf.label}</Tag>
                         {record.external_reference && (
-                            <Text type="secondary" style={{ fontSize: 11 }}>{record.external_reference}</Text>
+                            <Text type="secondary" ellipsis style={{ maxWidth: 64, fontSize: 11 }}>
+                                {record.external_reference}
+                            </Text>
                         )}
                     </Space>
                 );
@@ -111,34 +120,20 @@ export default function AdminOrdersPage() {
         {
             title: 'Descuento',
             key: 'discount',
+            width: 120,
             render: (_value, record) => {
                 const totalDiscount = Number(record.discount_total || 0);
-                const bundleDiscount = Number(record.bundle_discount || 0);
-                const couponDiscount = Number(record.coupon_discount || 0);
 
                 if (totalDiscount === 0) return <Text type="secondary">-</Text>;
 
                 return (
-                    <Space size={2} orientation="vertical" style={{ minWidth: 100 }}>
-                        {bundleDiscount > 0 && (
-                            <Text type="success" style={{ fontSize: 11 }}>
-                                Conjunto: -{formatPEN(bundleDiscount)}
-                            </Text>
-                        )}
-                        {couponDiscount > 0 && (
-                            <Text type="danger" style={{ fontSize: 11 }}>
-                                Cupón: -{formatPEN(couponDiscount)}
-                            </Text>
-                        )}
+                    <Space size={4} wrap={false} style={{ whiteSpace: 'nowrap' }}>
+                        <Text type="danger" style={{ fontSize: 12 }}>-{formatPEN(totalDiscount)}</Text>
                         {record.coupon_code && (
-                            <Tag color="cyan" style={{ fontSize: 9, margin: 0, width: 'fit-content' }}>
+                            <Tag color="cyan" style={{ fontSize: 9, margin: 0 }}>
                                 <TagOutlined style={{ marginRight: 2 }} />
                                 {record.coupon_code}
                             </Tag>
-                        )}
-                        {/* Fallback for old orders or if sum is different */}
-                        {bundleDiscount === 0 && couponDiscount === 0 && totalDiscount > 0 && (
-                            <Text type="danger">-{formatPEN(totalDiscount)}</Text>
                         )}
                     </Space>
                 );
@@ -148,11 +143,12 @@ export default function AdminOrdersPage() {
             title: 'Total',
             dataIndex: 'total',
             key: 'total',
+            width: 155,
             render: (val: number | string, record) => (
-                <Space orientation="vertical" size={0}>
+                <Space size={4} wrap={false} style={{ whiteSpace: 'nowrap' }}>
                     <Text strong>{formatPEN(Number(val))}</Text>
                     {Number(record.balance_due || 0) > 0 && (
-                        <Text type="warning" style={{ fontSize: 11 }}>Saldo: {formatPEN(Number(record.balance_due))}</Text>
+                        <Tag color="volcano" style={{ marginInlineEnd: 0 }}>Debe {formatPEN(Number(record.balance_due))}</Tag>
                     )}
                 </Space>
             ),
@@ -161,14 +157,17 @@ export default function AdminOrdersPage() {
             title: 'Estado',
             dataIndex: 'status',
             key: 'status',
+            width: 135,
             render: (status: string) => {
                 const conf = statusMap[status] || { label: status, color: 'default' };
-                return <Tag color={conf.color}>{conf.label}</Tag>;
+                return <Tag color={conf.color} style={{ marginInlineEnd: 0 }}>{conf.label}</Tag>;
             },
         },
         {
             title: 'Acciones',
             key: 'actions',
+            width: 90,
+            fixed: 'right',
             render: (_value, record) => (
                 <Space>
                     <Link href={`/admin/orders/${record.order_id}`}>
@@ -214,6 +213,8 @@ export default function AdminOrdersPage() {
                 rowKey="order_id"
                 loading={isLoading}
                 pagination={{ pageSize: 12 }}
+                scroll={{ x: 1220 }}
+                tableLayout="fixed"
             />
         </Card>
     );
