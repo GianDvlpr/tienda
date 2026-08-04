@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import React from 'react';
 import { Card, Table, Typography, Tag, Button, Space, Flex } from 'antd';
-import { EyeOutlined, TagOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
+import { EyeOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { fetcher } from '@/lib/fetcher';
@@ -24,15 +24,6 @@ export const statusMap: Record<string, { label: string, color: string }> = {
     'SHIPPED': { label: 'Enviado', color: 'cyan' },
     'DELIVERED': { label: 'Entregado', color: 'green' },
     'CANCELLED': { label: 'Cancelado', color: 'red' },
-};
-
-const salesChannelMap: Record<string, { label: string, color: string }> = {
-    SHOP: { label: 'Shop', color: 'blue' },
-    WHATSAPP: { label: 'WhatsApp', color: 'green' },
-    TIKTOK: { label: 'TikTok', color: 'purple' },
-    INSTAGRAM: { label: 'Instagram', color: 'magenta' },
-    FACEBOOK: { label: 'Facebook', color: 'geekblue' },
-    OTHER: { label: 'Otro', color: 'default' },
 };
 
 type AdminOrder = {
@@ -97,47 +88,6 @@ export default function AdminOrdersPage() {
             key: 'shipping_phone',
             width: 120,
             ellipsis: true,
-        },
-        {
-            title: 'Canal',
-            dataIndex: 'sales_channel',
-            key: 'sales_channel',
-            width: 145,
-            render: (channel: string | null | undefined, record) => {
-                const conf = salesChannelMap[channel || 'SHOP'] || { label: channel || 'Shop', color: 'default' };
-                return (
-                    <Space size={4} wrap={false} style={{ maxWidth: 125, whiteSpace: 'nowrap' }}>
-                        <Tag color={conf.color} style={{ marginInlineEnd: 0 }}>{conf.label}</Tag>
-                        {record.external_reference && (
-                            <Text type="secondary" ellipsis style={{ maxWidth: 64, fontSize: 11 }}>
-                                {record.external_reference}
-                            </Text>
-                        )}
-                    </Space>
-                );
-            },
-        },
-        {
-            title: 'Descuento',
-            key: 'discount',
-            width: 120,
-            render: (_value, record) => {
-                const totalDiscount = Number(record.discount_total || 0);
-
-                if (totalDiscount === 0) return <Text type="secondary">-</Text>;
-
-                return (
-                    <Space size={4} wrap={false} style={{ whiteSpace: 'nowrap' }}>
-                        <Text type="danger" style={{ fontSize: 12 }}>-{formatPEN(totalDiscount)}</Text>
-                        {record.coupon_code && (
-                            <Tag color="cyan" style={{ fontSize: 9, margin: 0 }}>
-                                <TagOutlined style={{ marginRight: 2 }} />
-                                {record.coupon_code}
-                            </Tag>
-                        )}
-                    </Space>
-                );
-            },
         },
         {
             title: 'Total',
@@ -213,7 +163,7 @@ export default function AdminOrdersPage() {
                 rowKey="order_id"
                 loading={isLoading}
                 pagination={{ pageSize: 12 }}
-                scroll={{ x: 1220 }}
+                scroll={{ x: 955 }}
                 tableLayout="fixed"
             />
         </Card>
