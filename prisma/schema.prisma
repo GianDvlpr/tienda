@@ -76,6 +76,8 @@ model order_header {
   coupon_discount    Decimal?             @default(0) @db.Decimal(18, 2)
   coupon_code        String?              @db.VarChar(50)
   total              Decimal              @db.Decimal(18, 2)
+  amount_paid        Decimal              @default(0) @db.Decimal(18, 2)
+  balance_due        Decimal              @default(0) @db.Decimal(18, 2)
   currency           String               @default("PEN") @db.Char(3)
   payment_method     String?              @db.VarChar(30)
   payment_reference  String?              @db.VarChar(120)

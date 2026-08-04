@@ -7,8 +7,8 @@ import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bun
 export const runtime = 'nodejs';
 
 const validSalesChannels = new Set(['SHOP', 'WHATSAPP', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'OTHER']);
-const validStatuses = new Set(['PENDING_WS', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
-const paidStatuses = new Set(['PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
+const validStatuses = new Set(['PENDING_WS', 'PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
+const paidStatuses = new Set(['PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
 
 type OrderItemInput = {
     variant_id?: string;
@@ -28,6 +28,7 @@ type UpdateOrderRequest = {
     notes?: string | null;
     payment_method?: string | null;
     payment_reference?: string | null;
+    amount_paid?: number | string | null;
     external_reference?: string | null;
     sales_channel?: string;
     items?: OrderItemInput[];
@@ -44,6 +45,36 @@ function nullableText(value: unknown) {
 
 function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Error inesperado';
+}
+
+function resolvePaymentAmounts(status: string, total: number, rawAmountPaid: unknown, fallbackAmountPaid: number) {
+    const amountInput = rawAmountPaid === undefined || rawAmountPaid === null || rawAmountPaid === ''
+        ? undefined
+        : Number(rawAmountPaid);
+
+    if (amountInput !== undefined && (!Number.isFinite(amountInput) || amountInput < 0)) {
+        throw new Error('El adelanto pagado debe ser válido');
+    }
+
+    if (status === 'PENDING_WS') {
+        return { amountPaid: 0, balanceDue: total };
+    }
+
+    if (status === 'PARTIALLY_PAID') {
+        const amountPaid = amountInput ?? fallbackAmountPaid;
+        if (amountPaid <= 0 || amountPaid >= total) {
+            throw new Error('Para pago parcial, el adelanto debe ser mayor a 0 y menor al total');
+        }
+
+        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
+    }
+
+    if (status === 'CANCELLED') {
+        const amountPaid = amountInput ?? fallbackAmountPaid;
+        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
+    }
+
+    return { amountPaid: total, balanceDue: 0 };
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -118,6 +149,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             return NextResponse.json({ error: 'La dirección de entrega es obligatoria' }, { status: 400 });
         }
 
+        const fallbackAmountPaid = Number(oldData.amount_paid || 0);
         const headerData = {
             status,
             shipping_name: shippingName,
@@ -236,6 +268,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 const discountTotal = bundleDiscount + couponDiscount + otherDiscount;
                 const shippingCost = Number(oldData.shipping_cost || 0);
                 const total = Math.max(0, subtotal + shippingCost - discountTotal);
+                const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid, fallbackAmountPaid);
 
                 const header = await tx.order_header.update({
                     where: { order_id: id },
@@ -246,6 +279,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                         bundle_discount: bundleDiscount,
                         coupon_discount: couponDiscount,
                         total,
+                        amount_paid: amountPaid,
+                        balance_due: balanceDue,
                     }
                 });
 
@@ -294,9 +329,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 });
             });
         } else {
+            const total = Number(oldData.total || 0);
+            const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid, fallbackAmountPaid);
             updated = await prisma.order_header.update({
                 where: { order_id: id },
-                data: headerData
+                data: {
+                    ...headerData,
+                    amount_paid: amountPaid,
+                    balance_due: balanceDue,
+                }
             });
         }
 

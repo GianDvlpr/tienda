@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import React, { useState } from 'react';
 import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch } from 'antd';
-import { CloseOutlined, DeleteOutlined, EditOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
+import { CloseOutlined, DeleteOutlined, EditOutlined, FileImageOutlined, FilePdfOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { fetcher } from '@/lib/fetcher';
@@ -11,11 +11,15 @@ import { formatPEN } from '@/lib/money';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 import Link from 'next/link';
 import dayjs from 'dayjs';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 import type { ColumnsType } from 'antd/es/table';
 import ImageUploader from '@/components/admin/ImageUploader';
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
+    'PARTIALLY_PAID': { label: 'Adelanto / Saldo pendiente', color: 'volcano' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
@@ -48,6 +52,7 @@ const salesChannelOptions = [
 
 const statusOptions = [
     { value: 'PENDING_WS', label: 'Pendiente WhatsApp' },
+    { value: 'PARTIALLY_PAID', label: 'Adelanto pagado / saldo pendiente' },
     { value: 'PAID', label: 'Orden generada / Pagada' },
     { value: 'MEASURES_CONFIRMED', label: 'Medidas confirmadas' },
     { value: 'CONFIRMED', label: 'Confirmado / En Preparación' },
@@ -138,6 +143,8 @@ type AdminOrderDetail = {
     coupon_discount?: number | string | null;
     coupon_code?: string | null;
     total: number | string;
+    amount_paid?: number | string | null;
+    balance_due?: number | string | null;
     notes?: string | null;
     created_at: string;
     sales_channel?: string | null;
@@ -154,6 +161,193 @@ function getErrorMessage(error: unknown) {
 
 function isOrderPhotoPublic(photo: OrderPhoto) {
     return photo.is_public_tracking === true || photo.is_public_tracking === 1;
+}
+
+function escapeHtml(value: unknown) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getPaymentMethodLabel(value?: string | null) {
+    return paymentMethodOptions.find(option => option.value === value)?.label || value || 'No registrado';
+}
+
+function getReceiptFilename(orderCode: string, extension: 'pdf' | 'png') {
+    const safeCode = orderCode.replace(/[^a-z0-9-_]/gi, '-').toLowerCase();
+    return `comprobante-${safeCode}.${extension}`;
+}
+
+function buildReceiptHtml(order: AdminOrderDetail, trackingUrl: string, qrDataUrl: string) {
+    const rows = (order.order_item || []).map(item => {
+        const customLabel = item.is_customized === true || item.is_customized === 1 ? '<span class="receipt-badge">Personalizado</span>' : '';
+
+        return `
+            <tr>
+                <td class="qty">${item.qty}</td>
+                <td>
+                    <div class="item-name">${escapeHtml(item.product_name)} ${customLabel}</div>
+                    <div class="muted">${escapeHtml(item.variant_size)} / ${escapeHtml(item.variant_color)} · SKU ${escapeHtml(item.sku)}</div>
+                </td>
+                <td class="money">${escapeHtml(formatPEN(Number(item.unit_price)))}</td>
+                <td class="money strong">${escapeHtml(formatPEN(Number(item.line_total)))}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const subtotal = Number(order.subtotal || 0);
+    const bundleDiscount = Number(order.bundle_discount || 0);
+    const couponDiscount = Number(order.coupon_discount || 0);
+    const discountTotal = Number(order.discount_total || 0);
+    const otherDiscount = Math.max(0, discountTotal - bundleDiscount - couponDiscount);
+    const shippingCost = Number(order.shipping_cost || 0);
+    const total = Number(order.total || 0);
+    const amountPaid = Number(order.amount_paid || 0);
+    const balanceDue = Number(order.balance_due || 0);
+    const salesChannel = salesChannelMap[order.sales_channel || 'SHOP']?.label || order.sales_channel || 'Shop';
+    const statusLabel = statusMap[order.status]?.label || order.status;
+
+    return `
+        <div class="receipt-document">
+            <style>
+                .receipt-document {
+                    width: 794px;
+                    min-height: 1123px;
+                    box-sizing: border-box;
+                    padding: 42px;
+                    background: #fffaf3;
+                    color: #211915;
+                    font-family: Arial, Helvetica, sans-serif;
+                    border: 1px solid #eadfce;
+                }
+                .receipt-shell { background: #fff; border: 1px solid #eadfce; border-radius: 24px; overflow: hidden; box-shadow: 0 14px 40px rgba(52, 38, 24, 0.08); }
+                .receipt-hero { background: linear-gradient(135deg, #241711, #6c452d); color: #fff; padding: 34px 38px; display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+                .brand { font-size: 30px; font-weight: 900; letter-spacing: 1.8px; margin-bottom: 8px; }
+                .doc-label { font-size: 12px; letter-spacing: 2.4px; text-transform: uppercase; color: #f4d8b6; }
+                .code-box { border: 1px solid rgba(255,255,255,0.34); border-radius: 18px; padding: 16px 18px; text-align: right; min-width: 220px; }
+                .code-label { font-size: 11px; color: #f4d8b6; text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 7px; }
+                .code-value { font-size: 22px; font-weight: 900; }
+                .receipt-body { padding: 34px 38px 38px; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+                .info-card { border: 1px solid #efe4d3; border-radius: 18px; padding: 18px; background: #fffdf9; }
+                .section-title { font-size: 11px; text-transform: uppercase; color: #9b6f44; font-weight: 800; letter-spacing: 1.6px; margin-bottom: 12px; }
+                .line { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; font-size: 14px; }
+                .line span:first-child { color: #7c7169; }
+                .line span:last-child { font-weight: 700; text-align: right; }
+                .items-table { width: 100%; border-collapse: collapse; margin-top: 8px; overflow: hidden; border-radius: 16px; }
+                .items-table th { background: #f3eadf; color: #6f4c2c; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 12px 10px; text-align: left; }
+                .items-table td { border-bottom: 1px solid #f0e7db; padding: 14px 10px; vertical-align: top; font-size: 13px; }
+                .items-table tr:last-child td { border-bottom: none; }
+                .qty { width: 52px; text-align: center; font-weight: 900; color: #6f4c2c; }
+                .money { width: 112px; text-align: right; white-space: nowrap; }
+                .strong { font-weight: 900; }
+                .item-name { font-weight: 800; color: #2b211d; margin-bottom: 4px; }
+                .muted { color: #81746b; font-size: 12px; }
+                .receipt-badge { display: inline-block; margin-left: 8px; padding: 3px 7px; border-radius: 999px; background: #fbefd2; color: #8a5c16; font-size: 10px; text-transform: uppercase; letter-spacing: .7px; }
+                .bottom-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; margin-top: 30px; }
+                .qr-card { border: 1px dashed #d8b98e; border-radius: 18px; padding: 18px; display: flex; gap: 16px; align-items: center; background: #fffaf2; }
+                .qr-card img { width: 100px; height: 100px; border-radius: 12px; background: #fff; padding: 6px; border: 1px solid #eadfce; }
+                .qr-title { font-weight: 900; margin-bottom: 5px; }
+                .qr-link { color: #7c5b3a; font-size: 11px; word-break: break-all; }
+                .totals { border: 1px solid #efe4d3; border-radius: 18px; padding: 18px; background: #fffdf9; }
+                .total-line { display: flex; justify-content: space-between; gap: 16px; margin: 10px 0; font-size: 14px; }
+                .discount { color: #0f7a46; }
+                .grand-total { border-top: 2px solid #2b211d; padding-top: 14px; margin-top: 14px; font-size: 24px; font-weight: 900; }
+                .note { margin-top: 30px; color: #7a6c62; font-size: 12px; line-height: 1.55; border-top: 1px solid #efe4d3; padding-top: 18px; }
+            </style>
+            <div class="receipt-shell">
+                <div class="receipt-hero">
+                    <div>
+                        <div class="brand">AURA BOUTIQUE</div>
+                        <div class="doc-label">Comprobante de pedido</div>
+                    </div>
+                    <div class="code-box">
+                        <div class="code-label">Pedido</div>
+                        <div class="code-value">${escapeHtml(order.code)}</div>
+                        <div style="margin-top:8px;font-size:12px;color:#f7e5cf;">${escapeHtml(dayjs(order.created_at).format('DD/MM/YYYY HH:mm'))}</div>
+                    </div>
+                </div>
+                <div class="receipt-body">
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="section-title">Cliente</div>
+                            <div class="line"><span>Nombre</span><span>${escapeHtml(order.shipping_name)}</span></div>
+                            <div class="line"><span>DNI</span><span>${escapeHtml(order.shipping_dni || 'No registrado')}</span></div>
+                            <div class="line"><span>Celular</span><span>${escapeHtml(order.shipping_phone)}</span></div>
+                            <div class="line"><span>Entrega</span><span>${escapeHtml(order.shipping_address || 'Por confirmar')}</span></div>
+                        </div>
+                        <div class="info-card">
+                            <div class="section-title">Pedido</div>
+                            <div class="line"><span>Estado</span><span>${escapeHtml(statusLabel)}</span></div>
+                            <div class="line"><span>Canal</span><span>${escapeHtml(salesChannel)}</span></div>
+                            <div class="line"><span>Pago</span><span>${escapeHtml(getPaymentMethodLabel(order.payment_method))}</span></div>
+                            <div class="line"><span>Referencia</span><span>${escapeHtml(order.payment_reference || order.external_reference || 'No registrada')}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Detalle de productos</div>
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Cant.</th>
+                                <th>Producto</th>
+                                <th class="money">P. Unit.</th>
+                                <th class="money">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+
+                    <div class="bottom-grid">
+                        <div class="qr-card">
+                            <img src="${escapeHtml(qrDataUrl)}" alt="QR seguimiento" />
+                            <div>
+                                <div class="qr-title">Seguimiento del pedido</div>
+                                <div class="muted">El cliente puede escanear este QR para ver el estado de su pedido.</div>
+                                <div class="qr-link">${escapeHtml(trackingUrl)}</div>
+                            </div>
+                        </div>
+                        <div class="totals">
+                            <div class="total-line"><span>Subtotal</span><strong>${escapeHtml(formatPEN(subtotal))}</strong></div>
+                            ${shippingCost > 0 ? `<div class="total-line"><span>Envío</span><strong>${escapeHtml(formatPEN(shippingCost))}</strong></div>` : ''}
+                            ${bundleDiscount > 0 ? `<div class="total-line discount"><span>Descuento conjunto</span><strong>-${escapeHtml(formatPEN(bundleDiscount))}</strong></div>` : ''}
+                            ${couponDiscount > 0 ? `<div class="total-line discount"><span>Cupón ${escapeHtml(order.coupon_code || '')}</span><strong>-${escapeHtml(formatPEN(couponDiscount))}</strong></div>` : ''}
+                            ${otherDiscount > 0 ? `<div class="total-line discount"><span>Descuento general</span><strong>-${escapeHtml(formatPEN(otherDiscount))}</strong></div>` : ''}
+                            <div class="total-line grand-total"><span>Total</span><span>${escapeHtml(formatPEN(total))}</span></div>
+                            ${amountPaid > 0 ? `<div class="total-line"><span>Pagado</span><strong>${escapeHtml(formatPEN(amountPaid))}</strong></div>` : ''}
+                            ${balanceDue > 0 ? `<div class="total-line" style="color:#d46b08;"><span>Saldo pendiente</span><strong>${escapeHtml(formatPEN(balanceDue))}</strong></div>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="note">
+                        Este documento es una constancia de pedido/venta emitida por AURA BOUTIQUE. No reemplaza una boleta o factura electrónica SUNAT. Para consultas, conserva el código de pedido ${escapeHtml(order.code)}.
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function downloadDataUrl(dataUrl: string, filename: string) {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    link.click();
+}
+
+function getImageDimensions(dataUrl: string) {
+    return new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const image = new window.Image();
+        image.onload = () => resolve({
+            width: image.naturalWidth || image.width,
+            height: image.naturalHeight || image.height,
+        });
+        image.onerror = () => reject(new Error('No se pudo preparar la imagen del comprobante'));
+        image.src = dataUrl;
+    });
 }
 
 export default function OrderDetailPage() {
@@ -173,6 +367,7 @@ export default function OrderDetailPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isAddingPhoto, setIsAddingPhoto] = useState(false);
     const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
+    const [generatingReceipt, setGeneratingReceipt] = useState<'pdf' | 'png' | null>(null);
 
     const originalQtyByVariant = new Map((order?.order_item || []).map(item => [item.variant_id, item.qty]));
     const variantOptions = (products || []).flatMap(product =>
@@ -207,6 +402,9 @@ export default function OrderDetailPage() {
     const editOtherDiscount = Math.max(0, Number(order?.discount_total || 0) - Number(order?.bundle_discount || 0) - editCouponDiscount);
     const editDiscountTotal = editBundleDiscount + editCouponDiscount + editOtherDiscount;
     const editTotal = order ? Math.max(0, editSubtotal + Number(order.shipping_cost || 0) - editDiscountTotal) : editSubtotal;
+    const selectedEditStatus = Form.useWatch('status', form);
+    const editAmountPaid = Number(Form.useWatch('amount_paid', form) || 0);
+    const editBalanceDue = Math.max(0, editTotal - editAmountPaid);
     const orderPhotos = order?.order_photo || [];
 
     const handleStartEdit = () => {
@@ -218,6 +416,7 @@ export default function OrderDetailPage() {
             external_reference: order.external_reference || undefined,
             payment_method: order.payment_method || undefined,
             payment_reference: order.payment_reference || undefined,
+            amount_paid: Number(order.amount_paid || 0),
             shipping_name: order.shipping_name,
             shipping_dni: order.shipping_dni || '',
             shipping_phone: order.shipping_phone,
@@ -360,6 +559,9 @@ export default function OrderDetailPage() {
         
         let text = `Hola ${order.shipping_name}, hemos recibido tu pedido *${order.code}*.\n\n`;
         text += `El monto total de tu pedido es de *${formatPEN(Number(order.total))}*.\n`;
+        if (Number(order.balance_due || 0) > 0) {
+            text += `Registramos un adelanto de *${formatPEN(Number(order.amount_paid || 0))}* y queda un saldo pendiente de *${formatPEN(Number(order.balance_due || 0))}*.\n`;
+        }
         text += `Por favor, envíanos la constancia de pago por este medio para proceder con el envío a la dirección: ${order.shipping_address || 'Tu dirección acordada'}.\n\n`;
         text += `¡Gracias por tu compra en Aura Boutique!`;
         
@@ -560,6 +762,98 @@ export default function OrderDetailPage() {
         printWindow.document.close();
     };
 
+    const createReceiptPng = async () => {
+        if (!order) throw new Error('Pedido no encontrado');
+
+        const trackingUrl = `${window.location.origin}/track/${order.code}`;
+        const qrDataUrl = await QRCode.toDataURL(trackingUrl, {
+            margin: 1,
+            width: 240,
+            color: {
+                dark: '#2b211d',
+                light: '#ffffff',
+            },
+        });
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-10000px';
+        container.style.top = '0';
+        container.style.width = '794px';
+        container.style.background = '#fffaf3';
+        container.innerHTML = buildReceiptHtml(order, trackingUrl, qrDataUrl);
+        document.body.appendChild(container);
+
+        try {
+            const receiptElement = container.firstElementChild;
+            if (!(receiptElement instanceof HTMLElement)) {
+                throw new Error('No se pudo generar el comprobante');
+            }
+
+            await document.fonts?.ready;
+            return await toPng(receiptElement, {
+                cacheBust: true,
+                pixelRatio: 2,
+                backgroundColor: '#fffaf3',
+            });
+        } finally {
+            container.remove();
+        }
+    };
+
+    const handleDownloadReceiptImage = async () => {
+        if (!order) return;
+
+        setGeneratingReceipt('png');
+        try {
+            const dataUrl = await createReceiptPng();
+            downloadDataUrl(dataUrl, getReceiptFilename(order.code, 'png'));
+            toast.success('Imagen del comprobante descargada');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setGeneratingReceipt(null);
+        }
+    };
+
+    const handleDownloadReceiptPdf = async () => {
+        if (!order) return;
+
+        setGeneratingReceipt('pdf');
+        try {
+            const dataUrl = await createReceiptPng();
+            const dimensions = await getImageDimensions(dataUrl);
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 18;
+            const imageWidth = pageWidth - margin * 2;
+            const imageHeight = imageWidth * (dimensions.height / dimensions.width);
+
+            if (imageHeight <= pageHeight - margin * 2) {
+                pdf.addImage(dataUrl, 'PNG', margin, margin, imageWidth, imageHeight);
+            } else {
+                let remainingHeight = imageHeight;
+                let yOffset = margin;
+
+                while (remainingHeight > 0) {
+                    pdf.addImage(dataUrl, 'PNG', margin, yOffset, imageWidth, imageHeight);
+                    remainingHeight -= pageHeight - margin * 2;
+                    if (remainingHeight > 0) {
+                        pdf.addPage();
+                        yOffset -= pageHeight - margin * 2;
+                    }
+                }
+            }
+
+            pdf.save(getReceiptFilename(order.code, 'pdf'));
+            toast.success('PDF del comprobante descargado');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setGeneratingReceipt(null);
+        }
+    };
+
     if (isLoading) {
         return <Card loading={true} />;
     }
@@ -731,6 +1025,12 @@ export default function OrderDetailPage() {
                     <Button icon={<PrinterOutlined />} onClick={handlePrint}>
                         Imprimir Etiqueta
                     </Button>
+                    <Button icon={<FilePdfOutlined />} onClick={handleDownloadReceiptPdf} loading={generatingReceipt === 'pdf'}>
+                        Descargar PDF
+                    </Button>
+                    <Button icon={<FileImageOutlined />} onClick={handleDownloadReceiptImage} loading={generatingReceipt === 'png'}>
+                        Descargar imagen
+                    </Button>
                     {isEditing ? (
                         <>
                             <Button icon={<CloseOutlined />} onClick={handleCancelEdit} disabled={isSaving}>
@@ -852,6 +1152,16 @@ export default function OrderDetailPage() {
                                 <Title level={4} style={{ margin: 0, marginTop: 8 }}>
                                     Total: {formatPEN(isEditing ? editTotal : Number(order.total))}
                                 </Title>
+                                {(isEditing ? editAmountPaid : Number(order.amount_paid || 0)) > 0 && (
+                                    <Text type="secondary">
+                                        Pagado: {formatPEN(isEditing ? editAmountPaid : Number(order.amount_paid || 0))}
+                                    </Text>
+                                )}
+                                {(isEditing ? editBalanceDue : Number(order.balance_due || 0)) > 0 && (
+                                    <Text type="warning">
+                                        Saldo pendiente: {formatPEN(isEditing ? editBalanceDue : Number(order.balance_due || 0))}
+                                    </Text>
+                                )}
                             </Space>
                         </div>
                     </Card>
@@ -965,7 +1275,34 @@ export default function OrderDetailPage() {
                                     </Col>
                                 </Row>
 
-                                <Form.Item name="shipping_name" label="Cliente" rules={[{ required: true, message: 'Ingresa el nombre del cliente' }]}>
+                                {selectedEditStatus === 'PARTIALLY_PAID' && (
+                                    <Row gutter={12}>
+                                        <Col xs={24} sm={12} md={24} lg={12}>
+                                            <Form.Item
+                                                name="amount_paid"
+                                                label="Adelanto pagado"
+                                                rules={[
+                                                    { required: true, message: 'Ingresa el adelanto pagado' },
+                                                    {
+                                                        validator: async (_rule, value) => {
+                                                            const paid = Number(value || 0);
+                                                            if (paid > 0 && paid < editTotal) return;
+                                                            throw new Error('El adelanto debe ser mayor a 0 y menor al total');
+                                                        }
+                                                    }
+                                                ]}
+                                            >
+                                                <InputNumber min={0} precision={2} prefix="S/" style={{ width: '100%' }} />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12} md={24} lg={12}>
+                                            <Text type="secondary">Saldo pendiente</Text>
+                                            <Title level={5} style={{ marginTop: 8 }}>{formatPEN(editBalanceDue)}</Title>
+                                        </Col>
+                                    </Row>
+                                )}
+
+                                <Form.Item name="shipping_name" label="Cliente" rules={[{ required: true, message: 'Ingresa el nombre del cliente' }]}> 
                                     <Input placeholder="Nombre completo" />
                                 </Form.Item>
 
@@ -1007,6 +1344,8 @@ export default function OrderDetailPage() {
                                 {order.payment_reference && (
                                     <Descriptions.Item label="Referencia pago">{order.payment_reference}</Descriptions.Item>
                                 )}
+                                <Descriptions.Item label="Pagado">{formatPEN(Number(order.amount_paid || 0))}</Descriptions.Item>
+                                <Descriptions.Item label="Saldo pendiente">{formatPEN(Number(order.balance_due || 0))}</Descriptions.Item>
                                 <Descriptions.Item label="Nombre">{order.shipping_name}</Descriptions.Item>
                                 <Descriptions.Item label="DNI">{order.shipping_dni || '-'}</Descriptions.Item>
                                 <Descriptions.Item label="Teléfono / WS">{order.shipping_phone}</Descriptions.Item>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Card, Space, Spin, Typography } from 'antd';
 import { useParams } from 'next/navigation';
+import { formatPEN } from '@/lib/money';
 
 const { Title, Text } = Typography;
 
@@ -10,11 +11,14 @@ type OrderInfo = {
     code: string;
     status: string;
     total: number;
+    amountPaid: number;
+    balanceDue: number;
     createdAt: string;
 };
 
 const statusLabels: Record<string, string> = {
     PENDING_WS: 'Pendiente por WhatsApp',
+    PARTIALLY_PAID: 'Adelanto recibido / saldo pendiente',
     PAID: 'Orden generada / pagada',
     MEASURES_CONFIRMED: 'Medidas confirmadas',
     CONFIRMED: 'Confirmado',
@@ -75,7 +79,9 @@ export default function OrderPage() {
                 <Title level={3} style={{ marginTop: 0 }}>Pedido creado ✅</Title>
                 <Text>Tu código: <Text strong>{data.code}</Text></Text>
                 <Text>Estado: <Text strong>{statusLabels[data.status] || data.status}</Text></Text>
-                <Text>Total: <Text strong>{data.total}</Text></Text>
+                <Text>Total: <Text strong>{formatPEN(data.total)}</Text></Text>
+                {data.amountPaid > 0 && <Text>Pagado: <Text strong>{formatPEN(data.amountPaid)}</Text></Text>}
+                {data.balanceDue > 0 && <Text>Saldo pendiente: <Text strong>{formatPEN(data.balanceDue)}</Text></Text>}
                 <Text type="secondary">
                     Importante: si pagas por Yape/Plin, envía el comprobante por WhatsApp indicando tu código.
                 </Text>

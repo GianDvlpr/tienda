@@ -12,7 +12,7 @@ export async function GET(
 
   const r = await prisma.order_header.findUnique({
     where: { code },
-    select: { code: true, status: true, total: true, created_at: true },
+    select: { code: true, status: true, total: true, amount_paid: true, balance_due: true, created_at: true },
   });
 
   if (!r) {
@@ -23,6 +23,8 @@ export async function GET(
     code: r.code,
     status: r.status,
     total: Number(r.total ?? 0),
+    amountPaid: Number(r.amount_paid ?? 0),
+    balanceDue: Number(r.balance_due ?? 0),
     createdAt: r.created_at,
   });
 }

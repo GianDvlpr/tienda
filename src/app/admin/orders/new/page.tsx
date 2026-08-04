@@ -63,6 +63,7 @@ const salesChannelOptions = [
 
 const statusOptions = [
     { value: 'PENDING_WS', label: 'Pendiente de pago/contacto' },
+    { value: 'PARTIALLY_PAID', label: 'Adelanto pagado / saldo pendiente' },
     { value: 'PAID', label: 'Pagado' },
     { value: 'MEASURES_CONFIRMED', label: 'Medidas confirmadas' },
     { value: 'CONFIRMED', label: 'Confirmado / En preparación' },
@@ -115,6 +116,9 @@ export default function NewAdminOrderPage() {
         activeBundles || []
     );
     const total = Math.max(0, subtotal - bundleDiscount);
+    const selectedStatus = Form.useWatch('status', form);
+    const amountPaid = Number(Form.useWatch('amount_paid', form) || 0);
+    const balanceDue = Math.max(0, total - amountPaid);
 
     const handleVariantChange = (variantId: string) => {
         setSelectedVariantId(variantId);
@@ -316,7 +320,34 @@ export default function NewAdminOrderPage() {
                                 </Col>
                             </Row>
 
-                            <Form.Item name="shipping_name" label="Cliente" rules={[{ required: true, message: 'Ingresa el nombre del cliente' }]}>
+                            {selectedStatus === 'PARTIALLY_PAID' && (
+                                <Row gutter={12}>
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item
+                                            name="amount_paid"
+                                            label="Adelanto pagado"
+                                            rules={[
+                                                { required: true, message: 'Ingresa el adelanto pagado' },
+                                                {
+                                                    validator: async (_rule, value) => {
+                                                        const paid = Number(value || 0);
+                                                        if (paid > 0 && paid < total) return;
+                                                        throw new Error('El adelanto debe ser mayor a 0 y menor al total');
+                                                    }
+                                                }
+                                            ]}
+                                        >
+                                            <InputNumber min={0} precision={2} prefix="S/" style={{ width: '100%' }} />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col xs={24} sm={12}>
+                                        <Text type="secondary">Saldo pendiente</Text>
+                                        <Title level={5} style={{ marginTop: 8 }}>{formatPEN(balanceDue)}</Title>
+                                    </Col>
+                                </Row>
+                            )}
+
+                            <Form.Item name="shipping_name" label="Cliente" rules={[{ required: true, message: 'Ingresa el nombre del cliente' }]}> 
                                 <Input placeholder="Nombre completo" />
                             </Form.Item>
 

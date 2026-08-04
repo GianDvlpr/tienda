@@ -421,6 +421,8 @@ export async function POST(req: Request) {
                     coupon_discount: coupon_savings,
                     coupon_code: validated_coupon_code,
                     total: serverTotal,
+                    amount_paid: method === 'WHATSAPP' ? 0 : serverTotal,
+                    balance_due: method === 'WHATSAPP' ? serverTotal : 0,
                     currency: 'PEN',
                     payment_method: method,
                     payment_reference: paymentReference,

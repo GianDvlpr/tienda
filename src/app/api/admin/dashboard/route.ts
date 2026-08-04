@@ -6,10 +6,10 @@ export const runtime = 'nodejs';
 
 export async function GET() {
     try {
-        // 1. Total Revenue (Excluding Cancelled)
+        // 1. Total revenue collected (excluding cancelled and unpaid balances)
         const revenueResult = await prisma.order_header.aggregate({
             _sum: {
-                total: true
+                amount_paid: true
             },
             where: {
                 status: {
@@ -17,12 +17,12 @@ export async function GET() {
                 }
             }
         });
-        const totalRevenue = revenueResult._sum.total || 0;
+        const totalRevenue = revenueResult._sum.amount_paid || 0;
 
         // 2. Pending Orders Count
         const pendingCount = await prisma.order_header.count({
             where: {
-                status: 'PENDING_WS'
+                status: { in: ['PENDING_WS', 'PARTIALLY_PAID'] }
             }
         });
 
@@ -64,11 +64,11 @@ export async function GET() {
         // 5.1 Revenue Trend (Last 14 days)
         const recentOrdersForTrend = await prisma.order_header.findMany({
             where: {
-                status: { in: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED'] },
+                status: { in: ['PARTIALLY_PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED'] },
                 created_at: { gte: fourteenDaysAgo }
             },
             select: {
-                total: true,
+                amount_paid: true,
                 created_at: true
             },
             orderBy: { created_at: 'asc' }
@@ -84,7 +84,7 @@ export async function GET() {
         recentOrdersForTrend.forEach(order => {
             const date = dayjs(order.created_at).format('DD/MM');
             if (trendMap[date] !== undefined) {
-                trendMap[date] += Number(order.total);
+                trendMap[date] += Number(order.amount_paid);
             }
         });
 
@@ -96,7 +96,7 @@ export async function GET() {
         const pendingItems = await prisma.order_item.findMany({
             where: {
                 order_header: {
-                    status: 'PENDING_WS'
+                    status: { in: ['PENDING_WS', 'PARTIALLY_PAID'] }
                 }
             },
             select: {
@@ -124,7 +124,7 @@ export async function GET() {
         const salesItems = await prisma.order_item.findMany({
             where: {
                 order_header: {
-                    status: { in: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED'] }
+                    status: { in: ['PARTIALLY_PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED'] }
                 }
             },
             select: {

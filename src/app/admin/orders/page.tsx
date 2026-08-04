@@ -15,6 +15,7 @@ const { Title, Text } = Typography;
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
+    'PARTIALLY_PAID': { label: 'Adelanto / Saldo pendiente', color: 'volcano' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
@@ -47,6 +48,8 @@ type AdminOrder = {
     coupon_discount?: number | string | null;
     coupon_code?: string | null;
     total: number | string;
+    amount_paid?: number | string | null;
+    balance_due?: number | string | null;
     status: string;
     order_item?: { is_customized?: boolean | number }[];
 };
@@ -145,7 +148,14 @@ export default function AdminOrdersPage() {
             title: 'Total',
             dataIndex: 'total',
             key: 'total',
-            render: (val: number | string) => formatPEN(Number(val)),
+            render: (val: number | string, record) => (
+                <Space orientation="vertical" size={0}>
+                    <Text strong>{formatPEN(Number(val))}</Text>
+                    {Number(record.balance_due || 0) > 0 && (
+                        <Text type="warning" style={{ fontSize: 11 }}>Saldo: {formatPEN(Number(record.balance_due))}</Text>
+                    )}
+                </Space>
+            ),
         },
         {
             title: 'Estado',

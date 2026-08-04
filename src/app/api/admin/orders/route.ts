@@ -6,8 +6,8 @@ import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bun
 export const runtime = 'nodejs';
 
 const validSalesChannels = new Set(['SHOP', 'WHATSAPP', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'OTHER']);
-const validStatuses = new Set(['PENDING_WS', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
-const paidStatuses = new Set(['PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
+const validStatuses = new Set(['PENDING_WS', 'PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
+const paidStatuses = new Set(['PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
 
 function normalizeText(value: unknown) {
     return typeof value === 'string' ? value.trim() : '';
@@ -19,6 +19,31 @@ function generateOrderCode(prefix = 'ADM') {
 
 function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Error inesperado';
+}
+
+function resolvePaymentAmounts(status: string, total: number, rawAmountPaid: unknown) {
+    const amountInput = rawAmountPaid === undefined || rawAmountPaid === null || rawAmountPaid === ''
+        ? undefined
+        : Number(rawAmountPaid);
+
+    if (amountInput !== undefined && (!Number.isFinite(amountInput) || amountInput < 0)) {
+        throw new Error('El adelanto pagado debe ser válido');
+    }
+
+    if (status === 'PENDING_WS') {
+        return { amountPaid: 0, balanceDue: total };
+    }
+
+    if (status === 'PARTIALLY_PAID') {
+        const amountPaid = amountInput ?? 0;
+        if (amountPaid <= 0 || amountPaid >= total) {
+            throw new Error('Para pago parcial, el adelanto debe ser mayor a 0 y menor al total');
+        }
+
+        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
+    }
+
+    return { amountPaid: total, balanceDue: 0 };
 }
 
 type ManualOrderItemInput = {
@@ -38,6 +63,7 @@ type ManualOrderRequest = {
     notes?: string;
     payment_method?: string;
     payment_reference?: string;
+    amount_paid?: number | string | null;
     external_reference?: string;
     sales_channel?: string;
     status?: string;
@@ -178,6 +204,7 @@ export async function POST(req: Request) {
             );
             const discountTotal = bundleDiscount;
             const total = Math.max(0, subtotal - discountTotal);
+            const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid);
 
             const header = await tx.order_header.create({
                 data: {
@@ -195,6 +222,8 @@ export async function POST(req: Request) {
                     bundle_discount: bundleDiscount,
                     coupon_discount: 0,
                     total,
+                    amount_paid: amountPaid,
+                    balance_due: balanceDue,
                     currency: 'PEN',
                     payment_method: paymentMethod,
                     payment_reference: paymentReference,
