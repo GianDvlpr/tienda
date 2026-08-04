@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm, Select, Row, Col, theme } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -11,12 +11,37 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export default function AdminCollectionsPage() {
+    const { token } = theme.useToken();
     const { data: collections, error, mutate, isLoading } = useSWR<any[]>('/api/admin/collections', fetcher);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCollection, setEditingCollection] = useState<any>(null);
     const [form] = Form.useForm();
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+
+    const filteredCollections = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (collections || []).filter((collection) => {
+            const matchesSearch = !normalizedSearch
+                || String(collection.name || '').toLowerCase().includes(normalizedSearch)
+                || String(collection.slug || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (statusFilter !== undefined && Boolean(collection.is_active) !== statusFilter) return false;
+
+            return true;
+        });
+    }, [collections, search, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setStatusFilter(undefined);
+    };
 
     const openCreateModal = () => {
         setEditingCollection(null);
@@ -140,9 +165,28 @@ export default function AdminCollectionsPage() {
                 </Button>
             </div>
 
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={12}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre o slug" allowClear />
+                    </Col>
+                    <Col xs={24} md={6}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select allowClear value={statusFilter} onChange={setStatusFilter} placeholder="Todas" style={{ width: '100%' }} options={[{ value: true, label: 'Activa' }, { value: false, label: 'Oculta' }]} />
+                    </Col>
+                    <Col xs={24} md={6}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredCollections.length} de {collections?.length || 0} colecciones
+                </Text>
+            </div>
+
             <Table 
                 columns={columns} 
-                dataSource={collections} 
+                dataSource={filteredCollections} 
                 loading={isLoading} 
                 rowKey="collection_id" 
                 pagination={{ pageSize: 15 }}

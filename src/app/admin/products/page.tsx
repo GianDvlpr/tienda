@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React from 'react';
-import { Table, Button, Space, Typography, Tag, Popconfirm, Flex } from 'antd';
+import { Table, Button, Space, Typography, Tag, Popconfirm, Input, InputNumber, Select, Row, Col, theme } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -13,11 +13,43 @@ import { useRouter } from 'next/navigation';
 const { Title, Text } = Typography;
 
 export default function AdminProductsPage() {
+    const { token } = theme.useToken();
     const { data: products, error, mutate, isLoading, isValidating } = useSWR<any[]>('/api/admin/products', fetcher, {
         refreshInterval: 30000,
         revalidateOnFocus: true
     });
     const router = useRouter();
+    const [search, setSearch] = React.useState('');
+    const [minPrice, setMinPrice] = React.useState<number | null>(null);
+    const [maxPrice, setMaxPrice] = React.useState<number | null>(null);
+    const [statusFilter, setStatusFilter] = React.useState<boolean | undefined>();
+
+    const filteredProducts = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (products || []).filter((product) => {
+            const basePrice = Number(product.base_price || 0);
+            const matchesSearch = !normalizedSearch
+                || String(product.name || '').toLowerCase().includes(normalizedSearch)
+                || String(product.slug || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (minPrice !== null && basePrice < minPrice) return false;
+            if (maxPrice !== null && basePrice > maxPrice) return false;
+            if (statusFilter !== undefined && Boolean(product.is_active) !== statusFilter) return false;
+
+            return true;
+        });
+    }, [products, search, minPrice, maxPrice, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || minPrice !== null || maxPrice !== null || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setMinPrice(null);
+        setMaxPrice(null);
+        setStatusFilter(undefined);
+    };
 
     const handleDelete = async (product_id: string) => {
         try {
@@ -122,9 +154,43 @@ export default function AdminProductsPage() {
                 </Space>
             </div>
 
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={8}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre o slug" allowClear />
+                    </Col>
+                    <Col xs={12} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Precio mínimo</Text>
+                        <InputNumber value={minPrice} onChange={(value) => setMinPrice(value === null ? null : Number(value))} min={0} prefix="S/" style={{ width: '100%' }} />
+                    </Col>
+                    <Col xs={12} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Precio máximo</Text>
+                        <InputNumber value={maxPrice} onChange={(value) => setMaxPrice(value === null ? null : Number(value))} min={0} prefix="S/" style={{ width: '100%' }} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select
+                            allowClear
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            placeholder="Todos"
+                            style={{ width: '100%' }}
+                            options={[{ value: true, label: 'Activo' }, { value: false, label: 'Inactivo' }]}
+                        />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredProducts.length} de {products?.length || 0} productos
+                </Text>
+            </div>
+
             <Table 
                 columns={columns} 
-                dataSource={products} 
+                dataSource={filteredProducts} 
                 loading={isLoading} 
                 rowKey="product_id" 
                 pagination={{ pageSize: 10 }}

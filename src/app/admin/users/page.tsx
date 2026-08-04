@@ -2,20 +2,57 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm, Select } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, Switch, Popconfirm, Select, DatePicker, Row, Col, theme } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 export default function AdminUsersPage() {
+    const { token } = theme.useToken();
     const { data: users, error, mutate, isLoading } = useSWR<any[]>('/api/admin/users', fetcher);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
     const [form] = Form.useForm();
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState<string>();
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+    const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+
+    const filteredUsers = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+        const [startDate, endDate] = dateRange || [];
+
+        return (users || []).filter((user) => {
+            const createdAt = dayjs(user.created_at);
+            const matchesSearch = !normalizedSearch
+                || String(user.full_name || '').toLowerCase().includes(normalizedSearch)
+                || String(user.username || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (roleFilter && user.role !== roleFilter) return false;
+            if (statusFilter !== undefined && Boolean(user.is_active) !== statusFilter) return false;
+            if (startDate && createdAt.isBefore(startDate.startOf('day'))) return false;
+            if (endDate && createdAt.isAfter(endDate.endOf('day'))) return false;
+
+            return true;
+        });
+    }, [users, search, roleFilter, statusFilter, dateRange]);
+
+    const hasActiveFilters = Boolean(search || roleFilter || statusFilter !== undefined || dateRange);
+
+    const clearFilters = () => {
+        setSearch('');
+        setRoleFilter(undefined);
+        setStatusFilter(undefined);
+        setDateRange(null);
+    };
 
     const openCreateModal = () => {
         setEditingUser(null);
@@ -143,9 +180,56 @@ export default function AdminUsersPage() {
                 </Button>
             </div>
 
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={7}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre o usuario" allowClear />
+                    </Col>
+                    <Col xs={24} md={5}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Rol</Text>
+                        <Select
+                            allowClear
+                            value={roleFilter}
+                            onChange={setRoleFilter}
+                            placeholder="Todos"
+                            style={{ width: '100%' }}
+                            options={[{ value: 'ADMIN', label: 'Administrador' }, { value: 'SELLER', label: 'Vendedor' }]}
+                        />
+                    </Col>
+                    <Col xs={24} md={5}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select
+                            allowClear
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            placeholder="Todos"
+                            style={{ width: '100%' }}
+                            options={[{ value: true, label: 'Activo' }, { value: false, label: 'Inactivo' }]}
+                        />
+                    </Col>
+                    <Col xs={24} md={5}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Creación</Text>
+                        <RangePicker
+                            value={dateRange}
+                            onChange={(dates) => setDateRange(dates ? [dates[0], dates[1]] : null)}
+                            format="DD/MM/YYYY"
+                            style={{ width: '100%' }}
+                            placeholder={['Desde', 'Hasta']}
+                        />
+                    </Col>
+                    <Col xs={24} md={2}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredUsers.length} de {users?.length || 0} usuarios
+                </Text>
+            </div>
+
             <Table 
                 columns={columns} 
-                dataSource={users} 
+                dataSource={filteredUsers} 
                 loading={isLoading} 
                 rowKey="user_id" 
                 pagination={{ pageSize: 10 }}

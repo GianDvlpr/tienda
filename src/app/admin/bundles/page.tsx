@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Card } from 'antd';
+import { Table, Button, Space, Typography, Tag, Modal, Form, Input, InputNumber, Switch, Select, Popconfirm, Card, Row, Col, theme } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, GiftOutlined, ReloadOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -12,6 +12,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 export default function AdminBundlesPage() {
+    const { token } = theme.useToken();
     const { data: bundles, error, mutate, isLoading, isValidating } = useSWR<any[]>('/api/admin/bundles', fetcher, {
         refreshInterval: 30000,
         revalidateOnFocus: true
@@ -22,6 +23,42 @@ export default function AdminBundlesPage() {
     const [editingBundle, setEditingBundle] = useState<any>(null);
     const [form] = Form.useForm();
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [productFilter, setProductFilter] = useState<string>();
+    const [promotionFilter, setPromotionFilter] = useState<string>();
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+
+    const filteredBundles = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (bundles || []).filter((bundle) => {
+            const items = bundle.items || [];
+            const hasBundlePrice = Number(bundle.bundle_price || 0) > 0;
+            const hasDiscount = Number(bundle.discount_amount || 0) > 0;
+            const hasTier = Number(bundle.tier_2_price || 0) > 0 || Number(bundle.tier_3_price || 0) > 0;
+            const matchesSearch = !normalizedSearch
+                || String(bundle.name || '').toLowerCase().includes(normalizedSearch)
+                || String(bundle.description || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (productFilter && !items.some((item: any) => item.product_id === productFilter)) return false;
+            if (promotionFilter === 'BUNDLE_PRICE' && !hasBundlePrice) return false;
+            if (promotionFilter === 'DISCOUNT' && !hasDiscount) return false;
+            if (promotionFilter === 'TIER' && !hasTier) return false;
+            if (statusFilter !== undefined && Boolean(bundle.is_active) !== statusFilter) return false;
+
+            return true;
+        });
+    }, [bundles, search, productFilter, promotionFilter, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || productFilter || promotionFilter || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setProductFilter(undefined);
+        setPromotionFilter(undefined);
+        setStatusFilter(undefined);
+    };
 
     const openCreateModal = () => {
         setEditingBundle(null);
@@ -188,9 +225,35 @@ export default function AdminBundlesPage() {
             </div>
 
             <Card variant="borderless">
+                <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                    <Row gutter={[12, 12]} align="bottom">
+                        <Col xs={24} md={7}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre o descripción" allowClear />
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Producto</Text>
+                            <Select allowClear showSearch optionFilterProp="label" value={productFilter} onChange={setProductFilter} placeholder="Todos" style={{ width: '100%' }} options={(products || []).map((product) => ({ value: product.product_id, label: product.name }))} />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Promoción</Text>
+                            <Select allowClear value={promotionFilter} onChange={setPromotionFilter} placeholder="Todas" style={{ width: '100%' }} options={[{ value: 'BUNDLE_PRICE', label: 'Precio conjunto' }, { value: 'DISCOUNT', label: 'Descuento' }, { value: 'TIER', label: '2/3 conjuntos' }]} />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                            <Select allowClear value={statusFilter} onChange={setStatusFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Activa' }, { value: false, label: 'Inactiva' }]} />
+                        </Col>
+                        <Col xs={24} md={3}>
+                            <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                        </Col>
+                    </Row>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                        Mostrando {filteredBundles.length} de {bundles?.length || 0} promociones
+                    </Text>
+                </div>
                 <Table 
                     columns={columns} 
-                    dataSource={bundles} 
+                    dataSource={filteredBundles} 
                     loading={isLoading} 
                     rowKey="bundle_id" 
                     pagination={{ pageSize: 15 }}

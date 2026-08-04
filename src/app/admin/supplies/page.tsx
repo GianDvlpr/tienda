@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { App, Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, Popconfirm } from 'antd';
+import { App, Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, Popconfirm, Row, Col, theme } from 'antd';
 import { BgColorsOutlined, EditOutlined, PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -12,11 +12,16 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function SuppliesTab() {
+    const { token } = theme.useToken();
     const { message } = App.useApp();
     const { data: supplies, mutate, isLoading } = useSWR<any[]>('/api/admin/supplies', fetcher);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState<string>();
+    const [stockFilter, setStockFilter] = useState<string>();
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
 
     // ---- Restock State ----
     const [restockSupply, setRestockSupply] = useState<any>(null);
@@ -29,6 +34,34 @@ function SuppliesTab() {
         historySupply ? `/api/admin/supplies/movements/${historySupply.supply_id}` : null,
         fetcher
     );
+
+    const filteredSupplies = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (supplies || []).filter((supply) => {
+            const stock = Number(supply.stock || 0);
+            const minStock = Number(supply.min_stock || 0);
+            const isLowStock = minStock > 0 && stock <= minStock;
+            const matchesSearch = !normalizedSearch || String(supply.name || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (typeFilter && supply.type !== typeFilter) return false;
+            if (statusFilter !== undefined && Boolean(supply.is_active) !== statusFilter) return false;
+            if (stockFilter === 'LOW' && !isLowStock) return false;
+            if (stockFilter === 'OK' && isLowStock) return false;
+
+            return true;
+        });
+    }, [supplies, search, typeFilter, stockFilter, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || typeFilter || stockFilter || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setTypeFilter(undefined);
+        setStockFilter(undefined);
+        setStatusFilter(undefined);
+    };
 
     const onFinish = async (values: any) => {
         setIsSaving(true);
@@ -128,7 +161,33 @@ function SuppliesTab() {
             <div style={{ marginBottom: 16, textAlign: 'right' }}>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>Nuevo Insumo</Button>
             </div>
-            <Table columns={columns} dataSource={supplies} loading={isLoading} rowKey="supply_id" size="small" />
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={7}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre del insumo" allowClear />
+                    </Col>
+                    <Col xs={24} md={5}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Tipo</Text>
+                        <Select allowClear value={typeFilter} onChange={setTypeFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: 'TELA', label: 'Telas' }, { value: 'AVIO', label: 'Avíos' }, { value: 'HILO', label: 'Hilos' }, { value: 'EMPAQUE', label: 'Empaque' }]} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Stock</Text>
+                        <Select allowClear value={stockFilter} onChange={setStockFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: 'LOW', label: 'Stock bajo' }, { value: 'OK', label: 'Stock OK' }]} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select allowClear value={statusFilter} onChange={setStatusFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Activo' }, { value: false, label: 'Inactivo' }]} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredSupplies.length} de {supplies?.length || 0} insumos
+                </Text>
+            </div>
+            <Table columns={columns} dataSource={filteredSupplies} loading={isLoading} rowKey="supply_id" size="small" />
 
             {/* Nuevo Insumo Modal */}
             <Modal title="Nuevo Insumo / Material" open={isModalOpen} onCancel={() => setIsModalOpen(false)} footer={null}>
@@ -206,11 +265,41 @@ function SuppliesTab() {
 }
 
 function ServicesTab() {
+    const { token } = theme.useToken();
     const { message } = App.useApp();
     const { data: services, mutate, isLoading } = useSWR<any[]>('/api/admin/services', fetcher);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [minCost, setMinCost] = useState<number | null>(null);
+    const [maxCost, setMaxCost] = useState<number | null>(null);
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+
+    const filteredServices = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (services || []).filter((service) => {
+            const unitCost = Number(service.unit_cost || 0);
+            const matchesSearch = !normalizedSearch || String(service.name || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (minCost !== null && unitCost < minCost) return false;
+            if (maxCost !== null && unitCost > maxCost) return false;
+            if (statusFilter !== undefined && Boolean(service.is_active) !== statusFilter) return false;
+
+            return true;
+        });
+    }, [services, search, minCost, maxCost, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || minCost !== null || maxCost !== null || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setMinCost(null);
+        setMaxCost(null);
+        setStatusFilter(undefined);
+    };
 
     const onFinish = async (values: any) => {
         setIsSaving(true);
@@ -253,7 +342,33 @@ function ServicesTab() {
             <div style={{ marginBottom: 16, textAlign: 'right' }}>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
             </div>
-            <Table columns={columns} dataSource={services} loading={isLoading} rowKey="service_id" size="small" />
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={8}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre del servicio" allowClear />
+                    </Col>
+                    <Col xs={12} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Costo mínimo</Text>
+                        <InputNumber value={minCost} onChange={(value) => setMinCost(value === null ? null : Number(value))} min={0} prefix="S/" style={{ width: '100%' }} />
+                    </Col>
+                    <Col xs={12} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Costo máximo</Text>
+                        <InputNumber value={maxCost} onChange={(value) => setMaxCost(value === null ? null : Number(value))} min={0} prefix="S/" style={{ width: '100%' }} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select allowClear value={statusFilter} onChange={setStatusFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Activo' }, { value: false, label: 'Inactivo' }]} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredServices.length} de {services?.length || 0} servicios
+                </Text>
+            </div>
+            <Table columns={columns} dataSource={filteredServices} loading={isLoading} rowKey="service_id" size="small" />
 
             <Modal title="Tarifario de Servicio de Taller" open={isModalOpen} onCancel={() => setIsModalOpen(false)} footer={null}>
                 <Form layout="vertical" form={form} onFinish={onFinish} initialValues={{ is_active: true }}>
@@ -285,11 +400,39 @@ function ServicesTab() {
 }
 
 function ColorsTab() {
+    const { token } = theme.useToken();
     const { message } = App.useApp();
     const { data: colors, mutate, isLoading } = useSWR<any[]>('/api/admin/colors', fetcher);
     const [form] = Form.useForm();
     const [editing, setEditing] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [availabilityFilter, setAvailabilityFilter] = useState<boolean | undefined>();
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+
+    const filteredColors = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (colors || []).filter((color) => {
+            const matchesSearch = !normalizedSearch
+                || String(color.name || '').toLowerCase().includes(normalizedSearch)
+                || String(color.hex || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (availabilityFilter !== undefined && Boolean(color.is_available) !== availabilityFilter) return false;
+            if (statusFilter !== undefined && Boolean(color.is_active) !== statusFilter) return false;
+
+            return true;
+        });
+    }, [colors, search, availabilityFilter, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || availabilityFilter !== undefined || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setAvailabilityFilter(undefined);
+        setStatusFilter(undefined);
+    };
 
     const openModal = (record?: any) => {
         setEditing(record || {});
@@ -322,8 +465,30 @@ function ColorsTab() {
             <div style={{ marginBottom: 16, textAlign: 'right' }}>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>Nuevo Color</Button>
             </div>
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={8}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre o HEX" allowClear />
+                    </Col>
+                    <Col xs={24} md={5}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Disponibilidad</Text>
+                        <Select allowClear value={availabilityFilter} onChange={setAvailabilityFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Disponible' }, { value: false, label: 'Agotado' }]} />
+                    </Col>
+                    <Col xs={24} md={5}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select allowClear value={statusFilter} onChange={setStatusFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Activo' }, { value: false, label: 'Inactivo' }]} />
+                    </Col>
+                    <Col xs={24} md={6}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredColors.length} de {colors?.length || 0} colores
+                </Text>
+            </div>
             <Table
-                dataSource={colors}
+                dataSource={filteredColors}
                 loading={isLoading}
                 rowKey="color_id"
                 size="small"
@@ -353,12 +518,35 @@ function ColorsTab() {
 }
 
 function SupplyColorStockTab() {
+    const { token } = theme.useToken();
     const { message } = App.useApp();
     const { data: fabricSupplies, mutate, isLoading } = useSWR<any[]>('/api/admin/supply-colors', fetcher);
     const { data: colors } = useSWR<any[]>('/api/admin/colors', fetcher);
     const [stockForm] = Form.useForm();
     const [stockSupply, setStockSupply] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+
+    const filteredFabricSupplies = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (fabricSupplies || []).filter((supply) => {
+            const matchesSearch = !normalizedSearch || String(supply.name || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (statusFilter !== undefined && Boolean(supply.is_active) !== statusFilter) return false;
+
+            return true;
+        });
+    }, [fabricSupplies, search, statusFilter]);
+
+    const hasActiveFilters = Boolean(search || statusFilter !== undefined);
+
+    const clearFilters = () => {
+        setSearch('');
+        setStatusFilter(undefined);
+    };
 
     const openStock = (supply: any, row?: any) => {
         setStockSupply(supply);
@@ -397,8 +585,26 @@ function SupplyColorStockTab() {
             <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
                 Registra las telas en la pestaña Insumos y Materiales con clasificación TELA. Aquí asignas colores, stock y disponibilidad por cada tela.
             </Text>
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                <Row gutter={[12, 12]} align="bottom">
+                    <Col xs={24} md={10}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre de tela" allowClear />
+                    </Col>
+                    <Col xs={24} md={6}>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                        <Select allowClear value={statusFilter} onChange={setStatusFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Activa' }, { value: false, label: 'Inactiva' }]} />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                    </Col>
+                </Row>
+                <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                    Mostrando {filteredFabricSupplies.length} de {fabricSupplies?.length || 0} telas
+                </Text>
+            </div>
             <Table
-                dataSource={fabricSupplies}
+                dataSource={filteredFabricSupplies}
                 loading={isLoading}
                 rowKey="supply_id"
                 size="small"

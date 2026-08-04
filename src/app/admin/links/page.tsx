@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
-import { Button, Card, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Button, Card, Form, Image, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography, Row, Col, theme } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { fetcher } from '@/lib/fetcher';
@@ -150,6 +150,7 @@ async function readApiError(res: Response, fallback: string) {
 }
 
 export default function AdminLinksPage() {
+    const { token } = theme.useToken();
     const { data: settings, error: settingsError, mutate: mutateSettings, isLoading: loadingSettings } = useSWR<LinkPageSettings>('/api/admin/links/settings', fetcher);
     const { data: items, error: itemsError, mutate: mutateItems, isLoading: loadingItems } = useSWR<LinkItem[]>('/api/admin/links/items', fetcher);
 
@@ -160,9 +161,43 @@ export default function AdminLinksPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<LinkItem | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState<string>();
+    const [activeFilter, setActiveFilter] = useState<boolean | undefined>();
+    const [featuredFilter, setFeaturedFilter] = useState<boolean | undefined>();
+    const [availabilityFilter, setAvailabilityFilter] = useState<string>();
     const watchedSettings = Form.useWatch([], settingsForm) as Partial<LinkPageSettingsForm> | undefined;
     const linksUrl = 'https://auraboutique.me/links';
     const pdfUrl = 'https://auraboutique.me/catalogo.pdf';
+
+    const filteredItems = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+
+        return (items || []).filter((item) => {
+            const matchesSearch = !normalizedSearch
+                || item.title.toLowerCase().includes(normalizedSearch)
+                || item.url.toLowerCase().includes(normalizedSearch)
+                || String(item.description || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (typeFilter && item.link_type !== typeFilter) return false;
+            if (activeFilter !== undefined && item.is_active !== activeFilter) return false;
+            if (featuredFilter !== undefined && item.is_featured !== featuredFilter) return false;
+            if (availabilityFilter && item.availability_status !== availabilityFilter) return false;
+
+            return true;
+        });
+    }, [items, search, typeFilter, activeFilter, featuredFilter, availabilityFilter]);
+
+    const hasActiveFilters = Boolean(search || typeFilter || activeFilter !== undefined || featuredFilter !== undefined || availabilityFilter);
+
+    const clearFilters = () => {
+        setSearch('');
+        setTypeFilter(undefined);
+        setActiveFilter(undefined);
+        setFeaturedFilter(undefined);
+        setAvailabilityFilter(undefined);
+    };
 
     const previewSettings: LinkPageSettingsForm = {
         title: 'Aura Boutique',
@@ -590,9 +625,39 @@ export default function AdminLinksPage() {
             </Card>
 
             <Card title="Links" style={{ marginBottom: 24 }}>
+                <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                    <Row gutter={[12, 12]} align="bottom">
+                        <Col xs={24} md={6}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Título, URL o descripción" allowClear />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Tipo</Text>
+                            <Select allowClear value={typeFilter} onChange={setTypeFilter} placeholder="Todos" style={{ width: '100%' }} options={linkTypeOptions} />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Visible</Text>
+                            <Select allowClear value={activeFilter} onChange={setActiveFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Visible' }, { value: false, label: 'Oculto' }]} />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Destacado</Text>
+                            <Select allowClear value={featuredFilter} onChange={setFeaturedFilter} placeholder="Todos" style={{ width: '100%' }} options={[{ value: true, label: 'Sí' }, { value: false, label: 'No' }]} />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Disponibilidad</Text>
+                            <Select allowClear value={availabilityFilter} onChange={setAvailabilityFilter} placeholder="Todas" style={{ width: '100%' }} options={statusOptions} />
+                        </Col>
+                        <Col xs={24} md={2}>
+                            <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                        </Col>
+                    </Row>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                        Mostrando {filteredItems.length} de {items?.length || 0} enlaces
+                    </Text>
+                </div>
                 <Table
                     columns={columns}
-                    dataSource={items}
+                    dataSource={filteredItems}
                     loading={loadingItems}
                     rowKey="link_id"
                     pagination={false}

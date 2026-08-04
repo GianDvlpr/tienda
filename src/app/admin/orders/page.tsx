@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React from 'react';
-import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col } from 'antd';
+import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col, theme } from 'antd';
 import { EyeOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -66,6 +66,7 @@ function hasCustomizedItems(order: AdminOrder) {
 }
 
 export default function AdminOrdersPage() {
+    const { token } = theme.useToken();
     const { data: orders, error, isLoading, mutate, isValidating } = useSWR<AdminOrder[]>('/api/admin/orders', fetcher, {
         refreshInterval: 30000, // Cada 30 segundos
         revalidateOnFocus: true
@@ -206,7 +207,7 @@ export default function AdminOrdersPage() {
                 </Flex>
             }
         >
-            <div style={{ marginBottom: 16, padding: 16, border: '1px solid #f0f0f0', borderRadius: 12, background: '#fafafa' }}>
+            <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
                 <Row gutter={[12, 12]} align="bottom">
                     <Col xs={24} md={12} lg={7}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Fecha</Text>

@@ -16,17 +16,23 @@ import {
     DatePicker, 
     Switch,
     App,
-    Popconfirm
+    Popconfirm,
+    Row,
+    Col,
+    theme
 } from 'antd';
 import { PlusOutlined, TagOutlined, ReloadOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 export default function CouponsPage() {
+    const { token } = theme.useToken();
     const { data, mutate, isLoading, isValidating } = useSWR<any[]>('/api/admin/coupons', fetcher, {
         refreshInterval: 30000,
         revalidateOnFocus: true
@@ -35,9 +41,46 @@ export default function CouponsPage() {
     const [editingCoupon, setEditingCoupon] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [togglingId, setTogglingId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [discountTypeFilter, setDiscountTypeFilter] = useState<string>();
+    const [statusFilter, setStatusFilter] = useState<boolean | undefined>();
+    const [expirationFilter, setExpirationFilter] = useState<string>();
+    const [expirationRange, setExpirationRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
     
     const { message } = App.useApp();
     const [form] = Form.useForm();
+
+    const filteredCoupons = React.useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+        const [startDate, endDate] = expirationRange || [];
+
+        return (data || []).filter((coupon) => {
+            const expiresAt = coupon.expires_at ? dayjs(coupon.expires_at) : null;
+            const isExpired = Boolean(expiresAt && dayjs().isAfter(expiresAt.endOf('day')));
+            const matchesSearch = !normalizedSearch || String(coupon.code || '').toLowerCase().includes(normalizedSearch);
+
+            if (!matchesSearch) return false;
+            if (discountTypeFilter && coupon.discount_type !== discountTypeFilter) return false;
+            if (statusFilter !== undefined && Boolean(coupon.is_active) !== statusFilter) return false;
+            if (expirationFilter === 'EXPIRED' && !isExpired) return false;
+            if (expirationFilter === 'VALID' && isExpired) return false;
+            if (expirationFilter === 'NO_EXPIRATION' && expiresAt) return false;
+            if (startDate && (!expiresAt || expiresAt.isBefore(startDate.startOf('day')))) return false;
+            if (endDate && (!expiresAt || expiresAt.isAfter(endDate.endOf('day')))) return false;
+
+            return true;
+        });
+    }, [data, search, discountTypeFilter, statusFilter, expirationFilter, expirationRange]);
+
+    const hasActiveFilters = Boolean(search || discountTypeFilter || statusFilter !== undefined || expirationFilter || expirationRange);
+
+    const clearFilters = () => {
+        setSearch('');
+        setDiscountTypeFilter(undefined);
+        setStatusFilter(undefined);
+        setExpirationFilter(undefined);
+        setExpirationRange(null);
+    };
 
     const openCreateModal = () => {
         setEditingCoupon(null);
@@ -208,9 +251,66 @@ export default function CouponsPage() {
             </div>
 
             <Card variant="borderless">
+                <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
+                    <Row gutter={[12, 12]} align="bottom">
+                        <Col xs={24} md={6}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Buscar</Text>
+                            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Código" allowClear />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Tipo</Text>
+                            <Select
+                                allowClear
+                                value={discountTypeFilter}
+                                onChange={setDiscountTypeFilter}
+                                placeholder="Todos"
+                                style={{ width: '100%' }}
+                                options={[{ value: 'PERCENTAGE', label: 'Porcentaje' }, { value: 'FIXED', label: 'Monto fijo' }]}
+                            />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
+                            <Select
+                                allowClear
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                                placeholder="Todos"
+                                style={{ width: '100%' }}
+                                options={[{ value: true, label: 'Activo' }, { value: false, label: 'Inactivo' }]}
+                            />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Expiración</Text>
+                            <Select
+                                allowClear
+                                value={expirationFilter}
+                                onChange={setExpirationFilter}
+                                placeholder="Todas"
+                                style={{ width: '100%' }}
+                                options={[{ value: 'VALID', label: 'Vigentes' }, { value: 'EXPIRED', label: 'Expirados' }, { value: 'NO_EXPIRATION', label: 'Sin expiración' }]}
+                            />
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Rango fecha</Text>
+                            <RangePicker
+                                value={expirationRange}
+                                onChange={(dates) => setExpirationRange(dates ? [dates[0], dates[1]] : null)}
+                                format="DD/MM/YYYY"
+                                style={{ width: '100%' }}
+                                placeholder={['Desde', 'Hasta']}
+                            />
+                        </Col>
+                        <Col xs={24} md={2}>
+                            <Button onClick={clearFilters} disabled={!hasActiveFilters} block>Limpiar</Button>
+                        </Col>
+                    </Row>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 10 }}>
+                        Mostrando {filteredCoupons.length} de {data?.length || 0} cupones
+                    </Text>
+                </div>
                 <Table 
                     columns={columns} 
-                    dataSource={data} 
+                    dataSource={filteredCoupons} 
                     loading={isLoading} 
                     rowKey="coupon_id"
                     pagination={{ pageSize: 12 }}
