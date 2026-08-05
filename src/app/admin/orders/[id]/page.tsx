@@ -751,6 +751,7 @@ const printShippingLabel = async () => {
                 <head>
                     <title>Etiqueta de Envio - ${order.code}</title>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
 <style>
                         @page { size: ${PRINT_W} ${PRINT_H}; margin: 0; }
                         * { box-sizing: border-box; }
@@ -771,10 +772,10 @@ const printShippingLabel = async () => {
                         .header { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
                         .brand-header { display: flex; align-items: center; gap: 10px; min-width: 0; }
                         .label-logo { width: 64px; height: 64px; border-radius: 999px; object-fit: cover; border: 1px solid #000; flex: 0 0 auto; }
-                        .header h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; white-space: nowrap; }
+                        .header h2 { margin: 0; font-family: 'Cinzel', serif; font-size: 22px; font-weight: 900; letter-spacing: 2px; line-height: 1; white-space: nowrap; }
                         .order-code { font-size: 16px; font-weight: bold; padding: 6px 12px; border: 2px solid #000; white-space: nowrap; flex: 0 0 auto; }
 
-                        .section-title { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
+                        .section-title { font-family: 'Playfair Display', serif; font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
 
                         .receiver-box { font-size: 13px; margin-bottom: 14px; }
                         .receiver-box .name { font-size: 22px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; line-height: 1.1; }
@@ -877,6 +878,7 @@ const printShippingLabel = async () => {
                 <head>
                     <title>Sticker etiqueta - ${order.code}</title>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
 <style>
                         @page { size: ${STICKER_W} ${STICKER_H}; margin: 0; }
                         * { box-sizing: border-box; }
@@ -893,24 +895,24 @@ const printShippingLabel = async () => {
                             flex-direction: column;
                             border-radius: 12px;
                         }
-                        .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #eee; }
+                        .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid #eee; }
                         .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
                         .logo { width: 80px; height: 80px; border-radius: 999px; object-fit: cover; flex: 0 0 auto; }
-                        .brand h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; white-space: nowrap; }
-                        .order-code { font-size: 20px; font-weight: bold; padding: 6px 14px; border: 2px solid #000; border-radius: 6px; white-space: nowrap; flex: 0 0 auto; }
-                        .row { display: flex; gap: 16px; margin-bottom: 8px; }
+                        .brand h2 { margin: 0; font-family: 'Cinzel', serif; font-size: 26px; font-weight: 700; letter-spacing: 2px; line-height: 1; white-space: nowrap; }
+                        .order-code { font-size: 20px; font-weight: bold; padding: 6px 14px; border: 1.5px solid #c89f53; border-radius: 6px; white-space: nowrap; flex: 0 0 auto; }
+                        .row { display: flex; gap: 16px; margin-bottom: 6px; }
                         .col { flex: 1 1 0; min-width: 0; }
-                        .section-title { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
+                        .section-title { font-family: 'Playfair Display', serif; font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
                         .sender-box { font-size: 11px; color: #444; }
                         .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
                         .receiver-box { font-size: 13px; }
                         .receiver-box .name { font-size: 22px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; line-height: 1.05; }
                         .receiver-box .details { margin: 2px 0; font-size: 12px; color: #444; }
-                        .receiver-box .address { font-size: 15px; font-weight: bold; margin-top: 6px; padding: 8px 10px; background: #f7f7f7; border: 2px dashed #000; border-radius: 8px; line-height: 1.25; }
-                        .contents { margin-top: auto; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px; }
+                        .receiver-box .address { font-size: 15px; font-weight: bold; margin-top: 6px; padding: 8px 10px; background: #f7f7f7; border: 2px dashed #c89f53; border-radius: 8px; line-height: 1.25; }
+                        .contents { margin-top: 12px; font-size: 12px; }
                         .contents ul { margin: 4px 0 0; padding-left: 18px; }
                         .contents li { line-height: 1.35; }
-                        .footer { margin-top: 10px; font-size: 10px; color: #666; text-align: center; letter-spacing: 0.5px; }
+                        .footer { margin-top: 16px; font-size: 10px; color: #666; text-align: center; letter-spacing: 0.5px; }
                         @media print {
                             html, body { background: #fff; }
                             .sticker { border: none; }
@@ -973,6 +975,7 @@ const printShippingLabel = async () => {
                 <head>
                     <title>Sticker logo - Aura Boutique</title>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
 <style>
                         @page { size: ${STICKER_W} ${STICKER_H}; margin: 0; }
                         * { box-sizing: border-box; }
@@ -982,7 +985,7 @@ const printShippingLabel = async () => {
                             max-width: ${STICKER_W};
                             height: ${STICKER_H};
                             margin: 0 auto;
-                            padding: 16px 24px;
+                            padding: 28px 36px;
                             box-sizing: border-box;
                             display: flex;
                             flex-direction: column;
@@ -991,24 +994,26 @@ const printShippingLabel = async () => {
                             background: #fff;
                             border-radius: 12px;
                         }
-                        .logo { width: 10cm; height: 10cm; max-height: 60%; object-fit: contain; border-radius: 999px; }
-                        .brand { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; margin-top: 10px; line-height: 1; text-align: center; }
-                        .socials { margin-top: 12px; display: flex; gap: 22px; align-items: center; font-size: 14px; }
+                        .logo { width: 9cm; height: 9cm; max-height: 56%; object-fit: cover; border-radius: 999px; border: 2px solid #c89f53; box-shadow: 0 0 0 1px rgba(200,159,83,0.25); }
+                        .divider { width: 5.5cm; border-top: 1px solid #c89f53; margin: 16px auto 0; }
+                        .brand { font-family: 'Cinzel', serif; font-size: 38px; font-weight: 700; letter-spacing: 6px; color: #2b2b2b; margin-top: 14px; line-height: 1; text-align: center; }
+                        .socials { margin-top: 18px; display: flex; gap: 28px; align-items: center; font-size: 15px; color: #2b2b2b; }
                         .socials span { display: inline-flex; align-items: center; gap: 6px; }
-                        .web { margin-top: 8px; font-size: 13px; color: #555; letter-spacing: 0.5px; }
+                        .web { font-family: 'Cinzel', serif; margin-top: 12px; font-size: 12px; color: #888; letter-spacing: 2px; text-align: center; text-transform: lowercase; }
                         @media print {
                             html, body { background: #fff; }
-                            .sticker { border: none; background: none; }
+                            .sticker { border: none; background: none; border-radius: 0; }
                         }
                     </style>
                 </head>
                 <body>
                     <div class="sticker">
                         <img class="logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                        <div class="divider"></div>
                         <div class="brand">AURA BOUTIQUE</div>
                         <div class="socials">
-                            <span><i class="fa-brands fa-instagram"></i> @auraboutiqueme</span>
-                            <span><i class="fa-brands fa-tiktok"></i> @auraboutiqueme</span>
+                            <span><i class="fa-brands fa-instagram" style="color:#c89f53;"></i> @auraboutiqueme</span>
+                            <span><i class="fa-brands fa-tiktok" style="color:#c89f53;"></i> @auraboutiqueme</span>
                         </div>
                         <div class="web">${webHost}</div>
                     </div>
