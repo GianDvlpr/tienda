@@ -784,11 +784,11 @@ const printShippingLabel = async () => {
                         .sender-box { border: 1px solid #ddd; padding: 8px 10px; font-size: 11px; margin-bottom: 14px; background: #fafafa; }
                         .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
 
-                        .contents { border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-size: 12px; }
+                        .contents { border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-size: 12px; margin-bottom: 12px; }
                         .contents ul { margin: 4px 0 0; padding-left: 18px; }
                         .contents li { line-height: 1.35; }
 
-                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 2px solid #000; }
                         .qr-code { width: 72px; height: 72px; }
                         .qr-text { font-size: 10px; color: #333; text-align: right; max-width: 60%; }
                         .qr-text strong { font-size: 12px; color: #000; display: block; margin-bottom: 2px; }
@@ -832,15 +832,14 @@ const printShippingLabel = async () => {
                         <div class="contents">
                             <strong>CONTENIDO DEL PAQUETE (${order.order_item?.length || 0} items)</strong>
                             <ul>${itemsList}</ul>
-                            <div class="qr-section">
-                                <div style="flex: 1 1 0; min-width: 0;">
-                                    <div class="qr-text" style="text-align: left; max-width: none;">
-                                        <strong>Rastrear Pedido</strong>
-                                        Escanea o escribe este ID en la web:
-                                        <br/><span style="font-family: monospace; font-size: 11px; margin-top: 2px; display:inline-block;">${order.code}</span>
-                                    </div>
-                                </div>
-                                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
+                        </div>
+
+                        <div class="qr-section">
+                            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
+                            <div class="qr-text">
+                                <strong>Rastrear Pedido</strong>
+                                Escanea o escribe este ID en la web:
+                                <br/><span style="font-family: monospace; font-size: 11px; margin-top: 2px; display:inline-block;">${order.code}</span>
                             </div>
                         </div>
 
