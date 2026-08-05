@@ -17,8 +17,9 @@ type OrderInfo = {
 };
 
 const statusLabels: Record<string, string> = {
-    PENDING_WS: 'Pendiente por WhatsApp',
+PENDING_WS: 'Pendiente por WhatsApp',
     PARTIALLY_PAID: 'Adelanto recibido / saldo pendiente',
+    SEPARATED: 'Prenda separada',
     PAID: 'Orden generada / pagada',
     MEASURES_CONFIRMED: 'Medidas confirmadas',
     CONFIRMED: 'Confirmado',

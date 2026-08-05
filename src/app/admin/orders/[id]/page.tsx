@@ -19,7 +19,8 @@ import ImageUploader from '@/components/admin/ImageUploader';
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
-    'PARTIALLY_PAID': { label: 'Adelanto / Saldo pendiente', color: 'volcano' },
+'PARTIALLY_PAID': { label: 'Adelanto / Saldo pendiente', color: 'volcano' },
+    'SEPARATED': { label: 'Separado', color: 'lime' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },
@@ -52,7 +53,8 @@ const salesChannelOptions = [
 
 const statusOptions = [
     { value: 'PENDING_WS', label: 'Pendiente WhatsApp' },
-    { value: 'PARTIALLY_PAID', label: 'Adelanto pagado / saldo pendiente' },
+{ value: 'PARTIALLY_PAID', label: 'Adelanto pagado / saldo pendiente' },
+    { value: 'SEPARATED', label: 'Prenda separada' },
     { value: 'PAID', label: 'Orden generada / Pagada' },
     { value: 'MEASURES_CONFIRMED', label: 'Medidas confirmadas' },
     { value: 'CONFIRMED', label: 'Confirmado / En Preparación' },
@@ -74,8 +76,10 @@ const paymentMethodOptions = [
 ];
 
 const DOCUMENT_LOGO_PATH = '/logo-aura.png';
-const PRINT_W = '21cm';
-const PRINT_H = '14.85cm';
+const PRINT_W = '14.85cm';
+const PRINT_H = '21cm';
+const STICKER_W = '21cm';
+const STICKER_H = '14.85cm';
 
 function openPrintWindow(html: string) {
     const w = window.open('', '_blank');
@@ -703,42 +707,39 @@ const printShippingLabel = async () => {
                             margin: 0 auto;
                             background: #fff;
                             border: 2px solid #000;
-                            padding: 14px 18px;
+                            padding: 16px 18px;
                             box-sizing: border-box;
                             display: flex;
                             flex-direction: column;
                         }
 
-                        .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
-                        .brand-header { display: flex; align-items: center; gap: 12px; min-width: 0; }
-                        .label-logo { width: 72px; height: 72px; border-radius: 999px; object-fit: cover; border: 1px solid #000; flex: 0 0 auto; }
-                        .header h2 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; white-space: nowrap; }
-                        .order-code { font-size: 18px; font-weight: bold; padding: 6px 12px; border: 2px solid #000; white-space: nowrap; flex: 0 0 auto; }
+                        .header { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
+                        .brand-header { display: flex; align-items: center; gap: 10px; min-width: 0; }
+                        .label-logo { width: 64px; height: 64px; border-radius: 999px; object-fit: cover; border: 1px solid #000; flex: 0 0 auto; }
+                        .header h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; white-space: nowrap; }
+                        .order-code { font-size: 16px; font-weight: bold; padding: 6px 12px; border: 2px solid #000; white-space: nowrap; flex: 0 0 auto; }
 
-                        .row { display: flex; gap: 14px; margin-bottom: 8px; }
-                        .col { flex: 1 1 0; min-width: 0; }
+                        .section-title { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
 
-                        .section-title { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; margin: 0 0 3px 0; letter-spacing: 0.5px; }
+                        .receiver-box { font-size: 13px; margin-bottom: 14px; }
+                        .receiver-box .name { font-size: 22px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; line-height: 1.1; }
+                        .receiver-box .details { margin: 2px 0; }
+                        .receiver-box .address { font-size: 15px; font-weight: bold; margin-top: 8px; padding: 10px; background: #fff; border: 2px dashed #000; line-height: 1.3; }
 
-                        .sender-box { border: 1px solid #ddd; padding: 8px 10px; font-size: 11px; background: #fafafa; }
+                        .sender-box { border: 1px solid #ddd; padding: 8px 10px; font-size: 11px; margin-bottom: 14px; background: #fafafa; }
                         .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
 
-                        .receiver-box { font-size: 13px; }
-                        .receiver-box .name { font-size: 20px; font-weight: 900; margin-bottom: 3px; text-transform: uppercase; line-height: 1.05; }
-                        .receiver-box .details { margin: 1px 0; }
-                        .receiver-box .address { font-size: 14px; font-weight: bold; margin-top: 6px; padding: 6px 8px; background: #fff; border: 2px dashed #000; line-height: 1.25; }
+                        .contents { border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-size: 12px; }
+                        .contents ul { margin: 4px 0 0; padding-left: 18px; }
+                        .contents li { line-height: 1.35; }
 
-                        .contents { border-top: 2px solid #000; padding-top: 8px; margin-top: auto; font-size: 12px; }
-                        .contents ul { margin: 3px 0 0; padding-left: 18px; }
-                        .contents li { line-height: 1.3; }
-
-                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
                         .qr-code { width: 72px; height: 72px; }
                         .qr-text { font-size: 10px; color: #333; text-align: right; max-width: 60%; }
                         .qr-text strong { font-size: 12px; color: #000; display: block; margin-bottom: 2px; }
 
-                        .footer { margin-top: 8px; font-size: 11px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 8px; background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
-                        .date { text-align: center; font-size: 9px; color: #666; margin-top: 4px; }
+                        .footer { margin-top: 12px; font-size: 11px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 8px; background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+                        .date { text-align: center; font-size: 9px; color: #666; margin-top: 6px; }
 
                         @media print {
                             html, body { background: #fff; }
@@ -746,69 +747,63 @@ const printShippingLabel = async () => {
                         }
                     </style>
                 </head>
-<body>
-                        <div class="label">
-                            <div class="header">
-                                <div class="brand-header">
-                                    <img class="label-logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
-                                    <h2>AURA BOUTIQUE</h2>
-                                </div>
-                                <div class="order-code">#${order.code}</div>
+                <body>
+                    <div class="label">
+                        <div class="header">
+                            <div class="brand-header">
+                                <img class="label-logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                                <h2>AURA BOUTIQUE</h2>
                             </div>
+                            <div class="order-code">#${order.code}</div>
+                        </div>
 
-                            <div class="row">
-                                <div class="col">
-                                    <div class="section-title">Remitente</div>
-                                    <div class="sender-box">
-                                        <strong>AURA BOUTIQUE (ALMACÉN PRINCIPAL)</strong>
-                                        Taller y Despachos<br/>
-                                        Lima, Perú
-                                    </div>
-                                </div>
-                                <div class="col">
-                                    <div class="section-title">Destinatario / Entregar A:</div>
-                                    <div class="receiver-box">
-                                        <div class="name">${order.shipping_name}</div>
-                                        <div class="details">DNI: ${order.shipping_dni || 'No registrado'}</div>
-                                        <div class="details">📞 ${order.shipping_phone}</div>
-                                        <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
-                                            📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="section-title">Destinatario / Entregar A:</div>
+                        <div class="receiver-box">
+                            <div class="name">${order.shipping_name}</div>
+                            <div class="details">DNI: ${order.shipping_dni || 'No registrado'}</div>
+                            <div class="details">📞 ${order.shipping_phone}</div>
+                            <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
+                                📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
                             </div>
+                        </div>
 
-                            <div class="contents">
-                                <div class="qr-section">
-                                    <div style="flex: 1 1 0; min-width: 0;">
-                                        <strong>CONTENIDO DEL PAQUETE (${order.order_item?.length || 0} items)</strong>
-                                        <ul>${itemsList}</ul>
-                                    </div>
-                                    <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
-                                    <div class="qr-text">
+                        <div class="section-title">Remitente</div>
+                        <div class="sender-box">
+                            <strong>AURA BOUTIQUE (ALMACÉN PRINCIPAL)</strong>
+                            Taller y Despachos<br/>
+                            Lima, Perú
+                        </div>
+
+                        <div class="contents">
+                            <strong>CONTENIDO DEL PAQUETE (${order.order_item?.length || 0} items)</strong>
+                            <ul>${itemsList}</ul>
+                            <div class="qr-section">
+                                <div style="flex: 1 1 0; min-width: 0;">
+                                    <div class="qr-text" style="text-align: left; max-width: none;">
                                         <strong>Rastrear Pedido</strong>
                                         Escanea o escribe este ID en la web:
                                         <br/><span style="font-family: monospace; font-size: 11px; margin-top: 2px; display:inline-block;">${order.code}</span>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="footer">
-                                <span style="display:inline-flex; align-items:center; gap:6px; margin-right: 16px;">
-                                    <i class="fa-brands fa-instagram" style="font-size: 13px;"></i>
-                                    @auraboutiqueme
-                                </span>
-                                <span style="display:inline-flex; align-items:center; gap:6px;">
-                                    <i class="fa-brands fa-tiktok" style="font-size: 13px;"></i>
-                                    @auraboutiqueme
-                                </span>
-                            </div>
-                            <div class="date">
-                                Generado: ${dayjs().format('DD/MM/YYYY HH:mm')}
+                                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
                             </div>
                         </div>
-<script>
-                        // Dynamically set QR based on print origin
+
+                        <div class="footer">
+                            <span style="display:inline-flex; align-items:center; gap:6px; margin-right: 16px;">
+                                <i class="fa-brands fa-instagram" style="font-size: 13px;"></i>
+                                @auraboutiqueme
+                            </span>
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <i class="fa-brands fa-tiktok" style="font-size: 13px;"></i>
+                                @auraboutiqueme
+                            </span>
+                        </div>
+                        <div class="date">
+                            Generado: ${dayjs().format('DD/MM/YYYY HH:mm')}
+                        </div>
+                    </div>
+                    <script>
                         document.getElementById('dynamic-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(window.location.origin + '/track/${order.code}');
                         window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
                     </script>
@@ -829,13 +824,13 @@ const printShippingLabel = async () => {
                     <title>Sticker etiqueta - ${order.code}</title>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-                        @page { size: ${PRINT_W} ${PRINT_H}; margin: 0; }
+                        @page { size: ${STICKER_W} ${STICKER_H}; margin: 0; }
                         * { box-sizing: border-box; }
                         html, body { margin: 0; padding: 0; background: #f0f0f0; color: #000; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
                         .sticker {
-                            width: ${PRINT_W};
-                            max-width: ${PRINT_W};
-                            height: ${PRINT_H};
+                            width: ${STICKER_W};
+                            max-width: ${STICKER_W};
+                            height: ${STICKER_H};
                             margin: 0 auto;
                             background: #fff;
                             padding: 16px 20px;
@@ -925,13 +920,13 @@ const printShippingLabel = async () => {
                     <title>Sticker logo - Aura Boutique</title>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-                        @page { size: ${PRINT_W} ${PRINT_H}; margin: 0; }
+                        @page { size: ${STICKER_W} ${STICKER_H}; margin: 0; }
                         * { box-sizing: border-box; }
                         html, body { margin: 0; padding: 0; background: #f0f0f0; color: #000; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
                         .sticker {
-                            width: ${PRINT_W};
-                            max-width: ${PRINT_W};
-                            height: ${PRINT_H};
+                            width: ${STICKER_W};
+                            max-width: ${STICKER_W};
+                            height: ${STICKER_H};
                             margin: 0 auto;
                             padding: 16px 24px;
                             box-sizing: border-box;
@@ -1496,17 +1491,21 @@ const printShippingLabel = async () => {
                                     </Col>
                                 </Row>
 
-                                {selectedEditStatus === 'PARTIALLY_PAID' && (
+{(selectedEditStatus === 'PARTIALLY_PAID' || selectedEditStatus === 'SEPARATED') && (
                                     <Row gutter={12}>
                                         <Col xs={24} sm={12} md={24} lg={12}>
                                             <Form.Item
                                                 name="amount_paid"
-                                                label="Adelanto pagado"
+                                                label={selectedEditStatus === 'SEPARATED' ? 'Adelanto (opcional, puede ser 0)' : 'Adelanto pagado'}
                                                 rules={[
                                                     { required: true, message: 'Ingresa el adelanto pagado' },
                                                     {
                                                         validator: async (_rule, value) => {
                                                             const paid = Number(value || 0);
+                                                            if (selectedEditStatus === 'SEPARATED') {
+                                                                if (paid >= 0 && paid < editTotal) return;
+                                                                throw new Error('El adelanto debe ser mayor o igual a 0 y menor al total');
+                                                            }
                                                             if (paid > 0 && paid < editTotal) return;
                                                             throw new Error('El adelanto debe ser mayor a 0 y menor al total');
                                                         }

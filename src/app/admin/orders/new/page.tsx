@@ -64,6 +64,7 @@ const salesChannelOptions = [
 const statusOptions = [
     { value: 'PENDING_WS', label: 'Pendiente de pago/contacto' },
     { value: 'PARTIALLY_PAID', label: 'Adelanto pagado / saldo pendiente' },
+    { value: 'SEPARATED', label: 'Prenda separada' },
     { value: 'PAID', label: 'Pagado' },
     { value: 'MEASURES_CONFIRMED', label: 'Medidas confirmadas' },
     { value: 'CONFIRMED', label: 'Confirmado / En preparación' },
@@ -320,17 +321,21 @@ export default function NewAdminOrderPage() {
                                 </Col>
                             </Row>
 
-                            {selectedStatus === 'PARTIALLY_PAID' && (
+                            {(selectedStatus === 'PARTIALLY_PAID' || selectedStatus === 'SEPARATED') && (
                                 <Row gutter={12}>
                                     <Col xs={24} sm={12}>
                                         <Form.Item
                                             name="amount_paid"
-                                            label="Adelanto pagado"
+                                            label={selectedStatus === 'SEPARATED' ? 'Adelanto (opcional, puede ser 0)' : 'Adelanto pagado'}
                                             rules={[
                                                 { required: true, message: 'Ingresa el adelanto pagado' },
                                                 {
                                                     validator: async (_rule, value) => {
                                                         const paid = Number(value || 0);
+                                                        if (selectedStatus === 'SEPARATED') {
+                                                            if (paid >= 0 && paid < total) return;
+                                                            throw new Error('El adelanto debe ser mayor o igual a 0 y menor al total');
+                                                        }
                                                         if (paid > 0 && paid < total) return;
                                                         throw new Error('El adelanto debe ser mayor a 0 y menor al total');
                                                     }

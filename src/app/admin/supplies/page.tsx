@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { App, Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, Popconfirm, Row, Col, theme } from 'antd';
-import { BgColorsOutlined, EditOutlined, PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
+import { BgColorsOutlined, EditOutlined, EyeOutlined, PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
@@ -462,8 +462,14 @@ function ColorsTab() {
 
     return (
         <div>
-            <div style={{ marginBottom: 16, textAlign: 'right' }}>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>Nuevo Color</Button>
+<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                    La <strong>Vista pública</strong> muestra a tus clientes los colores disponibles por prenda.
+                </Text>
+                <Space>
+                    <Button icon={<EyeOutlined />} onClick={() => window.open('/colores', '_blank')}>Vista pública</Button>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>Nuevo Color</Button>
+                </Space>
             </div>
             <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
                 <Row gutter={[12, 12]} align="bottom">

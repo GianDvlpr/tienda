@@ -17,7 +17,8 @@ const { RangePicker } = DatePicker;
 
 export const statusMap: Record<string, { label: string, color: string }> = {
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
-    'PARTIALLY_PAID': { label: 'Pago parcial', color: 'volcano' },
+'PARTIALLY_PAID': { label: 'Pago parcial', color: 'volcano' },
+    'SEPARATED': { label: 'Separado', color: 'lime' },
     'PAID': { label: 'Orden generada / Pagada', color: 'gold' },
     'MEASURES_CONFIRMED': { label: 'Medidas confirmadas', color: 'purple' },
     'CONFIRMED': { label: 'Confirmado', color: 'blue' },

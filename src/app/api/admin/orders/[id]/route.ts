@@ -7,7 +7,7 @@ import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bun
 export const runtime = 'nodejs';
 
 const validSalesChannels = new Set(['SHOP', 'WHATSAPP', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'OTHER']);
-const validStatuses = new Set(['PENDING_WS', 'PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
+const validStatuses = new Set(['PENDING_WS', 'PARTIALLY_PAID', 'PAID', 'SEPARATED', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
 const paidStatuses = new Set(['PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
 
 type OrderItemInput = {
@@ -60,10 +60,19 @@ function resolvePaymentAmounts(status: string, total: number, rawAmountPaid: unk
         return { amountPaid: 0, balanceDue: total };
     }
 
-    if (status === 'PARTIALLY_PAID') {
+if (status === 'PARTIALLY_PAID') {
         const amountPaid = amountInput ?? fallbackAmountPaid;
         if (amountPaid <= 0 || amountPaid >= total) {
             throw new Error('Para pago parcial, el adelanto debe ser mayor a 0 y menor al total');
+        }
+
+        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
+    }
+
+    if (status === 'SEPARATED') {
+        const amountPaid = amountInput ?? fallbackAmountPaid;
+        if (amountPaid < 0 || amountPaid >= total) {
+            throw new Error('Para prenda separada, el adelanto debe ser mayor o igual a 0 y menor al total');
         }
 
         return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };

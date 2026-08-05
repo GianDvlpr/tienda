@@ -14,7 +14,7 @@ dayjs.locale('es');
 const { Title, Text } = Typography;
 
 const defaultStatusTimeline = [
-    { key: ['PENDING_WS', 'PARTIALLY_PAID', 'PAID'], title: 'Recibido', description: 'Orden generada / Pago registrado' },
+    { key: ['PENDING_WS', 'PARTIALLY_PAID', 'SEPARATED', 'PAID'], title: 'Recibido', description: 'Orden generada / Pago registrado' },
     { key: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION'], title: 'Preparando', description: 'Preparando tu orden' },
     { key: ['READY'], title: 'Listo', description: 'Listo para despacho' },
     { key: ['SHIPPED'], title: 'En Curso', description: 'El motorizado está en camino' },
@@ -22,7 +22,7 @@ const defaultStatusTimeline = [
 ];
 
 const customStatusTimeline = [
-    { key: ['PENDING_WS', 'PARTIALLY_PAID', 'PAID'], title: 'Recibido', description: 'Pedido personalizado registrado' },
+    { key: ['PENDING_WS', 'PARTIALLY_PAID', 'SEPARATED', 'PAID'], title: 'Recibido', description: 'Pedido personalizado registrado' },
     { key: ['MEASURES_CONFIRMED'], title: 'Medidas confirmadas', description: 'Validamos tus medidas y color' },
     { key: ['CONFIRMED', 'IN_PRODUCTION'], title: 'En confección', description: 'Tu prenda está en producción' },
     { key: ['READY'], title: 'Listo', description: 'Listo para despacho' },
@@ -79,8 +79,9 @@ export default function ClientTracker({ order, code }: { order: any, code: strin
 
     const hasCustomizedItems = (order.order_item || []).some((item: any) => item.is_customized === true || item.is_customized === 1);
     const statusTimeline = hasCustomizedItems ? customStatusTimeline : defaultStatusTimeline;
-    const isCancelled = liveStatus === 'CANCELLED';
+const isCancelled = liveStatus === 'CANCELLED';
     const isPartiallyPaid = liveStatus === 'PARTIALLY_PAID';
+    const isSeparated = liveStatus === 'SEPARATED';
     let currentStep = statusTimeline.findIndex(s => s.key.includes(liveStatus));
     if (currentStep === -1) currentStep = 0;
     const publicPhotos = order.order_photo || [];
@@ -206,10 +207,17 @@ export default function ClientTracker({ order, code }: { order: any, code: strin
                     </Card>
                 )}
 
-                {isPartiallyPaid && (
+{isPartiallyPaid && (
                     <Card style={{ marginBottom: 20, borderColor: '#fa8c16', background: '#fff7e6' }}>
                         <Title level={4} style={{ color: '#d46b08', margin: 0 }}>Adelanto recibido</Title>
                         <Text>Registramos tu adelanto. Tu pedido mantiene un saldo pendiente por completar.</Text>
+                    </Card>
+                )}
+
+                {isSeparated && (
+                    <Card style={{ marginBottom: 20, borderColor: '#a0d911', background: '#f6ffed' }}>
+                        <Title level={4} style={{ color: '#389e0d', margin: 0 }}>Prenda separada</Title>
+                        <Text>Reservamos tu prenda. {order.amount_paid > 0 ? 'Registramos tu adelanto y falta completar el saldo.' : 'Aún no registramos pago; la prenda queda separada para ti.'}</Text>
                     </Card>
                 )}
 

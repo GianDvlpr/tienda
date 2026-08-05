@@ -22,7 +22,7 @@ export async function GET() {
         // 2. Pending Orders Count
         const pendingCount = await prisma.order_header.count({
             where: {
-                status: { in: ['PENDING_WS', 'PARTIALLY_PAID'] }
+status: { in: ['PENDING_WS', 'PARTIALLY_PAID', 'SEPARATED'] }
             }
         });
 
@@ -92,11 +92,11 @@ export async function GET() {
             .map(([date, amount]) => ({ date, amount }))
             .reverse();
 
-        // 5.2 Potential Sales (PENDING_WS)
+// 5.2 Potential Sales (PENDING_WS)
         const pendingItems = await prisma.order_item.findMany({
             where: {
                 order_header: {
-                    status: { in: ['PENDING_WS', 'PARTIALLY_PAID'] }
+                    status: { in: ['PENDING_WS', 'PARTIALLY_PAID', 'SEPARATED'] }
                 }
             },
             select: {
