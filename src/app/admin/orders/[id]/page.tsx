@@ -784,17 +784,17 @@ const printShippingLabel = async () => {
                         .sender-box { border: 1px solid #ddd; padding: 8px 10px; font-size: 11px; margin-bottom: 14px; background: #fafafa; }
                         .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
 
-                        .contents { border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-size: 12px; margin-bottom: 12px; }
+                        .contents { border-top: 2px solid #000; padding-top: 10px; margin-top: 12px; font-size: 12px; }
                         .contents ul { margin: 4px 0 0; padding-left: 18px; }
                         .contents li { line-height: 1.35; }
 
-                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 2px solid #000; }
+                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
                         .qr-code { width: 72px; height: 72px; }
                         .qr-text { font-size: 10px; color: #333; text-align: right; max-width: 60%; }
                         .qr-text strong { font-size: 12px; color: #000; display: block; margin-bottom: 2px; }
 
-                        .footer { margin-top: 12px; font-size: 11px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 8px; background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
-                        .date { text-align: center; font-size: 9px; color: #666; margin-top: 6px; }
+                        .footer { margin-top: 16px; font-size: 11px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 8px; background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+                        .date { text-align: center; font-size: 9px; color: #666; margin-top: 4px; }
 
                         @media print {
                             html, body { background: #fff; }
