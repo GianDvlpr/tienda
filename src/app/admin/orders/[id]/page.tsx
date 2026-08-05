@@ -813,6 +813,13 @@ const printShippingLabel = async () => {
                             <div class="order-code">#${order.code}</div>
                         </div>
 
+                        <div class="section-title">Remitente</div>
+                        <div class="sender-box">
+                            <strong>AURA BOUTIQUE (ALMACÉN PRINCIPAL)</strong>
+                            Taller y Despachos<br/>
+                            Lima, Perú
+                        </div>
+
                         <div class="section-title">Destinatario / Entregar A:</div>
                         <div class="receiver-box">
                             <div class="name">${order.shipping_name}</div>
@@ -821,13 +828,6 @@ const printShippingLabel = async () => {
                             <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
                                 📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
                             </div>
-                        </div>
-
-                        <div class="section-title">Remitente</div>
-                        <div class="sender-box">
-                            <strong>AURA BOUTIQUE (ALMACÉN PRINCIPAL)</strong>
-                            Taller y Despachos<br/>
-                            Lima, Perú
                         </div>
 
                         <div class="contents">
@@ -900,19 +900,22 @@ const printShippingLabel = async () => {
                         .logo { width: 80px; height: 80px; border-radius: 999px; object-fit: cover; flex: 0 0 auto; }
                         .brand h2 { margin: 0; font-family: 'Cinzel', serif; font-size: 26px; font-weight: 700; letter-spacing: 2px; line-height: 1; white-space: nowrap; }
                         .order-code { font-size: 20px; font-weight: bold; padding: 6px 14px; border: 1.5px solid #c89f53; border-radius: 6px; white-space: nowrap; flex: 0 0 auto; }
-                        .row { display: flex; gap: 16px; margin-bottom: 6px; }
-                        .col { flex: 1 1 0; min-width: 0; }
                         .section-title { font-family: 'Playfair Display', serif; font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
-                        .sender-box { font-size: 11px; color: #444; }
+                        .sender-box { border: 1px solid #eee; padding: 8px 10px; font-size: 11px; margin-bottom: 12px; background: #fafafa; }
                         .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
-                        .receiver-box { font-size: 13px; }
+                        .receiver-box { font-size: 13px; margin-bottom: 12px; }
                         .receiver-box .name { font-size: 22px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; line-height: 1.05; }
                         .receiver-box .details { margin: 2px 0; font-size: 12px; color: #444; }
                         .receiver-box .address { font-size: 15px; font-weight: bold; margin-top: 6px; padding: 8px 10px; background: #f7f7f7; border: 2px dashed #c89f53; border-radius: 8px; line-height: 1.25; }
-                        .contents { margin-top: 12px; font-size: 12px; }
+                        .contents { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; font-size: 12px; }
                         .contents ul { margin: 4px 0 0; padding-left: 18px; }
                         .contents li { line-height: 1.35; }
-                        .footer { margin-top: 16px; font-size: 10px; color: #666; text-align: center; letter-spacing: 0.5px; }
+                        .qr-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+                        .qr-code { width: 72px; height: 72px; }
+                        .qr-text { font-size: 10px; color: #333; text-align: right; max-width: 60%; }
+                        .qr-text strong { font-size: 12px; color: #000; display: block; margin-bottom: 2px; }
+                        .footer { margin-top: 16px; font-size: 11px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 8px; background: #000; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+                        .date { text-align: center; font-size: 9px; color: #666; margin-top: 4px; }
                         @media print {
                             html, body { background: #fff; }
                             .sticker { border: none; }
@@ -928,36 +931,54 @@ const printShippingLabel = async () => {
                             </div>
                             <div class="order-code">#${order.code}</div>
                         </div>
-                        <div class="row">
-                            <div class="col">
-                                <div class="section-title">Remitente</div>
-                                <div class="sender-box">
-                                    <strong>AURA BOUTIQUE</strong>
-                                    Taller y Despachos<br/>
-                                    Lima, Perú
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="section-title">Destinatario / Entregar A:</div>
-                                <div class="receiver-box">
-                                    <div class="name">${order.shipping_name}</div>
-                                    <div class="details">DNI: ${order.shipping_dni || 'No registrado'}</div>
-                                    <div class="details">📞 ${order.shipping_phone}</div>
-                                    <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
-                                        📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
-                                    </div>
-                                </div>
+
+                        <div class="section-title">Remitente</div>
+                        <div class="sender-box">
+                            <strong>AURA BOUTIQUE (ALMACÉN PRINCIPAL)</strong>
+                            Taller y Despachos<br/>
+                            Lima, Perú
+                        </div>
+
+                        <div class="section-title">Destinatario / Entregar A:</div>
+                        <div class="receiver-box">
+                            <div class="name">${order.shipping_name}</div>
+                            <div class="details">DNI: ${order.shipping_dni || 'No registrado'}</div>
+                            <div class="details">📞 ${order.shipping_phone}</div>
+                            <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
+                                📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
                             </div>
                         </div>
+
                         <div class="contents">
-                            <strong>Contenido (${order.order_item?.length || 0} items)</strong>
+                            <strong>CONTENIDO DEL PAQUETE (${order.order_item?.length || 0} items)</strong>
                             <ul>${itemsList}</ul>
                         </div>
+
+                        <div class="qr-section">
+                            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
+                            <div class="qr-text">
+                                <strong>Rastrear Pedido</strong>
+                                Escanea o escribe este ID en la web:
+                                <br/><span style="font-family: monospace; font-size: 11px; margin-top: 2px; display:inline-block;">${order.code}</span>
+                            </div>
+                        </div>
+
                         <div class="footer">
-                            ${dayjs().format('DD/MM/YYYY HH:mm')}
+                            <span style="display:inline-flex; align-items:center; gap:6px; margin-right: 16px;">
+                                <i class="fa-brands fa-instagram" style="font-size: 13px;"></i>
+                                @auraboutiqueme
+                            </span>
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <i class="fa-brands fa-tiktok" style="font-size: 13px;"></i>
+                                @auraboutiqueme
+                            </span>
+                        </div>
+                        <div class="date">
+                            Generado: ${dayjs().format('DD/MM/YYYY HH:mm')}
                         </div>
                     </div>
                     <script>
+                        document.getElementById('dynamic-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(window.location.origin + '/track/${order.code}');
                         window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
                     </script>
                 </body>
