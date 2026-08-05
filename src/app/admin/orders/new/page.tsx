@@ -116,7 +116,8 @@ export default function NewAdminOrderPage() {
         items.map(item => ({ productId: item.product_id, qty: item.qty, unitPrice: item.unit_price })),
         activeBundles || []
     );
-    const total = Math.max(0, subtotal - bundleDiscount);
+    const shippingCost = Number(Form.useWatch('shipping_cost', form) || 0);
+    const total = Math.max(0, subtotal - bundleDiscount + shippingCost);
     const selectedStatus = Form.useWatch('status', form);
     const amountPaid = Number(Form.useWatch('amount_paid', form) || 0);
     const balanceDue = Math.max(0, total - amountPaid);
@@ -321,6 +322,10 @@ export default function NewAdminOrderPage() {
                                 </Col>
                             </Row>
 
+                            <Form.Item name="shipping_cost" label="Costo de envío (delivery propio)" tooltip="Si tú mismx llevan el pedido, ingresa el costo de envío. Se suma al total final.">
+                                <InputNumber min={0} precision={2} prefix="S/" style={{ width: '100%' }} placeholder="0.00" />
+                            </Form.Item>
+
                             {(selectedStatus === 'PARTIALLY_PAID' || selectedStatus === 'SEPARATED') && (
                                 <Row gutter={12}>
                                     <Col xs={24} sm={12}>
@@ -440,6 +445,9 @@ export default function NewAdminOrderPage() {
                                 <Text type="secondary">Subtotal: {formatPEN(subtotal)}</Text>
                                 {bundleDiscount > 0 && (
                                     <Text type="success">Descuento conjunto: -{formatPEN(bundleDiscount)}</Text>
+                                )}
+                                {shippingCost > 0 && (
+                                    <Text type="secondary">Envío: +{formatPEN(shippingCost)}</Text>
                                 )}
                                 <Title level={4} style={{ margin: 0 }}>Total: {formatPEN(total)}</Title>
                             </Space>

@@ -69,6 +69,7 @@ type ManualOrderRequest = {
     shipping_address?: string;
     shipping_city?: string;
     shipping_reference?: string;
+    shipping_cost?: number | string | null;
     notes?: string;
     payment_method?: string;
     payment_reference?: string;
@@ -127,6 +128,14 @@ export async function POST(req: Request) {
         if (!validStatuses.has(status)) {
             return NextResponse.json({ error: 'Estado inicial inválido' }, { status: 400 });
         }
+
+        const rawShippingCost = body.shipping_cost === undefined || body.shipping_cost === null || body.shipping_cost === ''
+            ? 0
+            : Number(body.shipping_cost);
+        if (!Number.isFinite(rawShippingCost) || rawShippingCost < 0) {
+            return NextResponse.json({ error: 'El costo de envío debe ser un número válido mayor o igual a 0' }, { status: 400 });
+        }
+        const shippingCost = rawShippingCost;
 
         if (rawItems.length === 0) {
             return NextResponse.json({ error: 'Agrega al menos un producto a la venta' }, { status: 400 });
@@ -211,8 +220,8 @@ export async function POST(req: Request) {
                 })),
                 bundlePromotions
             );
-            const discountTotal = bundleDiscount;
-            const total = Math.max(0, subtotal - discountTotal);
+const discountTotal = bundleDiscount;
+            const total = Math.max(0, subtotal - discountTotal + shippingCost);
             const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid);
 
             const header = await tx.order_header.create({
@@ -226,10 +235,11 @@ export async function POST(req: Request) {
                     shipping_city: shippingCity,
                     shipping_reference: shippingReference,
                     notes,
-                    subtotal,
+subtotal,
                     discount_total: discountTotal,
                     bundle_discount: bundleDiscount,
                     coupon_discount: 0,
+                    shipping_cost: shippingCost,
                     total,
                     amount_paid: amountPaid,
                     balance_due: balanceDue,

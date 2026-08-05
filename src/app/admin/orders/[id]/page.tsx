@@ -440,7 +440,8 @@ export default function OrderDetailPage() {
     const editCouponDiscount = Number(order?.coupon_discount || 0);
     const editOtherDiscount = Math.max(0, Number(order?.discount_total || 0) - Number(order?.bundle_discount || 0) - editCouponDiscount);
     const editDiscountTotal = editBundleDiscount + editCouponDiscount + editOtherDiscount;
-    const editTotal = order ? Math.max(0, editSubtotal + Number(order.shipping_cost || 0) - editDiscountTotal) : editSubtotal;
+    const editShippingCost = Number(Form.useWatch('shipping_cost', form) ?? (order ? order.shipping_cost : 0) ?? 0);
+    const editTotal = order ? Math.max(0, editSubtotal + editShippingCost - editDiscountTotal) : editSubtotal;
     const selectedEditStatus = Form.useWatch('status', form);
     const editAmountPaid = Number(Form.useWatch('amount_paid', form) || 0);
     const editBalanceDue = Math.max(0, editTotal - editAmountPaid);
@@ -449,13 +450,14 @@ export default function OrderDetailPage() {
     const handleStartEdit = () => {
         if (!order) return;
 
-        form.setFieldsValue({
+form.setFieldsValue({
             status: order.status,
             sales_channel: order.sales_channel || 'SHOP',
             external_reference: order.external_reference || undefined,
             payment_method: order.payment_method || undefined,
             payment_reference: order.payment_reference || undefined,
             amount_paid: Number(order.amount_paid || 0),
+            shipping_cost: Number(order.shipping_cost || 0),
             shipping_name: order.shipping_name,
             shipping_dni: order.shipping_dni || '',
             shipping_phone: order.shipping_phone,
@@ -1545,6 +1547,10 @@ const printShippingLabel = async () => {
                                     <Input.TextArea rows={3} placeholder="Dirección de entrega o recojo coordinado" />
                                 </Form.Item>
 
+                                <Form.Item name="shipping_cost" label="Costo de envío (delivery propio)" tooltip="Si tú mismx llevan el pedido, ingresa el costo de envío. Se suma al total final.">
+                                    <InputNumber min={0} precision={2} prefix="S/" style={{ width: '100%' }} placeholder="0.00" />
+                                </Form.Item>
+
                                 <Form.Item name="notes" label="Notas internas">
                                     <Input.TextArea rows={4} placeholder="Códigos de seguimiento, coordinación, observaciones, etc." />
                                 </Form.Item>
@@ -1566,6 +1572,9 @@ const printShippingLabel = async () => {
                                 )}
                                 <Descriptions.Item label="Pagado">{formatPEN(Number(order.amount_paid || 0))}</Descriptions.Item>
                                 <Descriptions.Item label="Saldo pendiente">{formatPEN(Number(order.balance_due || 0))}</Descriptions.Item>
+                                {Number(order.shipping_cost || 0) > 0 && (
+                                    <Descriptions.Item label="Envío">{formatPEN(Number(order.shipping_cost))}</Descriptions.Item>
+                                )}
                                 <Descriptions.Item label="Nombre">{order.shipping_name}</Descriptions.Item>
                                 <Descriptions.Item label="DNI">{order.shipping_dni || '-'}</Descriptions.Item>
                                 <Descriptions.Item label="Teléfono / WS">{order.shipping_phone}</Descriptions.Item>

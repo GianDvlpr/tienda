@@ -25,6 +25,7 @@ type UpdateOrderRequest = {
     shipping_address?: string;
     shipping_city?: string | null;
     shipping_reference?: string | null;
+    shipping_cost?: number | string | null;
     notes?: string | null;
     payment_method?: string | null;
     payment_reference?: string | null;
@@ -159,6 +160,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         }
 
         const fallbackAmountPaid = Number(oldData.amount_paid || 0);
+        const rawShippingCost = body.shipping_cost === undefined || body.shipping_cost === null || body.shipping_cost === ''
+            ? Number(oldData.shipping_cost || 0)
+            : Number(body.shipping_cost);
+        if (!Number.isFinite(rawShippingCost) || rawShippingCost < 0) {
+            return NextResponse.json({ error: 'El costo de envío debe ser un número válido mayor o igual a 0' }, { status: 400 });
+        }
+        const shippingCost = rawShippingCost;
         const headerData = {
             status,
             shipping_name: shippingName,
@@ -274,8 +282,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 const existingDiscountTotal = Number(oldData.discount_total || 0);
                 const oldBundleDiscount = Number(oldData.bundle_discount || 0);
                 const otherDiscount = Math.max(0, existingDiscountTotal - oldBundleDiscount - couponDiscount);
-                const discountTotal = bundleDiscount + couponDiscount + otherDiscount;
-                const shippingCost = Number(oldData.shipping_cost || 0);
+const discountTotal = bundleDiscount + couponDiscount + otherDiscount;
                 const total = Math.max(0, subtotal + shippingCost - discountTotal);
                 const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid, fallbackAmountPaid);
 
@@ -287,6 +294,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                         discount_total: discountTotal,
                         bundle_discount: bundleDiscount,
                         coupon_discount: couponDiscount,
+                        shipping_cost: shippingCost,
                         total,
                         amount_paid: amountPaid,
                         balance_due: balanceDue,
@@ -337,13 +345,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     include: { order_item: true }
                 });
             });
-        } else {
-            const total = Number(oldData.total || 0);
+} else {
+            const oldSubtotal = Number(oldData.subtotal || 0);
+            const oldDiscountTotal = Number(oldData.discount_total || 0);
+            const total = Math.max(0, oldSubtotal + shippingCost - oldDiscountTotal);
             const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid, fallbackAmountPaid);
             updated = await prisma.order_header.update({
                 where: { order_id: id },
                 data: {
                     ...headerData,
+                    shipping_cost: shippingCost,
+                    total,
                     amount_paid: amountPaid,
                     balance_due: balanceDue,
                 }
