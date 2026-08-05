@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch } from 'antd';
+import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch, Dropdown } from 'antd';
 import { CloseOutlined, DeleteOutlined, EditOutlined, FileImageOutlined, FilePdfOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
@@ -74,6 +74,15 @@ const paymentMethodOptions = [
 ];
 
 const DOCUMENT_LOGO_PATH = '/logo-aura.png';
+const PRINT_W = '21cm';
+const PRINT_H = '14.85cm';
+
+function openPrintWindow(html: string) {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+}
 
 type OrderItem = {
     order_item_id: string;
@@ -670,10 +679,8 @@ export default function OrderDetailPage() {
         }
     };
 
-    const handlePrint = async () => {
+const printShippingLabel = async () => {
         if (!order) return;
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
 
         const logoSrc = await getDocumentLogoSrc();
 
@@ -686,13 +693,13 @@ export default function OrderDetailPage() {
                     <title>Etiqueta de Envio - ${order.code}</title>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-                        @page { size: 21cm 14.85cm; margin: 0; }
+                        @page { size: ${PRINT_W} ${PRINT_H}; margin: 0; }
                         * { box-sizing: border-box; }
                         html, body { margin: 0; padding: 0; background: #f0f0f0; color: #000; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
                         .label {
-                            width: 21cm;
-                            max-width: 21cm;
-                            height: 14.85cm;
+                            width: ${PRINT_W};
+                            max-width: ${PRINT_W};
+                            height: ${PRINT_H};
                             margin: 0 auto;
                             background: #fff;
                             border: 2px solid #000;
@@ -800,7 +807,7 @@ export default function OrderDetailPage() {
                                 Generado: ${dayjs().format('DD/MM/YYYY HH:mm')}
                             </div>
                         </div>
-                    <script>
+<script>
                         // Dynamically set QR based on print origin
                         document.getElementById('dynamic-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(window.location.origin + '/track/${order.code}');
                         window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
@@ -808,8 +815,161 @@ export default function OrderDetailPage() {
                 </body>
             </html>
         `;
-        printWindow.document.write(html);
-        printWindow.document.close();
+        openPrintWindow(html);
+    };
+
+    const printStickerFullLabel = async () => {
+        if (!order) return;
+        const logoSrc = await getDocumentLogoSrc();
+        const itemsList = order.order_item?.map((item) => `<li>${item.qty}x ${item.product_name} (${item.variant_size})</li>`).join('') || '';
+
+        const html = `
+            <html>
+                <head>
+                    <title>Sticker etiqueta - ${order.code}</title>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+                        @page { size: ${PRINT_W} ${PRINT_H}; margin: 0; }
+                        * { box-sizing: border-box; }
+                        html, body { margin: 0; padding: 0; background: #f0f0f0; color: #000; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+                        .sticker {
+                            width: ${PRINT_W};
+                            max-width: ${PRINT_W};
+                            height: ${PRINT_H};
+                            margin: 0 auto;
+                            background: #fff;
+                            padding: 16px 20px;
+                            box-sizing: border-box;
+                            display: flex;
+                            flex-direction: column;
+                            border-radius: 12px;
+                        }
+                        .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #eee; }
+                        .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+                        .logo { width: 80px; height: 80px; border-radius: 999px; object-fit: cover; flex: 0 0 auto; }
+                        .brand h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; white-space: nowrap; }
+                        .order-code { font-size: 20px; font-weight: bold; padding: 6px 14px; border: 2px solid #000; border-radius: 6px; white-space: nowrap; flex: 0 0 auto; }
+                        .row { display: flex; gap: 16px; margin-bottom: 8px; }
+                        .col { flex: 1 1 0; min-width: 0; }
+                        .section-title { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; margin: 0 0 4px 0; letter-spacing: 0.5px; }
+                        .sender-box { font-size: 11px; color: #444; }
+                        .sender-box strong { display: block; font-size: 12px; margin-bottom: 2px; color: #000; }
+                        .receiver-box { font-size: 13px; }
+                        .receiver-box .name { font-size: 22px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; line-height: 1.05; }
+                        .receiver-box .details { margin: 2px 0; font-size: 12px; color: #444; }
+                        .receiver-box .address { font-size: 15px; font-weight: bold; margin-top: 6px; padding: 8px 10px; background: #f7f7f7; border: 2px dashed #000; border-radius: 8px; line-height: 1.25; }
+                        .contents { margin-top: auto; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px; }
+                        .contents ul { margin: 4px 0 0; padding-left: 18px; }
+                        .contents li { line-height: 1.35; }
+                        .footer { margin-top: 10px; font-size: 10px; color: #666; text-align: center; letter-spacing: 0.5px; }
+                        @media print {
+                            html, body { background: #fff; }
+                            .sticker { border: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="sticker">
+                        <div class="header">
+                            <div class="brand">
+                                <img class="logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                                <h2>AURA BOUTIQUE</h2>
+                            </div>
+                            <div class="order-code">#${order.code}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="section-title">Remitente</div>
+                                <div class="sender-box">
+                                    <strong>AURA BOUTIQUE</strong>
+                                    Taller y Despachos<br/>
+                                    Lima, Perú
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="section-title">Destinatario / Entregar A:</div>
+                                <div class="receiver-box">
+                                    <div class="name">${order.shipping_name}</div>
+                                    <div class="details">DNI: ${order.shipping_dni || 'No registrado'}</div>
+                                    <div class="details">📞 ${order.shipping_phone}</div>
+                                    <div class="address" style="${!order.shipping_address ? 'color: #999;' : ''}">
+                                        📍 ${order.shipping_address || 'Dirección de Recojo / Tienda Física'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="contents">
+                            <strong>Contenido (${order.order_item?.length || 0} items)</strong>
+                            <ul>${itemsList}</ul>
+                        </div>
+                        <div class="footer">
+                            ${dayjs().format('DD/MM/YYYY HH:mm')}
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
+                    </script>
+                </body>
+            </html>
+        `;
+        openPrintWindow(html);
+    };
+
+    const printStickerLogoOnly = async () => {
+        const logoSrc = await getDocumentLogoSrc();
+        const webHost = (typeof window !== 'undefined' ? window.location.origin : '').replace(/^https?:\/\//, '');
+
+        const html = `
+            <html>
+                <head>
+                    <title>Sticker logo - Aura Boutique</title>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+                        @page { size: ${PRINT_W} ${PRINT_H}; margin: 0; }
+                        * { box-sizing: border-box; }
+                        html, body { margin: 0; padding: 0; background: #f0f0f0; color: #000; font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+                        .sticker {
+                            width: ${PRINT_W};
+                            max-width: ${PRINT_W};
+                            height: ${PRINT_H};
+                            margin: 0 auto;
+                            padding: 16px 24px;
+                            box-sizing: border-box;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            background: #fff;
+                            border-radius: 12px;
+                        }
+                        .logo { width: 10cm; height: 10cm; max-height: 60%; object-fit: contain; border-radius: 999px; }
+                        .brand { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; margin-top: 10px; line-height: 1; text-align: center; }
+                        .socials { margin-top: 12px; display: flex; gap: 22px; align-items: center; font-size: 14px; }
+                        .socials span { display: inline-flex; align-items: center; gap: 6px; }
+                        .web { margin-top: 8px; font-size: 13px; color: #555; letter-spacing: 0.5px; }
+                        @media print {
+                            html, body { background: #fff; }
+                            .sticker { border: none; background: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="sticker">
+                        <img class="logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                        <div class="brand">AURA BOUTIQUE</div>
+                        <div class="socials">
+                            <span><i class="fa-brands fa-instagram"></i> @auraboutiqueme</span>
+                            <span><i class="fa-brands fa-tiktok"></i> @auraboutiqueme</span>
+                        </div>
+                        <div class="web">${webHost}</div>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
+                    </script>
+                </body>
+            </html>
+        `;
+        openPrintWindow(html);
     };
 
     const createReceiptPng = async () => {
@@ -1072,10 +1232,20 @@ export default function OrderDetailPage() {
                     <Tag color={salesChannel.color}>{salesChannel.label}</Tag>
                     {hasCustomizedOrderItems && <Tag color="gold">Personalizado</Tag>}
                 </div>
-                <Space wrap style={{ justifyContent: 'flex-end', flex: '1 1 260px' }}>
-                    <Button icon={<PrinterOutlined />} onClick={handlePrint}>
+<Space wrap style={{ justifyContent: 'flex-end', flex: '1 1 260px' }}>
+                    <Dropdown.Button
+                        icon={<PrinterOutlined />}
+                        onClick={printShippingLabel}
+                        menu={{
+                            items: [
+                                { key: 'label', label: 'Etiqueta A5 (media hoja A4)', onClick: printShippingLabel },
+                                { key: 'sticker-full', label: 'Sticker etiqueta completa', onClick: printStickerFullLabel },
+                                { key: 'sticker-logo', label: 'Sticker solo logo + marca', onClick: printStickerLogoOnly },
+                            ],
+                        }}
+                    >
                         Imprimir Etiqueta
-                    </Button>
+                    </Dropdown.Button>
                     <Button icon={<FilePdfOutlined />} onClick={handleDownloadReceiptPdf} loading={generatingReceipt === 'pdf'}>
                         Descargar PDF
                     </Button>
