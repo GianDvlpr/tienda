@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React, { useState } from 'react';
-import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch, Dropdown } from 'antd';
+import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch, Dropdown, Modal } from 'antd';
 import { CloseOutlined, DeleteOutlined, EditOutlined, FileImageOutlined, FilePdfOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
@@ -408,6 +408,21 @@ export default function OrderDetailPage() {
     const [photoBusyId, setPhotoBusyId] = useState<string | null>(null);
     const [generatingReceipt, setGeneratingReceipt] = useState<'pdf' | 'png' | null>(null);
 
+    type OrderPayment = {
+        payment_id: string;
+        order_id: string;
+        amount: number | string;
+        method: string;
+        reference: string | null;
+        notes: string | null;
+        created_at: string;
+    };
+
+    const { data: payments, mutate: mutatePayments } = useSWR<OrderPayment[]>(id ? `/api/admin/orders/${id}/payments` : null, fetcher);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentSaving, setPaymentSaving] = useState(false);
+    const [paymentForm] = Form.useForm();
+
     const originalQtyByVariant = new Map((order?.order_item || []).map(item => [item.variant_id, item.qty]));
     const variantOptions = (products || []).flatMap(product =>
         (product.product_variant || []).map(variant => {
@@ -522,6 +537,44 @@ form.setFieldsValue({
             toast.error(getErrorMessage(error));
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleRegisterPayment = async () => {
+        try {
+            const values = await paymentForm.validateFields();
+            setPaymentSaving(true);
+            const res = await fetch(`/api/admin/orders/${id}/payments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(values),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al registrar pago');
+            toast.success('Pago registrado');
+            paymentForm.resetFields();
+            setPaymentModalOpen(false);
+            mutatePayments();
+            mutate();
+        } catch (error: unknown) {
+            if (error instanceof Error && error.message) {
+                toast.error(getErrorMessage(error));
+            }
+        } finally {
+            setPaymentSaving(false);
+        }
+    };
+
+    const handleDeletePayment = async (paymentId: string) => {
+        try {
+            const res = await fetch(`/api/admin/orders/${id}/payments/${paymentId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al eliminar pago');
+            toast.success('Pago eliminado');
+            mutatePayments();
+            mutate();
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error));
         }
     };
 
@@ -1390,6 +1443,81 @@ const printShippingLabel = async () => {
                         </Card>
                     )}
 
+                    <Card
+                        title="Historial de pagos"
+                        variant="borderless"
+                        style={{ marginBottom: 24 }}
+                        extra={
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => {
+                                    paymentForm.resetFields();
+                                    setPaymentModalOpen(true);
+                                }}
+                                disabled={!order || Number(order.balance_due || 0) <= 0}
+                            >
+                                Registrar pago
+                            </Button>
+                        }
+                    >
+                        {(!payments || payments.length === 0) ? (
+                            <Text type="secondary">No se han registrado pagos para este pedido.</Text>
+                        ) : (
+                            <Table
+                                dataSource={payments}
+                                rowKey="payment_id"
+                                size="small"
+                                pagination={false}
+                                columns={[
+                                    {
+                                        title: 'Fecha',
+                                        dataIndex: 'created_at',
+                                        render: (v: string) => dayjs(v).format('DD/MM/YYYY HH:mm'),
+                                    },
+                                    {
+                                        title: 'Monto',
+                                        dataIndex: 'amount',
+                                        render: (v: number | string) => <strong>{formatPEN(Number(v || 0))}</strong>,
+                                    },
+                                    {
+                                        title: 'Método',
+                                        dataIndex: 'method',
+                                        render: (v: string) => paymentMethodOptions.find(o => o.value === v)?.label || v,
+                                    },
+                                    {
+                                        title: 'Referencia',
+                                        dataIndex: 'reference',
+                                        render: (v: string | null) => v || '-',
+                                    },
+                                    {
+                                        title: 'Notas',
+                                        dataIndex: 'notes',
+                                        render: (v: string | null) => v || '-',
+                                    },
+                                    {
+                                        title: '',
+                                        render: (_: unknown, record: OrderPayment) => (
+                                            <Popconfirm title="¿Eliminar este pago?" onConfirm={() => handleDeletePayment(record.payment_id)}>
+                                                <Button size="small" icon={<DeleteOutlined />} danger />
+                                            </Popconfirm>
+                                        ),
+                                    },
+                                ]}
+                                summary={(rows) => {
+                                    const sum = rows.reduce((acc, r) => acc + Number((r as OrderPayment).amount || 0), 0);
+                                    return (
+                                        <Table.Summary.Row>
+                                            <Table.Summary.Cell index={0}>Total pagado</Table.Summary.Cell>
+                                            <Table.Summary.Cell index={1}><strong>{formatPEN(sum)}</strong></Table.Summary.Cell>
+                                            <Table.Summary.Cell index={2} colSpan={4} />
+                                        </Table.Summary.Row>
+                                    );
+                                }}
+                            />
+                        )}
+                    </Card>
+
                     <Card title="Fotos del Pedido" variant="borderless">
                         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                             <Alert
@@ -1592,6 +1720,43 @@ const printShippingLabel = async () => {
                     )}
                 </Col>
             </Row>
+
+            <Modal
+                title="Registrar pago"
+                open={paymentModalOpen}
+                onCancel={() => setPaymentModalOpen(false)}
+                onOk={handleRegisterPayment}
+                confirmLoading={paymentSaving}
+                okText="Registrar"
+                cancelText="Cancelar"
+            >
+                <Form form={paymentForm} layout="vertical">
+                    <Form.Item name="amount" label="Monto del pago" rules={[{ required: true, message: 'Ingresa el monto' }]}>
+                        <InputNumber
+                            min={0.01}
+                            max={order ? Number(order.balance_due || 0) : undefined}
+                            precision={2}
+                            prefix="S/"
+                            style={{ width: '100%' }}
+                            placeholder="0.00"
+                        />
+                    </Form.Item>
+                    <Form.Item name="method" label="Método" rules={[{ required: true, message: 'Selecciona un método' }]}>
+                        <Select options={paymentMethodOptions} />
+                    </Form.Item>
+                    <Form.Item name="reference" label="Referencia (operación, voucher)">
+                        <Input placeholder="Ej. 1234567890" />
+                    </Form.Item>
+                    <Form.Item name="notes" label="Notas">
+                        <Input.TextArea rows={2} placeholder="Ej. Yape de S/.50 + efectivo S/.30" />
+                    </Form.Item>
+                    {order && Number(order.balance_due || 0) > 0 && (
+                        <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                            Saldo pendiente actual: {formatPEN(Number(order.balance_due || 0))}
+                        </Text>
+                    )}
+                </Form>
+            </Modal>
         </Space>
     );
 }

@@ -90,6 +90,7 @@ model order_header {
   customer           customer?            @relation(fields: [customer_id], references: [customer_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_customer")
   order_item         order_item[]
   order_photo        order_photo[]
+  order_payment      order_payment[]
   stock_reservation  stock_reservation[]
 
   @@index([customer_id, created_at(sort: Desc)], map: "IX_order_customer")
@@ -110,6 +111,19 @@ model order_photo {
 
   @@index([order_id, created_at(sort: Desc)], map: "IX_order_photo_order_created")
   @@index([order_id, is_public_tracking, created_at(sort: Desc)], map: "IX_order_photo_tracking")
+}
+
+model order_payment {
+  payment_id   String       @id(map: "PK_order_payment") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id     String       @db.Uuid
+  amount       Decimal      @db.Decimal(18, 2)
+  method       String       @db.VarChar(30)
+  reference    String?      @db.VarChar(120)
+  notes        String?      @db.Text
+  created_at   DateTime     @default(now())
+  order_header order_header @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_order_payment_order")
+
+  @@index([order_id, created_at(sort: Desc)], map: "IX_order_payment_order_created")
 }
 
 model order_item {
