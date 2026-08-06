@@ -354,7 +354,7 @@ export default function NewProformaPage() {
         {
             title: 'Cantidad',
             key: 'qty',
-            width: 90,
+            width: 95,
             render: (_value, record) => (
                 <InputNumber
                     min={1}
@@ -368,7 +368,7 @@ export default function NewProformaPage() {
         {
             title: 'Precio base',
             key: 'unit_price',
-            width: 120,
+            width: 115,
             render: (_value, record) => (
                 <InputNumber
                     min={0}
