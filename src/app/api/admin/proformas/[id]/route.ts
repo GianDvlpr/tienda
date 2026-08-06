@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { buildCustomSku } from '@/lib/personalized-sku';
 
 export const runtime = 'nodejs';
 
@@ -61,6 +62,7 @@ type ProformaUpdateRequest = {
     status?: string;
     customer_name?: string;
     customer_phone?: string;
+    validity_days?: number | string | null;
     shipping_cost?: number | string | null;
     discount_total?: number | string | null;
     notes?: string;
@@ -110,6 +112,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         if (!Number.isFinite(discountTotal) || discountTotal < 0) {
             return NextResponse.json({ error: 'El descuento debe ser mayor o igual a 0' }, { status: 400 });
         }
+
+        const rawValidityDays = body.validity_days === undefined || body.validity_days === null || body.validity_days === ''
+            ? existing.validity_days
+            : Number(body.validity_days);
+        if (!Number.isInteger(rawValidityDays) || rawValidityDays <= 0) {
+            return NextResponse.json({ error: 'La validez debe ser un número de días válido' }, { status: 400 });
+        }
+        const validityDays = rawValidityDays;
 
         let rawItems = existing.proforma_item;
         if (body.items !== undefined) {
@@ -182,6 +192,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     if (!surchargeType && surchargeAmount > 0) {
                         surchargeType = 'CONFECCION';
                     }
+                    sku = sku || buildCustomSku(productName, null, size, color);
                 }
 
                 let unitPriceRaw = toNumber(item.unit_price, Number.NaN);
@@ -227,6 +238,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     status,
                     customer_name: customerName,
                     customer_phone: customerPhone,
+                    validity_days: validityDays,
                     notes,
                     subtotal,
                     shipping_cost: shippingCost,

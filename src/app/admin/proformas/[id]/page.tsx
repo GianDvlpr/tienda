@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
+import { buildCustomSku } from '@/lib/personalized-sku';
 import dayjs from 'dayjs';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
@@ -40,6 +41,7 @@ type ProformaData = {
     status: string;
     customer_name: string;
     customer_phone: string;
+    validity_days?: number | string | null;
     subtotal: number | string;
     shipping_cost?: number | string;
     discount_total?: number | string;
@@ -244,7 +246,7 @@ function buildProformaReceiptHtml(proforma: ProformaData, logoSrc: string) {
                         <div class="info-card">
                             <div class="section-title">Estado</div>
                             <div class="line"><span>Estado</span><span>${escapeHtml(statusLabel)}</span></div>
-                            <div class="line"><span>Válido</span><span>7 días</span></div>
+                            <div class="line"><span>Válido</span><span>${escapeHtml(String(proforma.validity_days || 5))} días</span></div>
                         </div>
                     </div>
 
@@ -269,7 +271,6 @@ function buildProformaReceiptHtml(proforma: ProformaData, logoSrc: string) {
                         <div class="total-line grand-total"><span>Total</span><span>${escapeHtml(formatPEN(total))}</span></div>
                     </div>
 
-                    ${proforma.notes ? `<div class="note"><strong>Notas:</strong> ${escapeHtml(proforma.notes)}</div>` : ''}
                     <div class="note">
                         Esta proforma es una cotización sin valor comercial emitida por AURA BOUTIQUE. Los precios pueden variar hasta la confirmación del pedido. No reemplaza una boleta o factura electrónica.
                     </div>
@@ -384,6 +385,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                 customer_phone: proforma.customer_phone,
                 sales_channel: proforma.sales_channel,
                 status: proforma.status,
+                validity_days: Number(proforma.validity_days || 5),
                 shipping_cost: Number(proforma.shipping_cost || 0),
                 discount_total: Number(proforma.discount_total || 0),
                 notes: proforma.notes,
@@ -537,6 +539,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
 
         const product = (products || []).find(p => p.product_id === customProductId);
         const firstVariant = product?.product_variant?.[0];
+        const customSku = buildCustomSku(name, firstVariant?.sku, customSize || firstVariant?.size, customColor || firstVariant?.color);
 
         setItems(prev => [
             ...prev,
@@ -544,7 +547,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                 key: `c-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 variant_id: firstVariant?.variant_id,
                 product_name: name,
-                sku: firstVariant?.sku,
+                sku: customSku,
                 size: customSize || firstVariant?.size,
                 color: customColor || firstVariant?.color,
                 qty,
@@ -568,6 +571,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                 body: JSON.stringify({
                     customer_name: values.customer_name,
                     customer_phone: values.customer_phone,
+                    validity_days: values.validity_days || 5,
                     sales_channel: values.sales_channel,
                     status: values.status,
                     shipping_cost: values.shipping_cost || 0,
@@ -939,6 +943,9 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                                         </Form.Item>
                                     </Col>
                                 </Row>
+                                <Form.Item name="validity_days" label="Validez (días)" tooltip="Días de validez de la proforma">
+                                    <InputNumber min={1} precision={0} suffix="días" style={{ width: '100%' }} />
+                                </Form.Item>
                                 <Form.Item name="notes" label="Notas internas">
                                     <Input.TextArea rows={3} />
                                 </Form.Item>
@@ -948,6 +955,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                                 <Descriptions.Item label="Cliente">{proforma.customer_name}</Descriptions.Item>
                                 <Descriptions.Item label="Celular">{proforma.customer_phone}</Descriptions.Item>
                                 <Descriptions.Item label="Canal">{proforma.sales_channel || '—'}</Descriptions.Item>
+                                <Descriptions.Item label="Validez">{proforma.validity_days || 5} días</Descriptions.Item>
                                 <Descriptions.Item label="Creada">{dayjs(proforma.created_at).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
                             </Descriptions>
                         )}

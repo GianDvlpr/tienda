@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
+import { buildCustomSku } from '@/lib/personalized-sku';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -257,6 +258,7 @@ export default function NewProformaPage() {
 
         const product = (products || []).find(p => p.product_id === customProductId);
         const firstVariant = product?.product_variant?.[0];
+        const customSku = buildCustomSku(name, firstVariant?.sku, customSize || firstVariant?.size, customColor || firstVariant?.color);
 
         setItems(prev => [
             ...prev,
@@ -265,7 +267,7 @@ export default function NewProformaPage() {
                 variant_id: firstVariant?.variant_id,
                 product_id: customProductId,
                 product_name: name,
-                sku: firstVariant?.sku,
+                sku: customSku,
                 size: customSize || firstVariant?.size,
                 color: customColor || firstVariant?.color,
                 qty,
@@ -298,6 +300,7 @@ export default function NewProformaPage() {
                 body: JSON.stringify({
                     customer_name: values.customer_name,
                     customer_phone: values.customer_phone,
+                    validity_days: values.validity_days || 5,
                     shipping_cost: values.shipping_cost || 0,
                     discount_total: values.discount_total || 0,
                     notes: values.notes || undefined,
@@ -451,6 +454,7 @@ export default function NewProformaPage() {
                                 status: 'DRAFT',
                                 customer_name: 'Genérico',
                                 customer_phone: '999999999',
+                                validity_days: 5,
                             }}
                         >
                             <Row gutter={12}>
@@ -486,6 +490,10 @@ export default function NewProformaPage() {
                                     </Form.Item>
                                 </Col>
                             </Row>
+
+                            <Form.Item name="validity_days" label="Validez (días)" tooltip="Días de validez de la proforma">
+                                <InputNumber min={1} precision={0} suffix="días" style={{ width: '100%' }} placeholder="5" />
+                            </Form.Item>
 
                             <Form.Item name="notes" label="Notas internas">
                                 <Input.TextArea rows={3} placeholder="Detalles de coordinación, observaciones, etc." />

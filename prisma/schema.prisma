@@ -259,6 +259,7 @@ model proforma_header {
   total                Decimal         @db.Decimal(18, 2)
   currency             String          @default("PEN") @db.Char(3)
   sales_channel        String          @default("WHATSAPP") @db.VarChar(30)
+  validity_days        Int              @default(5)
   notes                String?         @db.Text
   converted_to_order_id String?        @db.Uuid
   created_at           DateTime        @default(now())
