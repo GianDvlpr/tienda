@@ -354,7 +354,7 @@ export default function NewProformaPage() {
         {
             title: 'Cantidad',
             key: 'qty',
-            width: 80,
+            width: 90,
             render: (_value, record) => (
                 <InputNumber
                     min={1}
@@ -444,7 +444,7 @@ export default function NewProformaPage() {
             </Space>
 
             <Row gutter={[24, 24]}>
-                <Col xs={24} lg={8}>
+                <Col xs={24} lg={6}>
                     <Card title="Datos del cliente" variant="borderless">
                         <Form
                             form={form}
@@ -502,7 +502,7 @@ export default function NewProformaPage() {
                     </Card>
                 </Col>
 
-                <Col xs={24} lg={16}>
+                <Col xs={24} lg={18}>
                     <Card title="Productos cotizados" variant="borderless">
                         <Row gutter={[12, 12]} align="bottom">
                             <Col xs={24} md={12}>
@@ -563,7 +563,7 @@ export default function NewProformaPage() {
                             rowKey="key"
                             pagination={false}
                             style={{ marginTop: 24 }}
-                            scroll={{ x: 750 }}
+                            scroll={{ x: 800 }}
                             tableLayout="fixed"
                         />
 

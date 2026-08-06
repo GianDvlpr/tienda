@@ -751,7 +751,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
         {
             title: 'Cantidad',
             key: 'qty',
-            width: 80,
+            width: 90,
             render: (_value, record) => isEditing ? (
                 <InputNumber
                     min={1}
@@ -826,20 +826,23 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                 <Text strong>{formatPEN(record.qty * (record.unit_price + record.surcharge_amount))}</Text>
             ),
         },
-        {
+    ];
+
+    if (isEditing) {
+        columns.push({
             title: 'Acciones',
             key: 'actions',
             width: 50,
-            render: (_value, record) => isEditing ? (
+            render: (_value, record) => (
                 <Button
                     type="text"
                     danger
                     icon={<DeleteOutlined />}
                     onClick={() => setItems(prev => prev.filter(item => item.key !== record.key))}
                 />
-            ) : null,
-        },
-    ];
+            ),
+        });
+    }
 
     if (isLoading) {
         return <Card loading />;
@@ -909,7 +912,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
             </Space>
 
             <Row gutter={[24, 24]}>
-                <Col xs={24} lg={8}>
+                <Col xs={24} lg={6}>
                     <Card title="Datos del cliente" variant="borderless">
                         {isEditing ? (
                             <Form form={form} layout="vertical">
@@ -962,7 +965,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                     </Card>
                 </Col>
 
-                <Col xs={24} lg={16}>
+                <Col xs={24} lg={18}>
                     <Card title="Productos cotizados" variant="borderless">
                         {isEditing && (
                             <>
@@ -1025,7 +1028,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                             rowKey="key"
                             pagination={false}
                             loading={isLoading}
-                            scroll={{ x: 750 }}
+                            scroll={{ x: 800 }}
                             tableLayout="fixed"
                             style={{ marginTop: isEditing ? 24 : 0 }}
                         />
