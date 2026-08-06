@@ -20,6 +20,7 @@ import {
   ExperimentOutlined,
   GiftOutlined,
   LinkOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 
 import { useRouter, usePathname } from 'next/navigation';
@@ -74,6 +75,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       label: <Link href="/admin/orders">Pedidos</Link>,
     },
     {
+      key: '/admin/proformas',
+      icon: <FileTextOutlined />,
+      label: <Link href="/admin/proformas">Proformas</Link>,
+    },
+    {
       key: '/admin/products',
       icon: <ShoppingOutlined />,
       label: <Link href="/admin/products">Productos</Link>,
@@ -123,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 
   const filteredMenuItems = user?.role === 'SELLER'
-    ? menuItems.filter(m => m.key === '/admin' || m.key === '/admin/orders')
+    ? menuItems.filter(m => m.key === '/admin' || m.key === '/admin/orders' || m.key === '/admin/proformas')
     : menuItems;
 
   return (

@@ -25,10 +25,11 @@ function isPath(pathname: string, basePath: string) {
 function sellerCanAccess(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    if (pathname === '/admin' || isPath(pathname, '/admin/orders')) return true;
+    if (pathname === '/admin' || isPath(pathname, '/admin/orders') || isPath(pathname, '/admin/proformas')) return true;
     if (pathname === '/api/admin/me') return true;
     if (pathname === '/api/admin/dashboard' || pathname === '/api/admin/dashboard/alerts') return true;
     if (isPath(pathname, '/api/admin/orders')) return true;
+    if (isPath(pathname, '/api/admin/proformas')) return true;
     if (request.method === 'GET' && isPath(pathname, '/api/admin/products')) return true;
 
     return false;
