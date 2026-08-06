@@ -441,7 +441,7 @@ export default function NewProformaPage() {
             </Space>
 
             <Row gutter={[24, 24]}>
-                <Col xs={24} lg={10}>
+                <Col xs={24} lg={8}>
                     <Card title="Datos del cliente" variant="borderless">
                         <Form
                             form={form}
@@ -494,7 +494,7 @@ export default function NewProformaPage() {
                     </Card>
                 </Col>
 
-                <Col xs={24} lg={14}>
+                <Col xs={24} lg={16}>
                     <Card title="Productos cotizados" variant="borderless">
                         <Row gutter={[12, 12]} align="bottom">
                             <Col xs={24} md={12}>

@@ -3,13 +3,15 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { App, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Typography } from 'antd';
-import { ArrowRightOutlined, DeleteOutlined, LeftOutlined, PlusOutlined, SaveOutlined, ShoppingCartOutlined, ToolOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, DeleteOutlined, FileImageOutlined, FilePdfOutlined, LeftOutlined, PlusOutlined, SaveOutlined, ShoppingCartOutlined, ToolOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import dayjs from 'dayjs';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 import { proformaStatusMap } from '../page';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -96,6 +98,206 @@ function getErrorMessage(error: unknown, fallback: string) {
     return error instanceof Error ? error.message : fallback;
 }
 
+const DOCUMENT_LOGO_PATH = '/logo-aura.png';
+
+function escapeHtml(value: unknown) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getProformaReceiptFilename(code: string, extension: 'pdf' | 'png') {
+    const safeCode = code.replace(/[^a-z0-9-_]/gi, '-').toLowerCase();
+    return `proforma-${safeCode}.${extension}`;
+}
+
+async function getDocumentLogoSrc() {
+    const absoluteLogoUrl = `${window.location.origin}${DOCUMENT_LOGO_PATH}`;
+
+    try {
+        const response = await fetch(DOCUMENT_LOGO_PATH);
+        if (!response.ok) return absoluteLogoUrl;
+
+        const blob = await response.blob();
+
+        return await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
+    } catch {
+        return absoluteLogoUrl;
+    }
+}
+
+function buildProformaReceiptHtml(proforma: ProformaData, logoSrc: string) {
+    const statusLabel = proformaStatusMap[proforma.status]?.label || proforma.status;
+
+    const rows = (proforma.proforma_item || []).map(item => {
+        const customLabel = item.is_customized === true || item.is_customized === 1 ? '<span class="receipt-badge">Personalizado</span>' : '';
+        const itemName = `${escapeHtml(item.product_name)} ${customLabel}`;
+        const detailParts: string[] = [];
+        if (item.variant_size) detailParts.push(escapeHtml(item.variant_size));
+        if (item.variant_color) detailParts.push(escapeHtml(item.variant_color));
+        if (item.sku) detailParts.push(`SKU ${escapeHtml(item.sku)}`);
+        const detail = detailParts.length > 0 ? detailParts.join(' · ') : '';
+
+        const surchargeAmount = Number(item.surcharge_amount || 0);
+        const surchargeLabel = item.surcharge_type === 'CONFECCION'
+            ? `Confección +${escapeHtml(formatPEN(surchargeAmount))}`
+            : item.surcharge_type === 'DELIVERY'
+                ? `Delivery +${escapeHtml(formatPEN(surchargeAmount))}`
+                : '';
+
+        return `
+            <tr>
+                <td class="qty">${item.qty}</td>
+                <td>
+                    <div class="item-name">${itemName}</div>
+                    ${detail ? `<div class="muted">${detail}</div>` : ''}
+                </td>
+                <td class="money">${escapeHtml(formatPEN(Number(item.unit_price)))}</td>
+                <td class="money">${surchargeLabel || '<span class="muted">—</span>'}</td>
+                <td class="money strong">${escapeHtml(formatPEN(item.qty * (Number(item.unit_price) + surchargeAmount)))}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const subtotal = Number(proforma.subtotal || 0);
+    const shippingCost = Number(proforma.shipping_cost || 0);
+    const discountTotal = Number(proforma.discount_total || 0);
+    const total = Number(proforma.total || 0);
+    const salesChannel = salesChannelOptions.find(option => option.value === proforma.sales_channel)?.label || proforma.sales_channel || 'WhatsApp';
+
+    return `
+        <div class="proforma-document">
+            <style>
+                .proforma-document {
+                    width: 794px;
+                    min-height: 1123px;
+                    box-sizing: border-box;
+                    padding: 42px;
+                    background: #fffaf3;
+                    color: #211915;
+                    font-family: Arial, Helvetica, sans-serif;
+                    border: 1px solid #eadfce;
+                }
+                .receipt-shell { background: #fff; border: 1px solid #eadfce; border-radius: 24px; overflow: hidden; box-shadow: 0 14px 40px rgba(52, 38, 24, 0.08); }
+                .receipt-hero { background: linear-gradient(135deg, #241711, #6c452d); color: #fff; padding: 30px 38px; display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+                .brand-wrap { display: flex; align-items: center; gap: 16px; }
+                .brand-logo { width: 92px; height: 92px; border-radius: 999px; object-fit: cover; background: #fff7ee; border: 2px solid rgba(244,216,182,0.85); box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+                .brand { font-size: 30px; font-weight: 900; letter-spacing: 1.8px; margin-bottom: 8px; }
+                .doc-label { font-size: 12px; letter-spacing: 2.4px; text-transform: uppercase; color: #f4d8b6; }
+                .code-box { border: 1px solid rgba(255,255,255,0.34); border-radius: 18px; padding: 16px 18px; text-align: right; min-width: 220px; }
+                .code-label { font-size: 11px; color: #f4d8b6; text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 7px; }
+                .code-value { font-size: 22px; font-weight: 900; }
+                .receipt-body { padding: 34px 38px 38px; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+                .info-card { border: 1px solid #efe4d3; border-radius: 18px; padding: 18px; background: #fffdf9; }
+                .section-title { font-size: 11px; text-transform: uppercase; color: #9b6f44; font-weight: 800; letter-spacing: 1.6px; margin-bottom: 12px; }
+                .line { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; font-size: 14px; }
+                .line span:first-child { color: #7c7169; }
+                .line span:last-child { font-weight: 700; text-align: right; }
+                .items-table { width: 100%; border-collapse: collapse; margin-top: 8px; overflow: hidden; border-radius: 16px; }
+                .items-table th { background: #f3eadf; color: #6f4c2c; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 12px 10px; text-align: left; }
+                .items-table td { border-bottom: 1px solid #f0e7db; padding: 14px 10px; vertical-align: top; font-size: 13px; }
+                .items-table tr:last-child td { border-bottom: none; }
+                .qty { width: 52px; text-align: center; font-weight: 900; color: #6f4c2c; }
+                .money { width: 110px; text-align: right; white-space: nowrap; }
+                .strong { font-weight: 900; }
+                .item-name { font-weight: 800; color: #2b211d; margin-bottom: 4px; }
+                .muted { color: #81746b; font-size: 12px; }
+                .receipt-badge { display: inline-block; margin-left: 8px; padding: 3px 7px; border-radius: 999px; background: #fbefd2; color: #8a5c16; font-size: 10px; text-transform: uppercase; letter-spacing: .7px; }
+                .totals { border: 1px solid #efe4d3; border-radius: 18px; padding: 18px; background: #fffdf9; margin-top: 26px; }
+                .total-line { display: flex; justify-content: space-between; gap: 16px; margin: 10px 0; font-size: 14px; }
+                .discount { color: #0f7a46; }
+                .grand-total { border-top: 2px solid #2b211d; padding-top: 14px; margin-top: 14px; font-size: 24px; font-weight: 900; }
+                .note { margin-top: 30px; color: #7a6c62; font-size: 12px; line-height: 1.55; border-top: 1px solid #efe4d3; padding-top: 18px; }
+            </style>
+            <div class="receipt-shell">
+                <div class="receipt-hero">
+                    <div class="brand-wrap">
+                        <img class="brand-logo" src="${escapeHtml(logoSrc)}" alt="Aura Boutique" />
+                        <div>
+                            <div class="brand">AURA BOUTIQUE</div>
+                            <div class="doc-label">Proforma / Cotización</div>
+                        </div>
+                    </div>
+                    <div class="code-box">
+                        <div class="code-label">Proforma</div>
+                        <div class="code-value">${escapeHtml(proforma.code)}</div>
+                        <div style="margin-top:8px;font-size:12px;color:#f7e5cf;">${escapeHtml(dayjs(proforma.created_at).format('DD/MM/YYYY HH:mm'))}</div>
+                    </div>
+                </div>
+                <div class="receipt-body">
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="section-title">Cliente</div>
+                            <div class="line"><span>Nombre</span><span>${escapeHtml(proforma.customer_name)}</span></div>
+                            <div class="line"><span>Celular</span><span>${escapeHtml(proforma.customer_phone)}</span></div>
+                            <div class="line"><span>Canal</span><span>${escapeHtml(salesChannel)}</span></div>
+                        </div>
+                        <div class="info-card">
+                            <div class="section-title">Estado</div>
+                            <div class="line"><span>Estado</span><span>${escapeHtml(statusLabel)}</span></div>
+                            <div class="line"><span>Válido</span><span>7 días</span></div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Detalle de productos</div>
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Cant.</th>
+                                <th>Producto</th>
+                                <th class="money">P. Base</th>
+                                <th class="money">Recargo</th>
+                                <th class="money">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+
+                    <div class="totals">
+                        <div class="total-line"><span>Subtotal</span><strong>${escapeHtml(formatPEN(subtotal))}</strong></div>
+                        ${shippingCost > 0 ? `<div class="total-line"><span>Envío</span><strong>${escapeHtml(formatPEN(shippingCost))}</strong></div>` : ''}
+                        ${discountTotal > 0 ? `<div class="total-line discount"><span>Descuento</span><strong>-${escapeHtml(formatPEN(discountTotal))}</strong></div>` : ''}
+                        <div class="total-line grand-total"><span>Total</span><span>${escapeHtml(formatPEN(total))}</span></div>
+                    </div>
+
+                    ${proforma.notes ? `<div class="note"><strong>Notas:</strong> ${escapeHtml(proforma.notes)}</div>` : ''}
+                    <div class="note">
+                        Esta proforma es una cotización sin valor comercial emitida por AURA BOUTIQUE. Los precios pueden variar hasta la confirmación del pedido. No reemplaza una boleta o factura electrónica.
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function downloadDataUrl(dataUrl: string, filename: string) {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    link.click();
+}
+
+function getImageDimensions(dataUrl: string) {
+    return new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const image = new window.Image();
+        image.onload = () => resolve({
+            width: image.naturalWidth || image.width,
+            height: image.naturalHeight || image.height,
+        });
+        image.onerror = () => reject(new Error('No se pudo preparar la imagen del documento'));
+        image.src = dataUrl;
+    });
+}
+
 const salesChannelOptions = [
     { value: 'WHATSAPP', label: 'WhatsApp' },
     { value: 'TIKTOK', label: 'TikTok' },
@@ -122,6 +324,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [isEditing, setIsEditing] = React.useState(false);
+    const [generatingReceipt, setGeneratingReceipt] = React.useState<'pdf' | 'png' | null>(null);
 
     const [selectedVariantId, setSelectedVariantId] = React.useState<string>();
     const [selectedQty, setSelectedQty] = React.useState(1);
@@ -448,6 +651,79 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
         }
     };
 
+    const createProformaReceiptPng = async () => {
+        if (!proforma) throw new Error('Proforma no encontrada');
+        const logoSrc = await getDocumentLogoSrc();
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-10000px';
+        container.style.top = '0';
+        container.style.width = '794px';
+        container.style.background = '#fffaf3';
+        container.innerHTML = buildProformaReceiptHtml(proforma, logoSrc);
+        document.body.appendChild(container);
+        try {
+            const receiptElement = container.firstElementChild;
+            if (!(receiptElement instanceof HTMLElement)) {
+                throw new Error('No se pudo generar el documento');
+            }
+            await document.fonts?.ready;
+            return await toPng(receiptElement, { cacheBust: true, pixelRatio: 2, backgroundColor: '#fffaf3' });
+        } finally {
+            container.remove();
+        }
+    };
+
+    const handleDownloadProformaImage = async () => {
+        if (!proforma) return;
+        setGeneratingReceipt('png');
+        try {
+            const dataUrl = await createProformaReceiptPng();
+            downloadDataUrl(dataUrl, getProformaReceiptFilename(proforma.code, 'png'));
+            toast.success('Imagen de la proforma descargada');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'No se pudo descargar la imagen'));
+        } finally {
+            setGeneratingReceipt(null);
+        }
+    };
+
+    const handleDownloadProformaPdf = async () => {
+        if (!proforma) return;
+        setGeneratingReceipt('pdf');
+        try {
+            const dataUrl = await createProformaReceiptPng();
+            const dimensions = await getImageDimensions(dataUrl);
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 18;
+            const imageWidth = pageWidth - margin * 2;
+            const imageHeight = imageWidth * (dimensions.height / dimensions.width);
+
+            if (imageHeight <= pageHeight - margin * 2) {
+                pdf.addImage(dataUrl, 'PNG', margin, margin, imageWidth, imageHeight);
+            } else {
+                let remainingHeight = imageHeight;
+                let yOffset = margin;
+                while (remainingHeight > 0) {
+                    pdf.addImage(dataUrl, 'PNG', margin, yOffset, imageWidth, imageHeight);
+                    remainingHeight -= pageHeight - margin * 2;
+                    if (remainingHeight > 0) {
+                        pdf.addPage();
+                        yOffset -= pageHeight - margin * 2;
+                    }
+                }
+            }
+            pdf.save(getProformaReceiptFilename(proforma.code, 'pdf'));
+            toast.success('PDF de la proforma descargado');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'No se pudo descargar el PDF'));
+        } finally {
+            setGeneratingReceipt(null);
+        }
+    };
+
     const columns: ColumnsType<EditableItem> = [
         {
             title: 'Producto',
@@ -588,6 +864,20 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                     </Title>
                 </Space>
                 <Space>
+                    <Button
+                        icon={<FilePdfOutlined />}
+                        onClick={handleDownloadProformaPdf}
+                        loading={generatingReceipt === 'pdf'}
+                    >
+                        Descargar PDF
+                    </Button>
+                    <Button
+                        icon={<FileImageOutlined />}
+                        onClick={handleDownloadProformaImage}
+                        loading={generatingReceipt === 'png'}
+                    >
+                        Descargar imagen
+                    </Button>
                     {editable && !isEditing && (
                         <>
                             <Button onClick={() => setIsEditing(true)}>Editar</Button>
@@ -615,7 +905,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
             </Space>
 
             <Row gutter={[24, 24]}>
-                <Col xs={24} lg={10}>
+                <Col xs={24} lg={8}>
                     <Card title="Datos del cliente" variant="borderless">
                         {isEditing ? (
                             <Form form={form} layout="vertical">
@@ -664,7 +954,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                     </Card>
                 </Col>
 
-                <Col xs={24} lg={14}>
+                <Col xs={24} lg={16}>
                     <Card title="Productos cotizados" variant="borderless">
                         {isEditing && (
                             <>
