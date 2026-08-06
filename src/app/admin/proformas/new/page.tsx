@@ -28,7 +28,15 @@ type Product = {
     name: string;
     base_price?: number | string | null;
     is_active: boolean;
+    custom_fabric_supply_id?: string | null;
     product_variant?: ProductVariant[];
+};
+
+type FabricColor = {
+    name: string;
+    hex: string;
+    available: boolean;
+    stock?: number;
 };
 
 type ProformaItem = {
@@ -85,8 +93,32 @@ export default function NewProformaPage() {
     const [customName, setCustomName] = React.useState('');
     const [customPrice, setCustomPrice] = React.useState<number | null>(null);
     const [customQty, setCustomQty] = React.useState(1);
+    const [customSize, setCustomSize] = React.useState<string | undefined>();
+    const [customColor, setCustomColor] = React.useState<string | undefined>();
+    const [fabricSupplyId, setFabricSupplyId] = React.useState<string | undefined>();
     const [customSurchargeType, setCustomSurchargeType] = React.useState<'CONFECCION' | 'DELIVERY'>('CONFECCION');
     const [customSurchargeAmount, setCustomSurchargeAmount] = React.useState<number>(0);
+
+    const { data: fabricColors } = useSWR<FabricColor[]>(
+        fabricSupplyId ? `/api/store/custom-colors?supplyId=${fabricSupplyId}` : null,
+        fetcher
+    );
+
+    const selectedCustomProduct = (products || []).find(p => p.product_id === customProductId);
+    const allSystemSizes = React.useMemo(() => Array.from(new Set(
+        (products || []).flatMap(p => (p.product_variant || []).map(v => v.size)).filter(Boolean)
+    )).sort(), [products]);
+    const customSizes = selectedCustomProduct
+        ? Array.from(new Set((selectedCustomProduct.product_variant || []).map(v => v.size).filter(Boolean))).sort()
+        : allSystemSizes;
+    const customColorOptions = (fabricColors && fabricColors.length > 0 ? fabricColors : (products || [])
+        .flatMap(p => (p.product_variant || []).map(v => v.color))
+        .filter((color, index, arr) => color && arr.indexOf(color) === index)
+        .map(color => ({ name: color, hex: '', available: true }))).map(color => ({
+        value: color.name,
+        label: color.name,
+        disabled: color.available === false,
+    }));
 
     const variantOptions = (products || []).flatMap(product =>
         (product.product_variant || []).map(variant => {
@@ -175,6 +207,9 @@ export default function NewProformaPage() {
         setCustomName('');
         setCustomPrice(null);
         setCustomQty(1);
+        setCustomSize(undefined);
+        setCustomColor(undefined);
+        setFabricSupplyId(undefined);
         setCustomSurchargeType('CONFECCION');
         setCustomSurchargeAmount(0);
         setCustomModalOpen(true);
@@ -186,7 +221,12 @@ export default function NewProformaPage() {
         if (product) {
             setCustomName(product.name);
             setCustomPrice(Number(product.base_price ?? 0));
+            setFabricSupplyId(product.custom_fabric_supply_id || undefined);
+        } else {
+            setFabricSupplyId(undefined);
         }
+        setCustomSize(undefined);
+        setCustomColor(undefined);
     };
 
     const handleAddCustomItem = () => {
@@ -226,8 +266,8 @@ export default function NewProformaPage() {
                 product_id: customProductId,
                 product_name: name,
                 sku: firstVariant?.sku,
-                size: firstVariant?.size,
-                color: firstVariant?.color,
+                size: customSize || firstVariant?.size,
+                color: customColor || firstVariant?.color,
                 qty,
                 unit_price: price,
                 surcharge_type: customSurchargeType,
@@ -258,7 +298,6 @@ export default function NewProformaPage() {
                 body: JSON.stringify({
                     customer_name: values.customer_name,
                     customer_phone: values.customer_phone,
-                    customer_email: values.customer_email || undefined,
                     shipping_cost: values.shipping_cost || 0,
                     discount_total: values.discount_total || 0,
                     notes: values.notes || undefined,
@@ -312,7 +351,7 @@ export default function NewProformaPage() {
         {
             title: 'Cantidad',
             key: 'qty',
-            width: 90,
+            width: 80,
             render: (_value, record) => (
                 <InputNumber
                     min={1}
@@ -326,7 +365,7 @@ export default function NewProformaPage() {
         {
             title: 'Precio base',
             key: 'unit_price',
-            width: 140,
+            width: 120,
             render: (_value, record) => (
                 <InputNumber
                     min={0}
@@ -341,7 +380,7 @@ export default function NewProformaPage() {
         {
             title: 'Recargo',
             key: 'surcharge',
-            width: 190,
+            width: 225,
             render: (_value, record) => (
                 <Space size={4} wrap={false}>
                     <Select
@@ -380,7 +419,7 @@ export default function NewProformaPage() {
         {
             title: 'Acciones',
             key: 'actions',
-            width: 60,
+            width: 50,
             render: (_value, record) => (
                 <Button
                     type="text"
@@ -410,6 +449,8 @@ export default function NewProformaPage() {
                             initialValues={{
                                 sales_channel: 'WHATSAPP',
                                 status: 'DRAFT',
+                                customer_name: 'Genérico',
+                                customer_phone: '999999999',
                             }}
                         >
                             <Row gutter={12}>
@@ -430,11 +471,7 @@ export default function NewProformaPage() {
                             </Form.Item>
 
                             <Form.Item name="customer_phone" label="Celular / WhatsApp" rules={[{ required: true, message: 'Ingresa el celular' }]}>
-                                <Input placeholder="Ej. 987654321" />
-                            </Form.Item>
-
-                            <Form.Item name="customer_email" label="Email (opcional)">
-                                <Input placeholder="cliente@correo.com" />
+                                <Input placeholder="Ej. 999999999" />
                             </Form.Item>
 
                             <Row gutter={12}>
@@ -518,7 +555,8 @@ export default function NewProformaPage() {
                             rowKey="key"
                             pagination={false}
                             style={{ marginTop: 24 }}
-                            scroll={{ x: 700 }}
+                            scroll={{ x: 750 }}
+                            tableLayout="fixed"
                         />
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, gap: 16, flexWrap: 'wrap' }}>
@@ -596,6 +634,32 @@ export default function NewProformaPage() {
                                         value={customQty}
                                         onChange={(value) => setCustomQty(Number(value || 1))}
                                         style={{ width: '100%' }}
+                                    />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Row gutter={12}>
+                            <Col span={12}>
+                                <Form.Item label="Talla">
+                                    <Select
+                                        showSearch
+                                        allowClear
+                                        value={customSize}
+                                        onChange={(value) => setCustomSize(value)}
+                                        options={customSizes.map(size => ({ value: size, label: size }))}
+                                        placeholder={selectedCustomProduct ? 'Tallas del producto' : 'Tallas del catálogo'}
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item label="Color" tooltip="Colores disponibles según la tela asociada al producto">
+                                    <Select
+                                        showSearch
+                                        allowClear
+                                        value={customColor}
+                                        onChange={(value) => setCustomColor(value)}
+                                        options={customColorOptions}
+                                        placeholder={customProductId ? 'Según la tela asociada' : 'Colores del catálogo'}
                                     />
                                 </Form.Item>
                             </Col>

@@ -1,6 +1,6 @@
-const crypto = require('crypto');
+﻿const crypto = require('crypto');
 
-const SECRET = process.env.ADMIN_AUTH_SECRET || 'dev-only-admin-auth-secret-change-me';
+const SECRET = '7d0b4d51a76a93e7bfa48e8f1cb42d27bba8c9d7e5f164f8d6c4b9a17f3e8c52';
 
 function bytesToBase64Url(buf) {
     return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');

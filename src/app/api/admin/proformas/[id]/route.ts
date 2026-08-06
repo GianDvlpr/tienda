@@ -61,7 +61,6 @@ type ProformaUpdateRequest = {
     status?: string;
     customer_name?: string;
     customer_phone?: string;
-    customer_email?: string;
     shipping_cost?: number | string | null;
     discount_total?: number | string | null;
     notes?: string;
@@ -88,7 +87,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
         const customerName = body.customer_name !== undefined ? normalizeText(body.customer_name) : existing.customer_name;
         const customerPhone = body.customer_phone !== undefined ? normalizeText(body.customer_phone) : existing.customer_phone;
-        const customerEmail = body.customer_email !== undefined ? (normalizeText(body.customer_email) || null) : existing.customer_email;
         const notes = body.notes !== undefined ? (normalizeText(body.notes) || null) : existing.notes;
 
         if (!customerName || !customerPhone) {
@@ -229,7 +227,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                     status,
                     customer_name: customerName,
                     customer_phone: customerPhone,
-                    customer_email: customerEmail,
                     notes,
                     subtotal,
                     shipping_cost: shippingCost,

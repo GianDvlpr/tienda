@@ -45,7 +45,6 @@ type ProformaItemInput = {
 type ProformaRequest = {
     customer_name?: string;
     customer_phone?: string;
-    customer_email?: string;
     shipping_cost?: number | string | null;
     discount_total?: number | string | null;
     notes?: string;
@@ -75,7 +74,6 @@ export async function POST(req: Request) {
         const body = await req.json() as ProformaRequest;
         const customerName = normalizeText(body.customer_name);
         const customerPhone = normalizeText(body.customer_phone);
-        const customerEmail = normalizeText(body.customer_email) || null;
         const notes = normalizeText(body.notes) || null;
         const salesChannel = normalizeText(body.sales_channel).toUpperCase() || 'WHATSAPP';
         const status = normalizeText(body.status).toUpperCase() || 'DRAFT';
@@ -213,7 +211,6 @@ export async function POST(req: Request) {
                     status,
                     customer_name: customerName,
                     customer_phone: customerPhone,
-                    customer_email: customerEmail,
                     subtotal,
                     shipping_cost: shippingCost,
                     discount_total: discountTotal,
