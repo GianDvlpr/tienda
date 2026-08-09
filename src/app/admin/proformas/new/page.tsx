@@ -337,6 +337,7 @@ export default function NewProformaPage() {
         {
             title: 'Producto',
             key: 'product',
+            width: 200,
             render: (_value, record) => (
                 <Space orientation="vertical" size={2}>
                     <Space size={4}>
@@ -359,6 +360,7 @@ export default function NewProformaPage() {
                 <InputNumber
                     min={1}
                     precision={0}
+                    controls={false}
                     value={record.qty}
                     onChange={(value) => updateItem(record.key, { qty: Number(value || 1) })}
                     style={{ width: '100%' }}
@@ -383,7 +385,7 @@ export default function NewProformaPage() {
         {
             title: 'Recargo',
             key: 'surcharge',
-            width: 225,
+            width: 240,
             render: (_value, record) => (
                 <Space size={4} wrap={false}>
                     <Select
@@ -563,7 +565,7 @@ export default function NewProformaPage() {
                             rowKey="key"
                             pagination={false}
                             style={{ marginTop: 24 }}
-                            scroll={{ x: 800 }}
+                            scroll={{ x: 850 }}
                             tableLayout="fixed"
                         />
 

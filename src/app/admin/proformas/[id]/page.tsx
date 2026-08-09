@@ -732,6 +732,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
         {
             title: 'Producto',
             key: 'product',
+            width: 200,
             render: (_value, record) => (
                 <Space orientation="vertical" size={2}>
                     <Space size={4}>
@@ -751,11 +752,12 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
         {
             title: 'Cantidad',
             key: 'qty',
-            width: 90,
+            width: 100,
             render: (_value, record) => isEditing ? (
                 <InputNumber
                     min={1}
                     precision={0}
+                    controls={false}
                     value={record.qty}
                     onChange={(value) => updateItem(record.key, { qty: Number(value || 1) })}
                     style={{ width: '100%' }}
@@ -780,7 +782,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
         {
             title: 'Recargo',
             key: 'surcharge',
-            width: 225,
+            width: 240,
             render: (_value, record) => {
                 if (isEditing) {
                     return (
@@ -1028,7 +1030,7 @@ export default function ProformaDetailPage({ params }: { params: Promise<{ id: s
                             rowKey="key"
                             pagination={false}
                             loading={isLoading}
-                            scroll={{ x: 800 }}
+                            scroll={{ x: 850 }}
                             tableLayout="fixed"
                             style={{ marginTop: isEditing ? 24 : 0 }}
                         />
