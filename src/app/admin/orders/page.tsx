@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 import React from 'react';
-import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col, theme, Checkbox } from 'antd';
+import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col, theme, Checkbox, Tooltip } from 'antd';
 import { EyeOutlined, GlobalOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -170,20 +170,20 @@ export default function AdminOrdersPage() {
         {
             title: 'Acciones',
             key: 'actions',
-            width: 170,
+            width: 90,
             fixed: 'right',
             render: (_value, record) => (
                 <Space>
-                    <Link href={`/admin/orders/${record.order_id}`}>
-                        <Button type="primary" size="small" icon={<EyeOutlined />}>
-                            Ver
-                        </Button>
-                    </Link>
-                    <a href={`/track/${record.code}`} target="_blank" rel="noopener noreferrer">
-                        <Button size="small" icon={<GlobalOutlined />}>
-                            Tracker
-                        </Button>
-                    </a>
+                    <Tooltip title="Ver detalle">
+                        <Link href={`/admin/orders/${record.order_id}`}>
+                            <Button type="primary" size="small" icon={<EyeOutlined />} />
+                        </Link>
+                    </Tooltip>
+                    <Tooltip title="Ver tracker">
+                        <a href={`/track/${record.code}`} target="_blank" rel="noopener noreferrer">
+                            <Button size="small" icon={<GlobalOutlined />} />
+                        </a>
+                    </Tooltip>
                 </Space>
             ),
         },
@@ -218,7 +218,7 @@ export default function AdminOrdersPage() {
         >
             <div style={{ marginBottom: 16, padding: 16, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 12, background: token.colorFillAlter }}>
                 <Row gutter={[12, 12]} align="bottom">
-                    <Col xs={24} md={12} lg={7}>
+                    <Col xs={24} md={12} lg={6}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Fecha</Text>
                         <RangePicker
                             value={dateRange}
@@ -228,7 +228,7 @@ export default function AdminOrdersPage() {
                             placeholder={['Desde', 'Hasta']}
                         />
                     </Col>
-                    <Col xs={12} md={6} lg={4}>
+                    <Col xs={12} md={6} lg={3}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Total mínimo</Text>
                         <InputNumber
                             value={minTotal}
@@ -239,7 +239,7 @@ export default function AdminOrdersPage() {
                             placeholder="0"
                         />
                     </Col>
-                    <Col xs={12} md={6} lg={4}>
+                    <Col xs={12} md={6} lg={3}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Total máximo</Text>
                         <InputNumber
                             value={maxTotal}
@@ -250,7 +250,7 @@ export default function AdminOrdersPage() {
                             placeholder="999"
                         />
                     </Col>
-                    <Col xs={24} md={12} lg={4}>
+                    <Col xs={24} md={12} lg={3}>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>Estado</Text>
                         <Select
                             allowClear
@@ -272,11 +272,10 @@ export default function AdminOrdersPage() {
                             style={{ width: '100%' }}
                         />
                     </Col>
-                    <Col xs={24} lg={2} style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <Col xs={24} lg={3} style={{ display: 'flex', alignItems: 'flex-end' }}>
                         <Checkbox
                             checked={hideCancelled}
                             onChange={(e) => setHideCancelled(e.target.checked)}
-                            style={{ whiteSpace: 'nowrap' }}
                         >
                             Ocultar cancelados
                         </Checkbox>
@@ -297,7 +296,7 @@ export default function AdminOrdersPage() {
                 rowKey="order_id"
                 loading={isLoading}
                 pagination={{ pageSize: 12 }}
-                scroll={{ x: 1035 }}
+                scroll={{ x: 955 }}
                 tableLayout="fixed"
             />
         </Card>

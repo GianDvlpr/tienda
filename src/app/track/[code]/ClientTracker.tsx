@@ -109,8 +109,8 @@ const isCancelled = liveStatus === 'CANCELLED';
                 </div>
 
                 {isCancelled && (
-                    <Card style={{ marginBottom: 20, borderColor: 'red', background: '#fff1f0' }}>
-                        <Title level={4} style={{ color: 'red', margin: 0 }}>Pedido Cancelado</Title>
+                    <Card style={{ marginBottom: 20, borderColor: 'red', background: isDarkMode ? 'rgba(255,77,79,0.12)' : '#fff1f0' }}>
+                        <Title level={4} style={{ color: isDarkMode ? '#ff7875' : 'red', margin: 0 }}>Pedido Cancelado</Title>
                         <Text>Este pedido ha sido cancelado y ya no está en tránsito.</Text>
                     </Card>
                 )}
@@ -208,15 +208,15 @@ const isCancelled = liveStatus === 'CANCELLED';
                 )}
 
 {isPartiallyPaid && (
-                    <Card style={{ marginBottom: 20, borderColor: '#fa8c16', background: '#fff7e6' }}>
-                        <Title level={4} style={{ color: '#d46b08', margin: 0 }}>Adelanto recibido</Title>
+                    <Card style={{ marginBottom: 20, borderColor: '#fa8c16', background: isDarkMode ? 'rgba(250,140,22,0.12)' : '#fff7e6' }}>
+                        <Title level={4} style={{ color: isDarkMode ? '#ffa940' : '#d46b08', margin: 0 }}>Adelanto recibido</Title>
                         <Text>Registramos tu adelanto. Tu pedido mantiene un saldo pendiente por completar.</Text>
                     </Card>
                 )}
 
                 {isSeparated && (
-                    <Card style={{ marginBottom: 20, borderColor: '#a0d911', background: '#f6ffed' }}>
-                        <Title level={4} style={{ color: '#389e0d', margin: 0 }}>Prenda separada</Title>
+                    <Card style={{ marginBottom: 20, borderColor: '#a0d911', background: isDarkMode ? 'rgba(160,217,17,0.12)' : '#f6ffed' }}>
+                        <Title level={4} style={{ color: isDarkMode ? '#bae637' : '#389e0d', margin: 0 }}>Prenda separada</Title>
                         <Text>Reservamos tu prenda. {order.amount_paid > 0 ? 'Registramos tu adelanto y falta completar el saldo.' : 'Aún no registramos pago; la prenda queda separada para ti.'}</Text>
                     </Card>
                 )}
