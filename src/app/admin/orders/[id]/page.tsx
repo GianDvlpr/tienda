@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import React, { useState } from 'react';
 import { Card, Select, Button, Typography, Space, Descriptions, Table, Row, Col, Input, Tag, Alert, Form, InputNumber, Popconfirm, Image, Switch, Dropdown, Modal } from 'antd';
-import { CloseOutlined, DeleteOutlined, EditOutlined, FileImageOutlined, FilePdfOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
+import { CloseOutlined, DeleteOutlined, EditOutlined, FileImageOutlined, FilePdfOutlined, GlobalOutlined, LeftOutlined, PlusOutlined, SaveOutlined, PrinterOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { fetcher } from '@/lib/fetcher';
@@ -1308,6 +1308,9 @@ const printShippingLabel = async () => {
                     {hasCustomizedOrderItems && <Tag color="gold">Personalizado</Tag>}
                 </div>
 <Space wrap style={{ justifyContent: 'flex-end', flex: '1 1 260px' }}>
+                    <a href={`/track/${order.code}`} target="_blank" rel="noopener noreferrer">
+                        <Button icon={<GlobalOutlined />}>Ver Tracker</Button>
+                    </a>
                     <Dropdown.Button
                         icon={<PrinterOutlined />}
                         onClick={printShippingLabel}

@@ -2,8 +2,8 @@
 import { toast } from 'sonner';
 
 import React from 'react';
-import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col, theme } from 'antd';
-import { EyeOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
+import { Card, Table, Typography, Tag, Button, Space, Flex, DatePicker, InputNumber, Select, Row, Col, theme, Checkbox } from 'antd';
+import { EyeOutlined, GlobalOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { fetcher } from '@/lib/fetcher';
@@ -77,6 +77,7 @@ export default function AdminOrdersPage() {
     const [maxTotal, setMaxTotal] = React.useState<number | null>(null);
     const [statusFilter, setStatusFilter] = React.useState<string>();
     const [channelFilter, setChannelFilter] = React.useState<string>();
+    const [hideCancelled, setHideCancelled] = React.useState(true);
 
     const filteredOrders = React.useMemo(() => {
         const [startDate, endDate] = dateRange || [];
@@ -91,12 +92,13 @@ export default function AdminOrdersPage() {
             if (maxTotal !== null && total > maxTotal) return false;
             if (statusFilter && order.status !== statusFilter) return false;
             if (channelFilter && (order.sales_channel || 'SHOP') !== channelFilter) return false;
+            if (hideCancelled && order.status === 'CANCELLED') return false;
 
             return true;
         });
-    }, [orders, dateRange, minTotal, maxTotal, statusFilter, channelFilter]);
+    }, [orders, dateRange, minTotal, maxTotal, statusFilter, channelFilter, hideCancelled]);
 
-    const hasActiveFilters = Boolean(dateRange || minTotal !== null || maxTotal !== null || statusFilter || channelFilter);
+    const hasActiveFilters = Boolean(dateRange || minTotal !== null || maxTotal !== null || statusFilter || channelFilter || !hideCancelled);
 
     const clearFilters = () => {
         setDateRange(null);
@@ -104,6 +106,7 @@ export default function AdminOrdersPage() {
         setMaxTotal(null);
         setStatusFilter(undefined);
         setChannelFilter(undefined);
+        setHideCancelled(true);
     };
 
     const columns: ColumnsType<AdminOrder> = [
@@ -167,7 +170,7 @@ export default function AdminOrdersPage() {
         {
             title: 'Acciones',
             key: 'actions',
-            width: 90,
+            width: 170,
             fixed: 'right',
             render: (_value, record) => (
                 <Space>
@@ -176,6 +179,11 @@ export default function AdminOrdersPage() {
                             Ver
                         </Button>
                     </Link>
+                    <a href={`/track/${record.code}`} target="_blank" rel="noopener noreferrer">
+                        <Button size="small" icon={<GlobalOutlined />}>
+                            Tracker
+                        </Button>
+                    </a>
                 </Space>
             ),
         },
@@ -264,6 +272,15 @@ export default function AdminOrdersPage() {
                             style={{ width: '100%' }}
                         />
                     </Col>
+                    <Col xs={24} lg={2} style={{ display: 'flex', alignItems: 'flex-end' }}>
+                        <Checkbox
+                            checked={hideCancelled}
+                            onChange={(e) => setHideCancelled(e.target.checked)}
+                            style={{ whiteSpace: 'nowrap' }}
+                        >
+                            Ocultar cancelados
+                        </Checkbox>
+                    </Col>
                     <Col xs={24} lg={2}>
                         <Button onClick={clearFilters} disabled={!hasActiveFilters} block>
                             Limpiar
@@ -280,7 +297,7 @@ export default function AdminOrdersPage() {
                 rowKey="order_id"
                 loading={isLoading}
                 pagination={{ pageSize: 12 }}
-                scroll={{ x: 955 }}
+                scroll={{ x: 1035 }}
                 tableLayout="fixed"
             />
         </Card>
