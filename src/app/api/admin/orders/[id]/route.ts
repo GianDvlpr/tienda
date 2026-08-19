@@ -344,6 +344,9 @@ const discountTotal = bundleDiscount + couponDiscount + otherDiscount;
                     where: { order_id: header.order_id },
                     include: { order_item: true }
                 });
+            }, {
+                timeout: 60_000,
+                maxWait: 20_000
             });
 } else {
             const oldSubtotal = Number(oldData.subtotal || 0);

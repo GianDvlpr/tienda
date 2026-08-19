@@ -227,6 +227,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
                 where: { order_id: header.order_id },
                 include: { order_item: true }
             });
+        }, {
+            timeout: 60_000,
+            maxWait: 20_000
         });
 
         if (!newOrder) {

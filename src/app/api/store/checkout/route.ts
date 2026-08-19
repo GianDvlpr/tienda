@@ -482,8 +482,8 @@ export async function POST(req: Request) {
 
             return header;
         }, {
-            maxWait: 5000, // default is 2000
-            timeout: 10000 // default is 5000
+            timeout: 60_000,
+            maxWait: 20_000
         });
 
         // 3. Trigger Pusher Notification for Admin
