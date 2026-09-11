@@ -67,7 +67,7 @@ export default function HeroSlider() {
                                     </Text>
                                 )}
                                  {slide.title && (
-                                    <Title level={1} style={{ color: '#fff', fontSize: 'clamp(2.15rem, 7vw, 3.5rem)', margin: '0 0 16px', fontWeight: 400, textAlign: 'center', lineHeight: 1.05 }}>
+                                    <Title level={2} style={{ color: '#fff', fontSize: 'clamp(2.15rem, 7vw, 3.5rem)', margin: '0 0 16px', fontWeight: 400, textAlign: 'center', lineHeight: 1.05 }}>
                                         {slide.title}
                                     </Title>
                                 )}

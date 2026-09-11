@@ -11,7 +11,7 @@ export default function AdminLoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const onFinish = async (values: any) => {
+    const onFinish = async (values: { username: string; password: string }) => {
         setLoading(true);
         try {
             const res = await fetch('/api/admin/login', {
@@ -23,11 +23,15 @@ export default function AdminLoginPage() {
             if (res.ok) {
                 toast.success('Bienvenido de nuevo');
                 router.push('/admin');
+            } else if (res.status === 429) {
+                toast.error('Demasiados intentos. Intenta nuevamente en 15 minutos.');
+            } else if (res.status >= 500) {
+                toast.error('El servidor no pudo iniciar la sesión. Contacta al administrador para revisar la configuración.');
             } else {
                 toast.error('Credenciales incorrectas');
             }
-        } catch (e: any) {
-            toast.error(e.message || 'Error al iniciar sesión');
+        } catch {
+            toast.error('No se pudo conectar con el servidor. Revisa tu conexión e intenta nuevamente.');
         } finally {
             setLoading(false);
         }

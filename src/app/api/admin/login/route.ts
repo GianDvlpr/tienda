@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         recordFailedLogin(loginKey);
         return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
     } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : 'Error al iniciar sesión';
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error('Admin login failed:', e);
+        return NextResponse.json({ error: 'El servidor no pudo iniciar la sesión. Revisa la configuración del servicio.' }, { status: 500 });
     }
 }

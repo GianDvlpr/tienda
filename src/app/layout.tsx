@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import { Playfair_Display, Alex_Brush, Montserrat } from "next/font/google";
 import "./globals.css";
 
@@ -26,6 +27,8 @@ const montserrat = Montserrat({
 
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION },
   title: {
     template: '%s | Aura Boutique',
     default: 'Aura Boutique | Moda Femenina y Exclusiva en Perú',
@@ -35,7 +38,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Aura Boutique | Moda Femenina y Exclusiva en Perú',
     description: 'Encuentra vestidos exclusivos y lo último en moda femenina con envíos a todo el Perú. 🚛✨',
-    url: 'https://auraboutique.me',
+    url: SITE_URL,
     siteName: 'Aura Boutique',
     locale: 'es_PE',
     type: 'website',

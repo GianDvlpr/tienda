@@ -1,35 +1,12 @@
 import { MetadataRoute } from 'next';
-import { getActiveProductSlugs } from '@/lib/actions/product';
-
+import { prisma } from '@/lib/prisma';
+import { absoluteUrl, productPath } from '@/lib/seo';
+export const dynamic = 'force-dynamic';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = 'https://auraboutique.me';
-    
-    // Static routes
-    const routes = [
-        '',
-        '/links',
-        '/shop',
-        '/reclamaciones',
-    ].map((route) => ({
-        url: `${baseUrl}${route}`,
-        lastModified: new Date(),
-        changeFrequency: 'daily' as const,
-        priority: route === '' ? 1 : 0.8,
-    }));
-
-    // Dynamic product routes
-    try {
-        const slugs = await getActiveProductSlugs();
-        const productRoutes = slugs.map((slug) => ({
-            url: `${baseUrl}/product/${slug}`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly' as const,
-            priority: 0.7,
-        }));
-        
-        return [...routes, ...productRoutes];
-    } catch (e) {
-        console.error('Sitemap generation error:', e);
-        return routes;
-    }
+    // Do not publish a misleading partial sitemap when the database is unavailable.
+    const products = await prisma.product.findMany({ where: { is_active: true }, select: { slug: true } });
+    return [
+        ...['/shop', '/personalizadas', '/links', '/colores', '/terms', '/returns', '/reclamaciones'].map(path => ({ url: absoluteUrl(path) })),
+        ...products.map(product => ({ url: absoluteUrl(productPath(product.slug)) })),
+    ];
 }

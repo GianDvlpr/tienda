@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Button,
@@ -19,7 +19,7 @@ import {
     Col
 } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import styles from '@/components/shop/productGridTransition.module.css';
 import ProductGrid from '@/components/shop/ProductGrid';
@@ -50,7 +50,7 @@ function parseCommaArray(param: string | null): string[] {
     return param.split(',').filter(Boolean);
 }
 
-export default function ShopClient({ customizableOnly = false }: { customizableOnly?: boolean }) {
+export default function ShopClient({ customizableOnly = false, initialData }: { customizableOnly?: boolean; initialData?: ProductListResponse }) {
     const sp = useSearchParams();
     const pathname = usePathname();
     const screens = Grid.useBreakpoint();
@@ -99,8 +99,10 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
         setQ(sp.get('q') ?? '');
     }, [sp]);
 
+    const previousQ = useRef(debouncedQ);
     useEffect(() => {
-        setPage(1);
+        if (previousQ.current !== debouncedQ) setPage(1);
+        previousQ.current = debouncedQ;
     }, [debouncedQ]);
 
     const metaKey = useMemo(() => {
@@ -174,14 +176,18 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
         return params.toString();
     }, [collection, customizableOnly, debouncedQ, price, priceBounds, debouncedSizes, debouncedColors, onlyInStock, sort, page, pageSize]);
 
+    const previousOptions = useRef(JSON.stringify([debouncedSizes, debouncedColors]));
     useEffect(() => {
-        setPage(1);
+        const nextOptions = JSON.stringify([debouncedSizes, debouncedColors]);
+        if (previousOptions.current !== nextOptions) setPage(1);
+        previousOptions.current = nextOptions;
     }, [debouncedSizes, debouncedColors]);
 
     useEffect(() => {
         window.history.replaceState(null, '', `${pathname}?${queryString}`);
     }, [pathname, queryString]);
 
+    const [initialQuery] = useState(queryString);
     const productsKey = useMemo(() => `/api/store/products?${queryString}`, [queryString]);
 
     const {
@@ -189,6 +195,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
         error: productsError,
         isLoading: productsLoading,
     } = useSWR<ProductListResponse>(productsKey, fetcher, {
+        fallbackData: queryString === initialQuery ? initialData : undefined,
         revalidateOnFocus: false,
         keepPreviousData: true,
     });
@@ -231,6 +238,10 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
             <HeroSlider />
 
             <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? '32px 12px 88px' : '48px 24px 24px' }}>
+                <Title level={1} style={{ marginTop: 0, fontSize: isMobile ? 28 : 36 }}>
+                    {customizableOnly ? 'Prendas personalizadas para mujer' : 'Ropa de mujer en Perú'}
+                </Title>
+                {!customizableOnly && <p>Descubre las prendas de Aura Boutique. Explora tallas, colores y precios para encontrar tu próximo look.</p>}
                 {customizableOnly && (
                     <Card variant="borderless" style={{ marginBottom: 24, background: 'linear-gradient(135deg, rgba(200,159,83,0.12), rgba(255,255,255,0.85))' }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
                         <Title level={2} style={{ marginTop: 0, fontSize: isMobile ? 28 : undefined }}>Prendas personalizadas</Title>
@@ -327,7 +338,7 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
                                     setSort(v);
                                     resetPage();
                                 }}
-                                options={SORT_OPTIONS as any}
+                                options={[...SORT_OPTIONS]}
                                 style={{ minWidth: isMobile ? '100%' : 200, width: isMobile ? '100%' : undefined }}
                                 placeholder="Ordenar por"
                                 size="large"
@@ -361,6 +372,14 @@ export default function ShopClient({ customizableOnly = false }: { customizableO
                                             pageSize={data.pageSize}
                                             total={data.total}
                                             showSizeChanger={false}
+                                            itemRender={(targetPage, type, element) => {
+                                                if (!['page', 'prev', 'next'].includes(type) || targetPage < 1 || targetPage > Math.ceil(data.total / data.pageSize)) return element;
+                                                const params = new URLSearchParams(queryString);
+                                                if (targetPage > 1) params.set('page', String(targetPage));
+                                                else params.delete('page');
+                                                const href = pathname + (params.size ? '?' + params.toString() : '');
+                                                return <a href={href} aria-label={'Página ' + targetPage}>{type === 'page' ? targetPage : type === 'prev' ? '‹' : '›'}</a>;
+                                            }}
                                             onChange={(p, ps) => {
                                                 setPage(p);
                                                 if (ps) setPageSize(ps);

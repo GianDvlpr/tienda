@@ -12,17 +12,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         setMounted(true);
     }, []);
 
-    if (!mounted) {
-        return <div style={{ visibility: 'hidden' }}>{children}</div>;
-    }
+    const darkMode = mounted && isDarkMode;
 
     return (
         <ConfigProvider
             theme={{
-                algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
                 token: {
                     colorPrimary: '#C89F53',
-                    colorBgBase: isDarkMode ? '#1A1A1A' : '#FAF9F6',
+                    colorBgBase: darkMode ? '#1A1A1A' : '#FAF9F6',
                     fontFamily: 'var(--font-montserrat), sans-serif',
                     borderRadius: 4,
                 },

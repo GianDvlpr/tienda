@@ -30,7 +30,7 @@ export default function ProductGrid({ items }: { items: ProductListItem[] }) {
     return (
         <motion.div
             variants={containerVariants}
-            initial="hidden"
+            initial={false}
             animate="visible"
             key={items.map(p => p.productId).join(',')}
         >

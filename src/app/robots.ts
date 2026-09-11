@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { absoluteUrl } from '@/lib/seo';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -15,6 +16,6 @@ export default function robots(): MetadataRoute.Robots {
         '/success',
       ],
     },
-    sitemap: 'https://auraboutique.me/sitemap.xml',
+    sitemap: absoluteUrl('/sitemap.xml'),
   };
 }

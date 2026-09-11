@@ -549,7 +549,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                             <Space orientation="vertical" size={10} style={{ width: '100%' }}>
 
 
-                                <Title level={3} style={{ margin: 0, fontSize: isMobile ? 26 : undefined, lineHeight: 1.1 }}>
+                                <Title level={1} style={{ margin: 0, fontSize: isMobile ? 26 : 30, lineHeight: 1.1 }}>
                                     {initialData.product.name}
                                 </Title>
 
