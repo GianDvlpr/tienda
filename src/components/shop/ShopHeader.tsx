@@ -5,7 +5,7 @@ import { HeartFilled, BulbOutlined, BulbFilled, SearchOutlined, CloseOutlined, S
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
 import { useWishlistStore } from "@/store/wishlist.store";
 import { useThemeStore } from "@/store/theme.store";
@@ -21,6 +21,8 @@ export default function ShopHeader() {
     const [openWishlist, setOpenWishlist] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const router = useRouter();
+    const pathname = usePathname();
+    const hasHero = ['/', '/shop', '/personalizadas'].includes(pathname);
     const searchParams = useSearchParams();
     const inputRef = useRef<any>(null);
     const screens = Grid.useBreakpoint();
@@ -74,7 +76,7 @@ export default function ShopHeader() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    background: scrolled ? "rgba(0,0,0,0.9)" : "transparent",
+                    background: scrolled || !hasHero ? "rgba(0,0,0,0.9)" : "transparent",
                     transition: "background 0.3s ease",
                     position: "fixed",
                     width: "100%",

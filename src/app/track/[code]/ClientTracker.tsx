@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 import { useThemeStore } from "@/store/theme.store";
 import Link from 'next/link';
+import NotFoundView from '@/components/feedback/NotFoundView';
 import AuraLogo from "@/components/AuraLogo";
 import PusherClient from 'pusher-js';
 
@@ -61,19 +62,7 @@ export default function ClientTracker({ order, code }: { order: TrackingOrder | 
         };
     }, [order, code]);
 
-    if (!order) {
-        return (
-            <div style={{ maxWidth: 500, margin: '80px auto', padding: 20, textAlign: 'center' }}>
-                <Link href="/shop" style={{ display: 'inline-block', marginBottom: 24, textDecoration: 'none' }}>
-                    <AuraLogo size="large" />
-                </Link>
-                <Card style={{ borderColor: '#f5222d' }}>
-                    <Title level={4} style={{ color: '#f5222d' }}>Pedido No Encontrado</Title>
-                    <Text>No pudimos localizar el envío. Verifica que el código «{code}» sea correcto o contacta a soporte.</Text>
-                </Card>
-            </div>
-        );
-    }
+    if (!order) return <NotFoundView kind="order" />;
 
     const hasCustomizedItems = (order.order_item || []).some((item) => item.is_customized);
     const statusTimeline = hasCustomizedItems ? customStatusTimeline : defaultStatusTimeline;

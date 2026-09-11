@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { notFound } from 'next/navigation';
 import ClientTracker from './ClientTracker';
 import type { Metadata } from 'next';
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,7 @@ export default async function PublicTrackingPage({ params, searchParams }: {
             order_photo: { where: { is_public_tracking: true }, orderBy: { created_at: 'desc' }, select: { photo_id: true, url: true, caption: true } },
         },
     }) : null;
+    if (!order) notFound();
     // Minimize before serialization: no DNI, address, notes, money or raw phone leaves the server.
     const publicOrder = order ? { ...order, created_at: order.created_at.toISOString(),
         shipping_name: order.shipping_name.split(' ')[0],
