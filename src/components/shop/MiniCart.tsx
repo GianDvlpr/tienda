@@ -1,7 +1,7 @@
 'use client';
 import { toast } from 'sonner';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
 import { 
     Alert, Button, Drawer, Empty, InputNumber, Space, Typography, 
@@ -19,6 +19,13 @@ import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bun
 import { CUSTOM_ORDER_NOTICE } from '@/lib/customization';
 
 const { Text, Title } = Typography;
+const CHECKOUT_STORAGE_KEY = 'aura-pending-checkout';
+function checkoutId() {
+    let id = localStorage.getItem(CHECKOUT_STORAGE_KEY);
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem(CHECKOUT_STORAGE_KEY, id); }
+    return id;
+}
+
 
 type CouponValidation = {
     success: true;
@@ -55,6 +62,7 @@ type CheckoutResponseItem = {
 };
 
 type CheckoutResponse = {
+    trackingUrl: string;
     orderCode: string;
     subtotal?: number;
     bundleDiscount?: number;
@@ -102,6 +110,7 @@ export default function MiniCart({
     const [isCheckoutView, setIsCheckoutView] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
     const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<'CULQI' | 'WHATSAPP'>('CULQI');
     const [form] = Form.useForm();
@@ -146,30 +155,6 @@ export default function MiniCart({
         }
     }, [subtotal, appliedCoupon]);
 
-    // Global callback required by Culqi documentation
-    useEffect(() => {
-        window.culqi = async () => {
-            if (processingRef.current) return; // Prevent double firing
-            const Culqi = window.Culqi;
-            if (!Culqi) return;
-            
-            if (Culqi.token) {
-                processingRef.current = true;
-                const token = Culqi.token.id;
-                const email = Culqi.token.email || 'compras@auraboutique.com';
-                
-                if (Culqi.close) Culqi.close();
-                setIsProcessingPayment(true);
-                
-                await processBackendCheckout(token, email);
-            } else if (Culqi.error) {
-                toast.error(Culqi.error.user_message || 'Error en el pago');
-                setIsSubmitting(false);
-                if (Culqi.close) Culqi.close();
-            }
-        };
-    }, []);
-
     const handleApplyCoupon = async () => {
         if (!couponCode) return;
         setIsValidatingCoupon(true);
@@ -198,7 +183,23 @@ export default function MiniCart({
 
     const finalTotal = Math.max(0, subtotal - bundleDiscount - (appliedCoupon?.discountAmount || 0));
 
-    const handleCheckoutSubmit = (values: CheckoutFormValues) => {
+    const handleCheckoutSubmit = async (values: CheckoutFormValues) => {
+        if (isSubmitting || processingRef.current) return;
+        const pendingId = localStorage.getItem(CHECKOUT_STORAGE_KEY);
+        if (pendingId) {
+            try {
+                const response = await fetch('/api/store/checkout?checkout_id=' + encodeURIComponent(pendingId), { cache: 'no-store' });
+                if (response.status !== 404) {
+                    const previous = await response.json();
+                    if (previous.success) {
+                        setOrderSuccess(previous.orderCode); setTrackingUrl(previous.trackingUrl);
+                        localStorage.removeItem(CHECKOUT_STORAGE_KEY); useCartStore.getState().clear(); return;
+                    }
+                    if (previous.pending === false) { localStorage.removeItem(CHECKOUT_STORAGE_KEY); toast.error('El intento anterior fue rechazado. Vuelve a enviar el pedido.'); return; }
+                    toast.error(previous.error || 'Tu pago sigue pendiente de confirmación. No realices otro pago.'); return;
+                }
+            } catch { toast.error('No se pudo verificar la compra anterior. Inténtalo de nuevo cuando tengas conexión.'); return; }
+        }
         const frozenItems = useCartStore.getState().items;
         const frozenSubtotal = useCartStore.getState().subtotal();
         
@@ -248,6 +249,7 @@ export default function MiniCart({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    checkout_id: checkoutId(),
                     shipping_name: payload.shipping_name,
                     shipping_dni: payload.shipping_dni,
                     shipping_phone: payload.shipping_phone,
@@ -263,10 +265,12 @@ export default function MiniCart({
 
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.error || 'Ocurrió un error al procesar el pedido');
+                if (res.status === 400 || err.pending === false) localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+                throw new Error(err.error || 'Ocurrió un error al procesar el pedido. No inicies un pago nuevo; consulta este intento.');
             }
 
             const data = await res.json() as CheckoutResponse;
+            localStorage.removeItem(CHECKOUT_STORAGE_KEY);
             const orderCode = data.orderCode;
             const checkoutItems: CheckoutResponseItem[] = Array.isArray(data.items)
                 ? data.items
@@ -300,6 +304,7 @@ export default function MiniCart({
                 }
             });
 
+            text += `\nSeguimiento: ${window.location.origin}${data.trackingUrl}\n`;
             if (hasCustomizedItems) {
                 text += `\n*Importante:* ${CUSTOM_ORDER_NOTICE}\n`;
             }
@@ -343,7 +348,7 @@ export default function MiniCart({
         }
     };
 
-    const processBackendCheckout = async (tokenId: string, email: string) => {
+    const processBackendCheckout = useCallback(async (tokenId: string, email: string) => {
         setIsSubmitting(true);
         const payload = shippingDataRef.current;
         const currentCoupon = appliedCouponRef.current;
@@ -361,6 +366,7 @@ export default function MiniCart({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    checkout_id: checkoutId(),
                     shipping_name: payload.shipping_name,
                     shipping_dni: payload.shipping_dni,
                     shipping_phone: payload.shipping_phone,
@@ -378,10 +384,12 @@ export default function MiniCart({
 
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.error || 'Ocurrió un error al procesar el pedido');
+                if (res.status === 400 || err.pending === false) localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+                throw new Error(err.error || 'Ocurrió un error al procesar el pedido. No inicies un pago nuevo; consulta este intento.');
             }
 
             const data = await res.json();
+            localStorage.removeItem(CHECKOUT_STORAGE_KEY);
             const orderCode = data.orderCode;
 
             useCartStore.getState().clear();
@@ -389,6 +397,7 @@ export default function MiniCart({
             setCouponCode('');
             form.resetFields();
             
+            setTrackingUrl(data.trackingUrl);
             setOrderSuccess(orderCode);
             confetti({
                 particleCount: 150,
@@ -404,7 +413,35 @@ export default function MiniCart({
             setIsProcessingPayment(false);
             processingRef.current = false;
         }
-    };
+    }, [finalTotal, form]);
+
+    // Global callback required by Culqi documentation
+    useEffect(() => {
+        const callback = async () => {
+            if (processingRef.current) return; // Prevent double firing
+            const Culqi = window.Culqi;
+            if (!Culqi) return;
+
+            if (Culqi.token) {
+                processingRef.current = true;
+                const token = Culqi.token.id;
+                const email = Culqi.token.email || 'compras@auraboutique.com';
+
+                if (Culqi.close) Culqi.close();
+                setIsProcessingPayment(true);
+
+                await processBackendCheckout(token, email);
+            } else if (Culqi.error) {
+                toast.error(Culqi.error.user_message || 'Error en el pago');
+                setIsSubmitting(false);
+                if (Culqi.close) Culqi.close();
+            }
+        };
+        window.culqi = callback;
+        return () => { if (window.culqi === callback) delete window.culqi; };
+    }, [processBackendCheckout]);
+
+
 
     const handleClose = () => {
         setIsCheckoutView(false);
@@ -484,6 +521,7 @@ export default function MiniCart({
                     subTitle={
                         <Text type="secondary">
                             Tu pedido <Text strong>{orderSuccess}</Text> ha sido procesado correctamente.
+                            {trackingUrl && <div><Link href={trackingUrl}>Ver seguimiento de mi pedido</Link></div>}
                             <br />
                             Pronto coordinaremos el envío contigo.
                         </Text>

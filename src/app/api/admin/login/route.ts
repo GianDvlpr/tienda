@@ -67,6 +67,7 @@ export async function POST(req: Request) {
         if (match) {
             const token = await createAdminToken({
                 user_id: dbAdmin.user_id,
+                session_version: dbAdmin.session_version,
                 username: dbAdmin.username, 
                 role: dbAdmin.role === 'ADMIN' ? 'ADMIN' : 'SELLER',
             });

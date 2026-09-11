@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import dayjs from 'dayjs';
+import { createHash, randomUUID } from 'node:crypto';
+import { checkoutMethod, trackingPath } from '@/lib/order-rules';
+import { deductItemStock } from '@/lib/order-stock';
+import { processCheckoutPayment } from '@/lib/checkout-payment';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 import { CUSTOM_MEASUREMENT_LABELS, getMeasurementDeltaErrors, getMeasurementsForSize } from '@/lib/customization';
 
@@ -25,6 +29,7 @@ type CheckoutItem = {
 };
 
 type CheckoutBody = {
+    checkout_id?: string;
     shipping_name?: string;
     shipping_dni?: string;
     shipping_phone?: string;
@@ -36,7 +41,6 @@ type CheckoutBody = {
     payment_method?: string;
 };
 
-type DbNumeric = number | string | { toString(): string } | null;
 
 type ServerOrderItem = {
     variantId: string;
@@ -83,9 +87,6 @@ function fail(message: string): never {
     throw new CheckoutValidationError(message);
 }
 
-function getErrorMessage(error: unknown) {
-    return error instanceof Error ? error.message : 'Error inesperado';
-}
 
 function normalizeText(value: unknown) {
     return typeof value === 'string' ? value.trim() : '';
@@ -112,7 +113,17 @@ export async function POST(req: Request) {
         const body = await req.json() as CheckoutBody;
         const { shipping_name, shipping_dni, shipping_phone, shipping_address, items = [], coupon_code, culqi_token, email, payment_method } = body;
         const shippingDni = normalizeText(shipping_dni);
-        const method = payment_method || 'CULQI'; // Default to Culqi for older clients
+        let method: 'CULQI' | 'WHATSAPP';
+        try { method = checkoutMethod(payment_method); } catch { fail('Método de pago inválido'); }
+        const checkoutId = body.checkout_id;
+        if (!checkoutId || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutId)) fail('Identificador de compra inválido');
+        if (!Array.isArray(items) || items.length > 100) fail('Carrito inválido');
+        const requestHash = createHash('sha256').update(JSON.stringify({ shipping_name, shipping_dni, shipping_phone, shipping_address, items, coupon_code, method, email })).digest('hex');
+        const previous = await prisma.checkout_attempt.findUnique({ where: { checkout_id: checkoutId } });
+        if (previous) {
+            if (previous.request_hash !== requestHash) return NextResponse.json({ error: 'Esta compra ya fue enviada con otros datos' }, { status: 409 });
+            return checkoutResult(checkoutId);
+        }
 
         if (!shipping_name || !shippingDni || !shipping_phone || !items || items.length === 0) {
             return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
@@ -192,12 +203,12 @@ export async function POST(req: Request) {
         const itemContexts = items.map((item, index) => {
             const variantId = normalizeText(item.variantId);
             const variant = variantsById.get(normalizeId(variantId));
-            const qty = Math.floor(Number(item.qty || 0));
+            const qty = Number(item.qty);
 
             if (!variant || !variant.is_active || !variant.product?.is_active) {
                 fail(`La variante de "${item.name || 'un producto'}" no está disponible`);
             }
-            if (!Number.isFinite(qty) || qty <= 0) {
+            if (!Number.isInteger(qty) || qty <= 0 || qty > 1000) {
                 fail(`Cantidad inválida para "${variant.product.name}"`);
             }
 
@@ -369,48 +380,15 @@ export async function POST(req: Request) {
         logToFile(`Order Calculation [${serverSubtotal}]: Bundles: ${bundle_discount_total}, Coupon: ${coupon_savings}, Total: ${serverTotal}`);
 
 
-        let paymentReference: string | null = null;
-
-        // 1. Process payment with Culqi (Only if CULQI method)
-        if (method === 'CULQI') {
-            const culqiResponse = await fetch('https://api.culqi.com/v2/charges', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${culqiSecret}`
-                },
-                body: JSON.stringify({
-                    amount: Math.round(serverTotal * 100), // Use total with discount for Culqi
-                    currency_code: 'PEN',
-                    email: email || 'compras@auraboutique.com',
-                    source_id: culqi_token
-                })
-            });
-
-            const culqiData = await culqiResponse.json() as {
-                object?: string;
-                user_message?: string;
-                merchant_message?: string;
-                id?: string;
-            };
-
-            if (!culqiResponse.ok || culqiData.object === 'error') {
-                const errorMsg = culqiData.user_message || culqiData.merchant_message || 'Transacción denegada por el banco.';
-                return NextResponse.json({ error: errorMsg }, { status: 400 });
-            }
-
-            paymentReference = culqiData.id || null;
-        }
-
-        // Generate a random Code like ORD-XXXX
-        const code = `ORD-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
+        const code = 'ORD-' + randomUUID().replaceAll('-', '').slice(0, 24);
+        if (method === 'CULQI' && serverTotal <= 0) fail('El importe del pago debe ser mayor que cero');
 
         const newOrder = await prisma.$transaction(async (tx) => {
             // 2. Create order header
             const header = await tx.order_header.create({
                 data: {
                     code,
-                    status: method === 'WHATSAPP' ? 'PENDING_WS' : 'PAID',
+                    status: method === 'WHATSAPP' ? 'PENDING_WS' : 'PENDING_PAYMENT',
                     shipping_name,
                     shipping_dni: shippingDni,
                     shipping_phone,
@@ -421,19 +399,24 @@ export async function POST(req: Request) {
                     coupon_discount: coupon_savings,
                     coupon_code: validated_coupon_code,
                     total: serverTotal,
-                    amount_paid: method === 'WHATSAPP' ? 0 : serverTotal,
-                    balance_due: method === 'WHATSAPP' ? serverTotal : 0,
+                    amount_paid: 0,
+                    balance_due: serverTotal,
                     currency: 'PEN',
                     payment_method: method,
-                    payment_reference: paymentReference,
-                    paid_at: method === 'CULQI' ? new Date() : null,
+                    payment_reference: null,
+                    paid_at: null,
                     sales_channel: method === 'WHATSAPP' ? 'WHATSAPP' : 'SHOP',
                 }
             });
 
+            await tx.checkout_attempt.create({ data: {
+                checkout_id: checkoutId, request_hash: requestHash,
+                token_hash: method === 'CULQI' ? createHash('sha256').update(culqi_token!).digest('hex') : null,
+                order_id: header.order_id, status: method === 'CULQI' ? 'CREATED' : 'SUCCEEDED',
+            } });
             // 2. Create order items with server-calculated prices
-            for (const item of serverItems) {
-                await tx.order_item.create({
+            for (const item of [...serverItems].sort((a,b) => a.variantId.localeCompare(b.variantId))) {
+                const savedItem = await tx.order_item.create({
                     data: {
                         order_id: header.order_id,
                         variant_id: item.variantId,
@@ -455,29 +438,16 @@ export async function POST(req: Request) {
 
                 if (item.isCustomized) continue;
 
-                // Optional: We can discount stock here or from the Admin Panel. 
-                // Let's discount it right away to prevent overselling.
-                const variant = await tx.product_variant.findUnique({
-                    where: { variant_id: item.variantId },
-                    select: { stock: true }
-                });
-
-                if (!variant || variant.stock < item.qty) {
-                    throw new Error(`Stock insuficiente para "${item.name}" (${item.size}, ${item.color}). Disponibles: ${variant?.stock || 0}`);
-                }
-
-                await tx.product_variant.update({
-                    where: { variant_id: item.variantId },
-                    data: { stock: { decrement: item.qty } }
-                });
+                await deductItemStock(tx, savedItem, 'Checkout ' + code);
             }
 
             // 3. Mark coupon usage
             if (validated_coupon_code) {
-                await tx.coupon.update({
-                    where: { code: validated_coupon_code },
-                    data: { usage_count: { increment: 1 } }
-                });
+                const rows = await tx.$queryRaw<Array<{ coupon_id: string }>>
+                    `UPDATE coupon SET usage_count = usage_count + 1 WHERE code = ${validated_coupon_code}
+                    AND is_active = true AND (usage_limit IS NULL OR usage_count < usage_limit)
+                    AND (starts_at IS NULL OR starts_at < NOW()) AND (expires_at IS NULL OR expires_at > NOW()) RETURNING coupon_id`;
+                if (rows.length !== 1) fail('El cupón ya no está disponible');
             }
 
             return header;
@@ -485,6 +455,8 @@ export async function POST(req: Request) {
             timeout: 60_000,
             maxWait: 20_000
         });
+
+        if (method === 'CULQI') await processCheckoutPayment(newOrder.order_id, culqi_token!, email || 'compras@auraboutique.com');
 
         // 3. Trigger Pusher Notification for Admin
         try {
@@ -501,28 +473,34 @@ export async function POST(req: Request) {
             // Non-blocking, the order was already created successfully
         }
 
-        return NextResponse.json({
-            success: true,
-            orderCode: newOrder.code,
-            subtotal: serverSubtotal,
-            discountTotal: discount_total,
-            bundleDiscount: bundle_discount_total,
-            couponDiscount: coupon_savings,
-            total: serverTotal,
-            items: serverItems.map((item) => ({
-                qty: item.qty,
-                name: item.name,
-                size: item.size,
-                color: item.color,
-                unitPrice: item.unitPrice,
-                lineTotal: item.lineTotal,
-                isCustomized: item.isCustomized,
-                customMeasurements: item.customMeasurements,
-                customizationSurcharge: item.customizationSurcharge,
-                customizationGroupLabel: item.customizationGroupLabel,
-            })),
-        });
+        return checkoutResult(checkoutId);
     } catch (e: unknown) {
-        return NextResponse.json({ error: getErrorMessage(e) }, { status: e instanceof CheckoutValidationError ? 400 : 500 });
+        if (e && typeof e === 'object' && 'code' in e && e.code === 'P2002') return NextResponse.json({ error: 'La compra ya fue enviada; consulta con el mismo identificador' }, { status: 409 });
+        return NextResponse.json({ error: e instanceof CheckoutValidationError ? e.message : 'No se pudo completar la compra. Reintenta con el mismo identificador.' }, { status: e instanceof CheckoutValidationError ? 400 : 500 });
     }
+}
+
+async function checkoutResult(checkoutId: string) {
+    const attempt = await prisma.checkout_attempt.findUniqueOrThrow({ where: { checkout_id: checkoutId }, include: { order: { include: { order_item: true } } } });
+    const order = attempt.order;
+    if (attempt.status !== 'SUCCEEDED') return NextResponse.json({ success: false, orderCode: order.code,
+        trackingUrl: trackingPath(order.code, order.tracking_token), pending: attempt.status !== 'FAILED',
+        error: attempt.status === 'FAILED' ? 'Pago rechazado. No se volverá a cobrar este intento.' : 'Pedido registrado. El pago está pendiente de confirmación; no realices otro pago.',
+    }, { status: 409 });
+    return NextResponse.json({ success: true, orderCode: order.code, trackingUrl: trackingPath(order.code, order.tracking_token),
+        subtotal: Number(order.subtotal), discountTotal: Number(order.discount_total), bundleDiscount: Number(order.bundle_discount), couponDiscount: Number(order.coupon_discount), total: Number(order.total),
+        items: order.order_item.map(item => ({ qty: item.qty, name: item.product_name, size: item.variant_size, color: item.variant_color,
+            unitPrice: Number(item.unit_price), lineTotal: Number(item.line_total), isCustomized: item.is_customized,
+            customMeasurements: item.custom_measurements_json ? JSON.parse(item.custom_measurements_json) : null,
+            customizationSurcharge: Number(item.customization_surcharge), customizationGroupLabel: item.customization_group_label })) });
+}
+
+export async function GET(req: Request) {
+    const checkoutId = new URL(req.url).searchParams.get('checkout_id');
+    if (!checkoutId || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutId)) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    const attempt = await prisma.checkout_attempt.findUnique({ where: { checkout_id: checkoutId } });
+    if (!attempt) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    const response = await checkoutResult(checkoutId);
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
 }

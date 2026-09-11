@@ -15,7 +15,8 @@ import type { ColumnsType } from 'antd/es/table';
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-export const statusMap: Record<string, { label: string, color: string }> = {
+const statusMap: Record<string, { label: string, color: string }> = {
+    'PENDING_PAYMENT': { label: 'Pago por confirmar', color: 'orange' },
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
 'PARTIALLY_PAID': { label: 'Pago parcial', color: 'volcano' },
     'SEPARATED': { label: 'Separado', color: 'lime' },
@@ -46,6 +47,7 @@ const statusOptions = Object.entries(statusMap).map(([value, conf]) => ({
 type AdminOrder = {
     order_id: string;
     code: string;
+    tracking_token: string;
     created_at: string;
     shipping_name: string;
     shipping_phone: string;
@@ -180,7 +182,7 @@ export default function AdminOrdersPage() {
                         </Link>
                     </Tooltip>
                     <Tooltip title="Ver tracker">
-                        <a href={`/track/${record.code}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`/track/${record.code}?token=${record.tracking_token}`} target="_blank" rel="noopener noreferrer">
                             <Button size="small" icon={<GlobalOutlined />} />
                         </a>
                     </Tooltip>

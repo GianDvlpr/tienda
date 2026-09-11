@@ -288,7 +288,8 @@ export default function NewAdminOrderPage() {
                             layout="vertical"
                             initialValues={{
                                 sales_channel: 'WHATSAPP',
-                                status: 'PAID',
+                                status: 'PENDING_WS',
+                                amount_paid: 0,
                                 payment_method: 'YAPE',
                             }}
                         >
@@ -326,23 +327,19 @@ export default function NewAdminOrderPage() {
                                 <InputNumber min={0} precision={2} prefix="S/" style={{ width: '100%' }} placeholder="0.00" />
                             </Form.Item>
 
-                            {(selectedStatus === 'PARTIALLY_PAID' || selectedStatus === 'SEPARATED') && (
+                            {(
                                 <Row gutter={12}>
                                     <Col xs={24} sm={12}>
                                         <Form.Item
                                             name="amount_paid"
-                                            label={selectedStatus === 'SEPARATED' ? 'Adelanto (opcional, puede ser 0)' : 'Adelanto pagado'}
+                                            label="Importe efectivamente cobrado (0 si aún no hay pago)"
                                             rules={[
                                                 { required: true, message: 'Ingresa el adelanto pagado' },
                                                 {
                                                     validator: async (_rule, value) => {
                                                         const paid = Number(value || 0);
-                                                        if (selectedStatus === 'SEPARATED') {
-                                                            if (paid >= 0 && paid < total) return;
-                                                            throw new Error('El adelanto debe ser mayor o igual a 0 y menor al total');
-                                                        }
-                                                        if (paid > 0 && paid < total) return;
-                                                        throw new Error('El adelanto debe ser mayor a 0 y menor al total');
+                                                        if (!Number.isFinite(paid) || paid < 0 || paid > total) throw new Error('Monto inválido');
+                                                        if (selectedStatus === 'PAID' && Math.round(paid * 100) !== Math.round(total * 100)) throw new Error('Registra el total cobrado o selecciona un estado pendiente');
                                                     }
                                                 }
                                             ]}

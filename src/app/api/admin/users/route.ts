@@ -19,8 +19,8 @@ export async function GET() {
             }
         });
         return NextResponse.json(users);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return NextResponse.json({ error: e instanceof Error ? e.message : 'No se pudo gestionar el usuario' }, { status: 500 });
     }
 }
 
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
         }
 
+        if (role && role !== 'ADMIN' && role !== 'SELLER') return NextResponse.json({ error: 'Rol inválido' }, { status: 400 });
         const existing = await prisma.admin_user.findUnique({ where: { username } });
         if (existing) {
             return NextResponse.json({ error: 'El usuario ya existe' }, { status: 400 });
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
         });
 
         // Registrar Auditoría (omitimos password_hash por seguridad)
-        const { password_hash: _, ...safeUser } = newUser as any;
+        const safeUser = { user_id: newUser.user_id, username: newUser.username, full_name: newUser.full_name, role: newUser.role, is_active: newUser.is_active, created_at: newUser.created_at };
         await recordAudit({
             action: 'CREATE',
             entityType: 'admin_user',
@@ -59,9 +60,9 @@ export async function POST(req: Request) {
             newData: safeUser
         });
 
-        return NextResponse.json(newUser);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        return NextResponse.json(safeUser);
+    } catch (e: unknown) {
+        return NextResponse.json({ error: e instanceof Error ? e.message : 'No se pudo gestionar el usuario' }, { status: 500 });
     }
 }
 

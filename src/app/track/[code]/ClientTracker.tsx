@@ -14,7 +14,7 @@ dayjs.locale('es');
 const { Title, Text } = Typography;
 
 const defaultStatusTimeline = [
-    { key: ['PENDING_WS', 'PARTIALLY_PAID', 'SEPARATED', 'PAID'], title: 'Recibido', description: 'Orden generada / Pago registrado' },
+    { key: ['PENDING_PAYMENT', 'PENDING_WS', 'PARTIALLY_PAID', 'SEPARATED', 'PAID'], title: 'Recibido', description: 'Orden generada / Pago registrado' },
     { key: ['MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION'], title: 'Preparando', description: 'Preparando tu orden' },
     { key: ['READY'], title: 'Listo', description: 'Listo para despacho' },
     { key: ['SHIPPED'], title: 'En Curso', description: 'El motorizado está en camino' },
@@ -30,7 +30,12 @@ const customStatusTimeline = [
     { key: ['DELIVERED'], title: 'Entregado', description: 'Pedido finalizado' }
 ];
 
-export default function ClientTracker({ order, code }: { order: any, code: string }) {
+type TrackingOrder = {
+    code: string; status: string; created_at: string; shipping_name: string; shipping_phone: string;
+    order_item: { order_item_id: string; product_name: string; variant_size: string; variant_color: string; qty: number; is_customized: boolean }[];
+    order_photo: { photo_id: string; url: string; caption: string | null }[];
+};
+export default function ClientTracker({ order, code }: { order: TrackingOrder | null, code: string }) {
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode);
     const [liveStatus, setLiveStatus] = useState(order?.status || 'PENDING_WS');
@@ -64,20 +69,13 @@ export default function ClientTracker({ order, code }: { order: any, code: strin
                 </Link>
                 <Card style={{ borderColor: '#f5222d' }}>
                     <Title level={4} style={{ color: '#f5222d' }}>Pedido No Encontrado</Title>
-                    <Text>No pudimos localizar el envío. Verifica que el código '{code}' sea correcto o contacta a soporte.</Text>
+                    <Text>No pudimos localizar el envío. Verifica que el código «{code}» sea correcto o contacta a soporte.</Text>
                 </Card>
             </div>
         );
     }
 
-    const maskPhone = (phone: string) => {
-        if (!phone) return 'No registrado';
-        const cleaned = phone.replace(/\D/g, '');
-        if (cleaned.length < 5) return '***';
-        return cleaned.substring(0, cleaned.length - 4) + ' ••••';
-    };
-
-    const hasCustomizedItems = (order.order_item || []).some((item: any) => item.is_customized === true || item.is_customized === 1);
+    const hasCustomizedItems = (order.order_item || []).some((item) => item.is_customized);
     const statusTimeline = hasCustomizedItems ? customStatusTimeline : defaultStatusTimeline;
 const isCancelled = liveStatus === 'CANCELLED';
     const isPartiallyPaid = liveStatus === 'PARTIALLY_PAID';
@@ -156,18 +154,18 @@ const isCancelled = liveStatus === 'CANCELLED';
                         </Col>
                         <Col span={12}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>TELÉFONO</Text>
-                            <Text strong>{maskPhone(order.shipping_phone || '')}</Text>
+                            <Text strong>{order.shipping_phone}</Text>
                         </Col>
                         <Col span={12}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>DIRECCIÓN DE ENTREGA</Text>
-                            <Text strong>{order.shipping_address || 'Coordinar Recojo'}</Text>
+                            <Text strong>Coordina los detalles por el canal de atención</Text>
                         </Col>
                     </Row>
                 </Card>
 
                 <Card title={<Space><InboxOutlined /> <span>Contenido del Paquete</span></Space>} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {order.order_item.map((item: any) => (
+                        {order.order_item.map((item) => (
                             <div key={item.order_item_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid #f0f0f0' }}>
                                 <div>
                                     <Text strong style={{ display: 'block' }}>{item.product_name}</Text>
@@ -189,7 +187,7 @@ const isCancelled = liveStatus === 'CANCELLED';
                 {publicPhotos.length > 0 && (
                     <Card title="Fotos de tu pedido" style={{ marginTop: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Row gutter={[12, 12]}>
-                            {publicPhotos.map((photo: any) => (
+                            {publicPhotos.map((photo) => (
                                 <Col xs={12} sm={8} key={photo.photo_id}>
                                     <Image
                                         src={photo.url}
@@ -217,7 +215,7 @@ const isCancelled = liveStatus === 'CANCELLED';
                 {isSeparated && (
                     <Card style={{ marginBottom: 20, borderColor: '#a0d911', background: isDarkMode ? 'rgba(160,217,17,0.12)' : '#f6ffed' }}>
                         <Title level={4} style={{ color: isDarkMode ? '#bae637' : '#389e0d', margin: 0 }}>Prenda separada</Title>
-                        <Text>Reservamos tu prenda. {order.amount_paid > 0 ? 'Registramos tu adelanto y falta completar el saldo.' : 'Aún no registramos pago; la prenda queda separada para ti.'}</Text>
+                        <Text>Reservamos tu prenda. Consulta los pagos con nuestro equipo.</Text>
                     </Card>
                 )}
 

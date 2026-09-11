@@ -22,6 +22,8 @@ export async function recordAudit({
     try {
         const cookieStore = await cookies();
         const token = cookieStore.get('admin_token')?.value;
+        // The proxy authorized the mutation. Keep the initiating identity when the
+        // mutation itself revoked this session (e.g. changing your own password).
         const session = await verifyAdminToken(token);
 
         if (!session) {

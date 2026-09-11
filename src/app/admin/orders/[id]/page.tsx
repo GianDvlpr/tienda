@@ -15,9 +15,11 @@ import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import type { ColumnsType } from 'antd/es/table';
+import PaymentReconciliation from '@/components/admin/PaymentReconciliation';
 import ImageUploader from '@/components/admin/ImageUploader';
 
-export const statusMap: Record<string, { label: string, color: string }> = {
+const statusMap: Record<string, { label: string, color: string }> = {
+    'PENDING_PAYMENT': { label: 'Pago por confirmar', color: 'orange' },
     'PENDING_WS': { label: 'Pend. WhatsApp', color: 'orange' },
 'PARTIALLY_PAID': { label: 'Adelanto / Saldo pendiente', color: 'volcano' },
     'SEPARATED': { label: 'Separado', color: 'lime' },
@@ -146,6 +148,7 @@ type OrderPhoto = {
 type AdminOrderDetail = {
     order_id: string;
     code: string;
+    tracking_token: string;
     status: string;
     shipping_name: string;
     shipping_dni?: string | null;
@@ -516,6 +519,7 @@ form.setFieldsValue({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...values,
+                    amount_paid: undefined, payment_method: undefined, payment_reference: undefined,
                     items: editItems.map(item => ({
                         variant_id: item.variant_id,
                         qty: item.qty,
@@ -836,7 +840,7 @@ const printShippingLabel = async () => {
                         </div>
 
                         <div class="qr-section">
-                            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
+                            <img class="qr-code" src="" alt="QR" id="dynamic-qr" />
                             <div class="qr-text">
                                 <strong>Rastrear Pedido</strong>
                                 Escanea o escribe este ID en la web:
@@ -859,7 +863,7 @@ const printShippingLabel = async () => {
                         </div>
                     </div>
                     <script>
-                        document.getElementById('dynamic-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(window.location.origin + '/track/${order.code}');
+                        document.getElementById('dynamic-qr').src = '${await QRCode.toDataURL(window.location.origin + '/track/' + order.code + '?token=' + order.tracking_token)}';
                         window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
                     </script>
                 </body>
@@ -955,7 +959,7 @@ const printShippingLabel = async () => {
                         </div>
 
                         <div class="qr-section">
-                            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" alt="QR" id="dynamic-qr" />
+                            <img class="qr-code" src="" alt="QR" id="dynamic-qr" />
                             <div class="qr-text">
                                 <strong>Rastrear Pedido</strong>
                                 Escanea o escribe este ID en la web:
@@ -978,7 +982,7 @@ const printShippingLabel = async () => {
                         </div>
                     </div>
                     <script>
-                        document.getElementById('dynamic-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(window.location.origin + '/track/${order.code}');
+                        document.getElementById('dynamic-qr').src = '${await QRCode.toDataURL(window.location.origin + '/track/' + order.code + '?token=' + order.tracking_token)}';
                         window.onload = function() { window.print(); window.setTimeout(window.close, 800); }
                     </script>
                 </body>
@@ -1050,7 +1054,7 @@ const printShippingLabel = async () => {
     const createReceiptPng = async () => {
         if (!order) throw new Error('Pedido no encontrado');
 
-        const trackingUrl = `${window.location.origin}/track/${order.code}`;
+        const trackingUrl = `${window.location.origin}/track/${order.code}?token=${order.tracking_token}`;
         const qrDataUrl = await QRCode.toDataURL(trackingUrl, {
             margin: 1,
             width: 240,
@@ -1308,7 +1312,8 @@ const printShippingLabel = async () => {
                     {hasCustomizedOrderItems && <Tag color="gold">Personalizado</Tag>}
                 </div>
 <Space wrap style={{ justifyContent: 'flex-end', flex: '1 1 260px' }}>
-                    <a href={`/track/${order.code}`} target="_blank" rel="noopener noreferrer">
+                    {order.status === 'PENDING_PAYMENT' && <PaymentReconciliation orderId={order.order_id} onDone={() => { mutate(); mutatePayments(); }} />}
+                    <a href={`/track/${order.code}?token=${order.tracking_token}`} target="_blank" rel="noopener noreferrer">
                         <Button icon={<GlobalOutlined />}>Ver Tracker</Button>
                     </a>
                     <Dropdown.Button
@@ -1638,13 +1643,13 @@ const printShippingLabel = async () => {
 
                                 <Row gutter={12}>
                                     <Col xs={24} sm={12} md={24} lg={12}>
-                                        <Form.Item name="payment_method" label="Método de pago">
-                                            <Select allowClear options={paymentMethodOptions} />
+                                        <Form.Item name="payment_method" label="Último método registrado">
+                                            <Select disabled allowClear options={paymentMethodOptions} />
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={12} md={24} lg={12}>
                                         <Form.Item name="payment_reference" label="Referencia pago">
-                                            <Input placeholder="Operación, voucher, etc." />
+                                            <Input disabled placeholder="Se gestiona en el historial de pagos" />
                                         </Form.Item>
                                     </Col>
                                 </Row>
@@ -1653,24 +1658,11 @@ const printShippingLabel = async () => {
                                     <Row gutter={12}>
                                         <Col xs={24} sm={12} md={24} lg={12}>
                                             <Form.Item
-                                                name="amount_paid"
+                                                name="amount_paid" tooltip="Importe calculado desde el historial de pagos"
                                                 label={selectedEditStatus === 'SEPARATED' ? 'Adelanto (opcional, puede ser 0)' : 'Adelanto pagado'}
-                                                rules={[
-                                                    { required: true, message: 'Ingresa el adelanto pagado' },
-                                                    {
-                                                        validator: async (_rule, value) => {
-                                                            const paid = Number(value || 0);
-                                                            if (selectedEditStatus === 'SEPARATED') {
-                                                                if (paid >= 0 && paid < editTotal) return;
-                                                                throw new Error('El adelanto debe ser mayor o igual a 0 y menor al total');
-                                                            }
-                                                            if (paid > 0 && paid < editTotal) return;
-                                                            throw new Error('El adelanto debe ser mayor a 0 y menor al total');
-                                                        }
-                                                    }
-                                                ]}
+
                                             >
-                                                <InputNumber min={0} precision={2} prefix="S/" style={{ width: '100%' }} />
+                                                <InputNumber disabled min={0} precision={2} prefix="S/" style={{ width: '100%' }} />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12} md={24} lg={12}>

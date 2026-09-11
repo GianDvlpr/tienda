@@ -48,5 +48,14 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.2": true,
+    "@prisma/engines@6.19.2": true,
+    "bcrypt@6.0.0": true,
+    "sharp@0.34.5": true,
+    "core-js@3.49.0": true,
+    "prisma@6.19.2": true,
+    "unrs-resolver@1.11.1": true
   }
 }

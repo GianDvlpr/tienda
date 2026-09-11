@@ -60,6 +60,7 @@ model inventory_movement {
 model order_header {
   order_id           String               @id(map: "PK_order_header") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code               String               @unique(map: "UX_order_code") @db.VarChar(30)
+  tracking_token     String               @unique @default(dbgenerated("encode(gen_random_bytes(32), 'hex')")) @db.VarChar(64)
   status             String               @db.VarChar(30)
   customer_id        String?              @db.Uuid
   shipping_name      String               @db.VarChar(200)
@@ -93,6 +94,7 @@ model order_header {
   order_payment      order_payment[]
   stock_reservation  stock_reservation[]
   proforma_header    proforma_header[]
+  checkout_attempt   checkout_attempt?
 
   @@index([customer_id, created_at(sort: Desc)], map: "IX_order_customer")
   @@index([sales_channel, created_at(sort: Desc)], map: "IX_order_sales_channel_created")
@@ -132,6 +134,7 @@ model order_item {
   order_id                  String               @db.Uuid
   variant_id                String               @db.Uuid
   qty                       Int
+  stock_deducted            Boolean              @default(false)
   unit_price                Decimal              @db.Decimal(18, 2)
   line_total                Decimal              @db.Decimal(18, 2)
   product_name              String               @db.VarChar(250)
@@ -364,6 +367,7 @@ model admin_user {
   user_id       String      @id(map: "PK_admin_user") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username      String      @unique(map: "UX_admin_username") @db.VarChar(100)
   password_hash String      @db.VarChar(255)
+  session_version String    @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   full_name     String      @db.VarChar(200)
   role          String      @default("ADMIN") @db.VarChar(50)
   is_active     Boolean     @default(true)
@@ -372,6 +376,18 @@ model admin_user {
   audit_log     audit_log[]
 
   @@index([is_active, created_at(sort: Desc)], map: "IX_admin_active")
+}
+
+model checkout_attempt {
+  checkout_id String @id @db.Uuid
+  request_hash String @db.VarChar(64)
+  token_hash String? @unique @db.VarChar(64)
+  status String @db.VarChar(20)
+  order_id String @unique @db.Uuid
+  charge_id String? @unique @db.VarChar(100)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  order order_header @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
 }
 
 model complaint {

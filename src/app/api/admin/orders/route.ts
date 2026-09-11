@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { deductItemStock } from '@/lib/order-stock';
+import { addPayment } from '@/lib/order-payments';
+import { cents, validatePaidStatus } from '@/lib/order-rules';
 import { recordAudit } from '@/lib/audit';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 
@@ -7,7 +10,6 @@ export const runtime = 'nodejs';
 
 const validSalesChannels = new Set(['SHOP', 'WHATSAPP', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'OTHER']);
 const validStatuses = new Set(['PENDING_WS', 'PARTIALLY_PAID', 'PAID', 'SEPARATED', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
-const paidStatuses = new Set(['PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
 
 function normalizeText(value: unknown) {
     return typeof value === 'string' ? value.trim() : '';
@@ -22,37 +24,10 @@ function getErrorMessage(error: unknown) {
 }
 
 function resolvePaymentAmounts(status: string, total: number, rawAmountPaid: unknown) {
-    const amountInput = rawAmountPaid === undefined || rawAmountPaid === null || rawAmountPaid === ''
-        ? undefined
-        : Number(rawAmountPaid);
-
-    if (amountInput !== undefined && (!Number.isFinite(amountInput) || amountInput < 0)) {
-        throw new Error('El adelanto pagado debe ser válido');
-    }
-
-    if (status === 'PENDING_WS') {
-        return { amountPaid: 0, balanceDue: total };
-    }
-
-if (status === 'PARTIALLY_PAID') {
-        const amountPaid = amountInput ?? 0;
-        if (amountPaid <= 0 || amountPaid >= total) {
-            throw new Error('Para pago parcial, el adelanto debe ser mayor a 0 y menor al total');
-        }
-
-        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
-    }
-
-    if (status === 'SEPARATED') {
-        const amountPaid = amountInput ?? 0;
-        if (amountPaid < 0 || amountPaid >= total) {
-            throw new Error('Para prenda separada, el adelanto debe ser mayor o igual a 0 y menor al total');
-        }
-
-        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
-    }
-
-    return { amountPaid: total, balanceDue: 0 };
+    const amountPaid = cents(rawAmountPaid || 0) / 100;
+    if (amountPaid > total) throw new Error('El pago excede el total');
+    validatePaidStatus(status, total, amountPaid);
+    return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
 }
 
 type ManualOrderItemInput = {
@@ -110,7 +85,7 @@ export async function POST(req: Request) {
         const paymentReference = normalizeText(body.payment_reference) || null;
         const externalReference = normalizeText(body.external_reference) || null;
         const salesChannel = normalizeText(body.sales_channel).toUpperCase() || 'OTHER';
-        const status = normalizeText(body.status).toUpperCase() || 'PAID';
+        const status = normalizeText(body.status).toUpperCase() || 'PENDING_WS';
         const rawItems: ManualOrderItemInput[] = Array.isArray(body.items) ? body.items : [];
 
         if (!shippingName || !shippingDni || !shippingPhone) {
@@ -221,8 +196,8 @@ export async function POST(req: Request) {
                 bundlePromotions
             );
 const discountTotal = bundleDiscount;
-            const total = Math.max(0, subtotal - discountTotal + shippingCost);
-            const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid);
+            const total = Math.max(0, Math.round((subtotal - discountTotal + shippingCost) * 100) / 100);
+            const { amountPaid } = resolvePaymentAmounts(status, total, body.amount_paid);
 
             const header = await tx.order_header.create({
                 data: {
@@ -241,20 +216,19 @@ subtotal,
                     coupon_discount: 0,
                     shipping_cost: shippingCost,
                     total,
-                    amount_paid: amountPaid,
-                    balance_due: balanceDue,
+                    amount_paid: 0,
+                    balance_due: total,
                     currency: 'PEN',
                     payment_method: paymentMethod,
                     payment_reference: paymentReference,
-                    paid_at: paidStatuses.has(status) ? new Date() : null,
+                    paid_at: null,
                     sales_channel: salesChannel,
                     external_reference: externalReference,
                 }
             });
 
-            for (const prepared of preparedItems) {
-                const stockBefore = prepared.variant.stock;
-                const stockAfter = stockBefore - prepared.item.qty;
+            if (amountPaid > 0) await addPayment(tx, header.order_id, { amount: amountPaid, method: paymentMethod || 'OTHER', reference: paymentReference, notes: 'Cobro registrado en venta manual' });
+            for (const prepared of preparedItems.sort((a,b) => a.variant.variant_id.localeCompare(b.variant.variant_id))) {
 
                 const orderItem = await tx.order_item.create({
                     data: {
@@ -271,23 +245,7 @@ subtotal,
                     }
                 });
 
-                await tx.product_variant.update({
-                    where: { variant_id: prepared.variant.variant_id },
-                    data: { stock: { decrement: prepared.item.qty } }
-                });
-
-                await tx.inventory_movement.create({
-                    data: {
-                        variant_id: prepared.variant.variant_id,
-                        movement_type: 'OUT',
-                        qty: prepared.item.qty,
-                        stock_before: stockBefore,
-                        stock_after: stockAfter,
-                        reason: `Venta manual ${salesChannel}`,
-                        order_id: header.order_id,
-                        order_item_id: orderItem.order_item_id,
-                    }
-                });
+                await deductItemStock(tx, orderItem, `Venta manual ${salesChannel}`);
             }
 
             return tx.order_header.findUnique({

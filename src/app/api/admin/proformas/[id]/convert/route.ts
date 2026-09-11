@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { deductItemStock } from '@/lib/order-stock';
 import { recordAudit } from '@/lib/audit';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
 
@@ -16,30 +17,31 @@ function getErrorMessage(error: unknown) {
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
-        const proforma = await prisma.proforma_header.findUnique({
+        const newOrder = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT proforma_id FROM proforma_header WHERE proforma_id = ${id}::uuid FOR UPDATE`;
+        const proforma = await tx.proforma_header.findUnique({
             where: { proforma_id: id },
             include: { proforma_item: true }
         });
 
         if (!proforma) {
-            return NextResponse.json({ error: 'Proforma no encontrada' }, { status: 404 });
+            throw new Error('Proforma no encontrada');
         }
 
         if (proforma.status === 'CONVERTED') {
-            return NextResponse.json({ error: 'Esta proforma ya fue convertida a pedido' }, { status: 400 });
+            throw new Error('Esta proforma ya fue convertida a pedido');
         }
 
         if (proforma.status === 'CANCELLED') {
-            return NextResponse.json({ error: 'No se puede convertir una proforma cancelada' }, { status: 400 });
+            throw new Error('No se puede convertir una proforma cancelada');
         }
 
         if (proforma.proforma_item.length === 0) {
-            return NextResponse.json({ error: 'La proforma no tiene productos' }, { status: 400 });
+            throw new Error('La proforma no tiene productos');
         }
 
         const code = generateOrderCode();
 
-        const newOrder = await prisma.$transaction(async (tx) => {
             const stockVariantIds = proforma.proforma_item
                 .map(item => item.variant_id)
                 .filter((value): value is string => Boolean(value));
@@ -165,7 +167,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
             const createdItems: Array<{ variantId: string | null; qty: number; sku: string | null; productName: string }> = [];
 
-            for (const prepared of preparedItems) {
+            for (const prepared of preparedItems.sort((a,b) => (a.variantId || '').localeCompare(b.variantId || ''))) {
                 const orderItem = await tx.order_item.create({
                     data: {
                         order_id: header.order_id,
@@ -188,31 +190,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
                 createdItems.push({ variantId: prepared.variantId, qty: prepared.qty, sku: prepared.sku, productName: prepared.productName });
 
-                if (prepared.variantId) {
-                    const variant = variantMap.get(prepared.variantId);
-                    if (!variant) continue;
-
-                    const stockBefore = variant.stock;
-                    const stockAfter = stockBefore - prepared.qty;
-
-                    await tx.product_variant.update({
-                        where: { variant_id: prepared.variantId },
-                        data: { stock: { decrement: prepared.qty } }
-                    });
-
-                    await tx.inventory_movement.create({
-                        data: {
-                            variant_id: prepared.variantId,
-                            movement_type: 'OUT',
-                            qty: prepared.qty,
-                            stock_before: stockBefore,
-                            stock_after: stockAfter,
-                            reason: `Proforma ${proforma.code} convertida a pedido`,
-                            order_id: header.order_id,
-                            order_item_id: orderItem.order_item_id,
-                        }
-                    });
-                }
+                await deductItemStock(tx, orderItem, 'Conversión de proforma');
             }
 
             await tx.proforma_header.update({
@@ -236,20 +214,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
             return NextResponse.json({ error: 'No se pudo crear el pedido' }, { status: 500 });
         }
 
-        await recordAudit({
-            action: 'UPDATE',
-            entityType: 'proforma',
-            entityId: proforma.proforma_id,
-            oldData: proforma,
-            newData: { ...proforma, status: 'CONVERTED', converted_to_order_id: newOrder.order_id },
-        });
-        await recordAudit({
-            action: 'CREATE',
-            entityType: 'order',
-            entityId: newOrder.order_id,
-            newData: newOrder,
-        });
-
+        await recordAudit({ action: 'UPDATE', entityType: 'proforma', entityId: id, newData: { converted_to_order_id: newOrder.order_id } });
         return NextResponse.json(newOrder, { status: 201 });
     } catch (e: unknown) {
         return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });

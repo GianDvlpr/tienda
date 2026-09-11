@@ -38,13 +38,19 @@ async function main() {
     tables: [],
   };
 
+  const snapshot = await prisma.$transaction(async tx => {
+    const result = new Map();
+    for (const model of Prisma.dmmf.datamodel.models) result.set(model.name, await tx[delegateName(model.name)].findMany());
+    return result;
+  }, { isolationLevel: 'RepeatableRead', timeout: 120000, maxWait: 20000 });
+
   for (const model of Prisma.dmmf.datamodel.models) {
     const delegate = prisma[delegateName(model.name)];
     if (!delegate || typeof delegate.findMany !== 'function') {
       throw new Error(`No Prisma delegate found for model ${model.name}`);
     }
 
-    const rows = await delegate.findMany();
+    const rows = snapshot.get(model.name);
     const fileName = `${model.name}.json`;
     fs.writeFileSync(path.join(dataDir, fileName), serialize(rows));
 

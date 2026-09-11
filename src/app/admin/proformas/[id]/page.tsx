@@ -13,7 +13,7 @@ import { buildCustomSku } from '@/lib/personalized-sku';
 import dayjs from 'dayjs';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
-import { proformaStatusMap } from '../page';
+import { proformaStatusMap } from '@/lib/proforma-status';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;

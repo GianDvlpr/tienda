@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { assertOrderEditable, lockOrder, deductItemStock, releaseOrderStock } from '@/lib/order-stock';
+import { recalcPayments } from '@/lib/order-payments';
+import { cents, validatePaidStatus } from '@/lib/order-rules';
 import { trackerPusherServer } from '@/lib/pusher';
 import { recordAudit } from '@/lib/audit';
 import { calculateBundleDiscount, type BundleDiscountPromotion } from '@/lib/bundle-discount';
@@ -8,7 +11,6 @@ export const runtime = 'nodejs';
 
 const validSalesChannels = new Set(['SHOP', 'WHATSAPP', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'OTHER']);
 const validStatuses = new Set(['PENDING_WS', 'PARTIALLY_PAID', 'PAID', 'SEPARATED', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED']);
-const paidStatuses = new Set(['PARTIALLY_PAID', 'PAID', 'MEASURES_CONFIRMED', 'CONFIRMED', 'IN_PRODUCTION', 'READY', 'SHIPPED', 'DELIVERED']);
 
 type OrderItemInput = {
     variant_id?: string;
@@ -48,45 +50,6 @@ function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Error inesperado';
 }
 
-function resolvePaymentAmounts(status: string, total: number, rawAmountPaid: unknown, fallbackAmountPaid: number) {
-    const amountInput = rawAmountPaid === undefined || rawAmountPaid === null || rawAmountPaid === ''
-        ? undefined
-        : Number(rawAmountPaid);
-
-    if (amountInput !== undefined && (!Number.isFinite(amountInput) || amountInput < 0)) {
-        throw new Error('El adelanto pagado debe ser válido');
-    }
-
-    if (status === 'PENDING_WS') {
-        return { amountPaid: 0, balanceDue: total };
-    }
-
-if (status === 'PARTIALLY_PAID') {
-        const amountPaid = amountInput ?? fallbackAmountPaid;
-        if (amountPaid <= 0 || amountPaid >= total) {
-            throw new Error('Para pago parcial, el adelanto debe ser mayor a 0 y menor al total');
-        }
-
-        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
-    }
-
-    if (status === 'SEPARATED') {
-        const amountPaid = amountInput ?? fallbackAmountPaid;
-        if (amountPaid < 0 || amountPaid >= total) {
-            throw new Error('Para prenda separada, el adelanto debe ser mayor o igual a 0 y menor al total');
-        }
-
-        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
-    }
-
-    if (status === 'CANCELLED') {
-        const amountPaid = amountInput ?? fallbackAmountPaid;
-        return { amountPaid, balanceDue: Math.max(0, total - amountPaid) };
-    }
-
-    return { amountPaid: total, balanceDue: 0 };
-}
-
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const resolvedParams = await params;
@@ -116,280 +79,86 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const resolvedParams = await params;
-        const id = resolvedParams.id;
+        const { id } = await params;
         const body = await req.json() as UpdateOrderRequest;
-        const hasItemsUpdate = Array.isArray(body.items);
-
-        // Auditoría: Capturar estado anterior
-        const oldData = await prisma.order_header.findUnique({
-            where: { order_id: id },
-            include: { order_item: true }
-        });
-
-        if (!oldData) {
-            return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
-        }
-
-        const status = body.status ? normalizeText(body.status).toUpperCase() : oldData.status;
-        const salesChannel = body.sales_channel ? normalizeText(body.sales_channel).toUpperCase() : oldData.sales_channel;
-
-        if (!validStatuses.has(status)) {
-            return NextResponse.json({ error: 'Estado de pedido inválido' }, { status: 400 });
-        }
-
-        if (!validSalesChannels.has(salesChannel)) {
-            return NextResponse.json({ error: 'Canal de venta inválido' }, { status: 400 });
-        }
-
-        const shippingName = body.shipping_name !== undefined ? normalizeText(body.shipping_name) : oldData.shipping_name;
-        const shippingDni = body.shipping_dni !== undefined ? normalizeText(body.shipping_dni) : oldData.shipping_dni;
-        const shippingPhone = body.shipping_phone !== undefined ? normalizeText(body.shipping_phone) : oldData.shipping_phone;
-        const shippingAddress = body.shipping_address !== undefined ? normalizeText(body.shipping_address) : oldData.shipping_address;
-
-        if (!shippingName || !shippingDni || !shippingPhone) {
-            return NextResponse.json({ error: 'Nombre, DNI y celular del cliente son obligatorios' }, { status: 400 });
-        }
-
-        if (!/^\d{8}$/.test(shippingDni)) {
-            return NextResponse.json({ error: 'El DNI debe tener 8 dígitos' }, { status: 400 });
-        }
-
-        if (!shippingAddress) {
-            return NextResponse.json({ error: 'La dirección de entrega es obligatoria' }, { status: 400 });
-        }
-
-        const fallbackAmountPaid = Number(oldData.amount_paid || 0);
-        const rawShippingCost = body.shipping_cost === undefined || body.shipping_cost === null || body.shipping_cost === ''
-            ? Number(oldData.shipping_cost || 0)
-            : Number(body.shipping_cost);
-        if (!Number.isFinite(rawShippingCost) || rawShippingCost < 0) {
-            return NextResponse.json({ error: 'El costo de envío debe ser un número válido mayor o igual a 0' }, { status: 400 });
-        }
-        const shippingCost = rawShippingCost;
-        const headerData = {
-            status,
-            shipping_name: shippingName,
-            shipping_dni: shippingDni,
-            shipping_phone: shippingPhone,
-            shipping_address: shippingAddress,
-            shipping_city: body.shipping_city !== undefined ? nullableText(body.shipping_city) : oldData.shipping_city,
-            shipping_reference: body.shipping_reference !== undefined ? nullableText(body.shipping_reference) : oldData.shipping_reference,
-            notes: body.notes !== undefined ? nullableText(body.notes) : oldData.notes,
-            payment_method: body.payment_method !== undefined ? nullableText(body.payment_method) : oldData.payment_method,
-            payment_reference: body.payment_reference !== undefined ? nullableText(body.payment_reference) : oldData.payment_reference,
-            external_reference: body.external_reference !== undefined ? nullableText(body.external_reference) : oldData.external_reference,
-            sales_channel: salesChannel,
-            paid_at: paidStatuses.has(status) && !oldData.paid_at ? new Date() : oldData.paid_at,
-            updated_at: new Date(),
-        };
-
-        let updated;
-
-        if (hasItemsUpdate) {
-            const rawItems = body.items || [];
-            if (rawItems.length === 0) {
-                return NextResponse.json({ error: 'El pedido debe tener al menos un producto' }, { status: 400 });
-            }
-
-            const itemMap = new Map<string, { variantId: string; qty: number; unitPrice: number }>();
-            for (const item of rawItems) {
-                const variantId = normalizeText(item.variant_id || item.variantId);
-                const qty = Number(item.qty);
-                const unitPrice = Number(item.unit_price);
-
-                if (!variantId || !Number.isInteger(qty) || qty <= 0) {
-                    return NextResponse.json({ error: 'Cada producto debe tener variante y cantidad válida' }, { status: 400 });
-                }
-
-                if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-                    return NextResponse.json({ error: 'El precio unitario debe ser válido' }, { status: 400 });
-                }
-
-                const existing = itemMap.get(variantId);
-                if (existing) {
-                    existing.qty += qty;
-                    existing.unitPrice = unitPrice;
-                } else {
-                    itemMap.set(variantId, { variantId, qty, unitPrice });
+        const result = await prisma.$transaction(async tx => {
+            const oldData = await lockOrder(tx, id);
+            assertOrderEditable(oldData);
+            const oldItems = await tx.order_item.findMany({ where: { order_id: id } });
+            const status = body.status ? normalizeText(body.status).toUpperCase() : oldData.status;
+            if (!validStatuses.has(status)) throw new Error('Estado inválido');
+            if (oldData.status === 'CANCELLED' && status !== 'CANCELLED') throw new Error('Un pedido cancelado no puede reactivarse; crea uno nuevo');
+            const salesChannel = body.sales_channel ? normalizeText(body.sales_channel).toUpperCase() : oldData.sales_channel;
+            if (!validSalesChannels.has(salesChannel)) throw new Error('Canal inválido');
+            const shippingName = body.shipping_name === undefined ? oldData.shipping_name : normalizeText(body.shipping_name);
+            const shippingPhone = body.shipping_phone === undefined ? oldData.shipping_phone : normalizeText(body.shipping_phone);
+            const shippingDni = body.shipping_dni === undefined ? oldData.shipping_dni : nullableText(body.shipping_dni);
+            const shippingAddress = body.shipping_address === undefined ? oldData.shipping_address : normalizeText(body.shipping_address);
+            if (!shippingName || !shippingPhone || !shippingAddress) throw new Error('Nombre, celular y dirección son obligatorios');
+            if (shippingDni && !/^\d{8}$/.test(shippingDni)) throw new Error('DNI inválido');
+            const paymentSum = await tx.order_payment.aggregate({ where: { order_id: id }, _sum: { amount: true } });
+            const paid = cents(paymentSum._sum.amount ?? 0) / 100;
+            if (body.amount_paid !== undefined && cents(body.amount_paid) !== cents(paid)) throw new Error('Modifica los cobros desde el historial de pagos');
+            const shippingCost = body.shipping_cost === undefined ? Number(oldData.shipping_cost) : cents(body.shipping_cost || 0) / 100;
+            let subtotal = Number(oldData.subtotal);
+            let bundleDiscount = Number(oldData.bundle_discount ?? 0);
+            let discountTotal = Number(oldData.discount_total);
+            if (Array.isArray(body.items)) {
+                if (!body.items.length) throw new Error('Agrega al menos un producto');
+                const sameItems = body.items.length === oldItems.length && body.items.every(item => oldItems.some(old =>
+                    old.variant_id === (item.variant_id || item.variantId) && old.qty === Number(item.qty) && cents(old.unit_price) === cents(item.unit_price)));
+                if (!sameItems) {
+                    if (oldData.status === 'CANCELLED' || status === 'CANCELLED') throw new Error('No se pueden sustituir ítems al cancelar');
+                    if (oldItems.some(item => item.is_customized)) throw new Error('Conserva los ítems personalizados; esta edición no permite sustituir sus medidas');
+                    const itemMap = new Map<string, { variantId: string; qty: number; unitPrice: number }>();
+                    for (const item of body.items) {
+                        const variantId = normalizeText(item.variant_id || item.variantId);
+                        const qty = Number(item.qty);
+                        if (!variantId || !Number.isInteger(qty) || qty <= 0) throw new Error('Variante o cantidad inválida');
+                        const unitPrice = cents(item.unit_price) / 100;
+                        const previous = itemMap.get(variantId);
+                        if (previous && previous.unitPrice !== unitPrice) throw new Error('Precios distintos para la misma variante');
+                        itemMap.set(variantId, { variantId, qty: qty + (previous?.qty || 0), unitPrice });
+                    }
+                    await releaseOrderStock(tx, id, 'Reposición por edición');
+                    // Preserve historical movements while detaching removed line references.
+                    await tx.inventory_movement.updateMany({ where: { order_id: id }, data: { order_item_id: null } });
+                    await tx.order_item.deleteMany({ where: { order_id: id } });
+                    const discountItems: Array<{ productId: string; qty: number; unitPrice: number }> = [];
+                    subtotal = 0;
+                    for (const item of [...itemMap.values()].sort((a, b) => a.variantId.localeCompare(b.variantId))) {
+                        const variant = await tx.product_variant.findUniqueOrThrow({ where: { variant_id: item.variantId }, include: { product: { include: { product_image: { orderBy: { sort_order: 'asc' }, take: 1 } } } } });
+                        const lineTotal = cents(item.unitPrice * item.qty) / 100;
+                        subtotal += lineTotal;
+                        const saved = await tx.order_item.create({ data: { order_id: id, variant_id: variant.variant_id, qty: item.qty, unit_price: item.unitPrice, line_total: lineTotal,
+                            product_name: variant.product.name, variant_size: variant.size, variant_color: variant.color, sku: variant.sku, image_url: variant.product.product_image[0]?.url } });
+                        await deductItemStock(tx, saved, 'Edición de pedido');
+                        discountItems.push({ productId: variant.product_id, qty: item.qty, unitPrice: item.unitPrice });
+                    }
+                    const bundles = await tx.bundle_promotion.findMany({ where: { is_active: true }, include: { items: true } });
+                    const promotions: BundleDiscountPromotion[] = bundles.map(b => ({ requiredProductIds: b.items.map(i => i.product_id), discount_amount: Number(b.discount_amount), bundle_price: Number(b.bundle_price), tier_2_price: Number(b.tier_2_price), tier_3_price: Number(b.tier_3_price) }));
+                    bundleDiscount = calculateBundleDiscount(discountItems, promotions);
+                    discountTotal = Math.max(0, Number(oldData.discount_total) - Number(oldData.bundle_discount ?? 0)) + bundleDiscount;
                 }
             }
-
-            const items = Array.from(itemMap.values());
-
-            updated = await prisma.$transaction(async (tx) => {
-                await tx.inventory_movement.deleteMany({ where: { order_id: id } });
-
-                for (const item of oldData.order_item) {
-                    await tx.product_variant.update({
-                        where: { variant_id: item.variant_id },
-                        data: { stock: { increment: item.qty } }
-                    });
-                }
-
-                await tx.order_item.deleteMany({ where: { order_id: id } });
-
-                const variants = await tx.product_variant.findMany({
-                    where: { variant_id: { in: items.map(item => item.variantId) } },
-                    include: {
-                        product: {
-                            include: {
-                                product_image: { orderBy: { sort_order: 'asc' }, take: 1 }
-                            }
-                        }
-                    }
-                });
-
-                const variantMap = new Map(variants.map(variant => [variant.variant_id, variant]));
-                let subtotal = 0;
-
-                const preparedItems = items.map(item => {
-                    const variant = variantMap.get(item.variantId);
-                    if (!variant) {
-                        throw new Error('Uno de los productos seleccionados no existe');
-                    }
-
-                    if (variant.stock < item.qty) {
-                        throw new Error(`Stock insuficiente para "${variant.product.name}" (${variant.size}, ${variant.color}). Disponibles: ${variant.stock}`);
-                    }
-
-                    const lineTotal = item.unitPrice * item.qty;
-                    subtotal += lineTotal;
-
-                    return { item, variant, lineTotal, productId: String(variant.product_id) };
-                });
-
-                const activeBundles = await tx.bundle_promotion.findMany({
-                    where: { is_active: true },
-                    include: { items: true }
-                });
-                const bundlePromotions: BundleDiscountPromotion[] = activeBundles.map(bundle => ({
-                    requiredProductIds: bundle.items.map(bundleItem => String(bundleItem.product_id)),
-                    discount_amount: Number(bundle.discount_amount || 0),
-                    bundle_price: bundle.bundle_price === null ? null : Number(bundle.bundle_price),
-                    tier_2_price: bundle.tier_2_price === null ? null : Number(bundle.tier_2_price),
-                    tier_3_price: bundle.tier_3_price === null ? null : Number(bundle.tier_3_price),
-                }));
-                const bundleDiscount = calculateBundleDiscount(
-                    preparedItems.map(prepared => ({
-                        productId: prepared.productId,
-                        qty: prepared.item.qty,
-                        unitPrice: prepared.item.unitPrice,
-                    })),
-                    bundlePromotions
-                );
-                const couponDiscount = Number(oldData.coupon_discount || 0);
-                const existingDiscountTotal = Number(oldData.discount_total || 0);
-                const oldBundleDiscount = Number(oldData.bundle_discount || 0);
-                const otherDiscount = Math.max(0, existingDiscountTotal - oldBundleDiscount - couponDiscount);
-const discountTotal = bundleDiscount + couponDiscount + otherDiscount;
-                const total = Math.max(0, subtotal + shippingCost - discountTotal);
-                const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid, fallbackAmountPaid);
-
-                const header = await tx.order_header.update({
-                    where: { order_id: id },
-                    data: {
-                        ...headerData,
-                        subtotal,
-                        discount_total: discountTotal,
-                        bundle_discount: bundleDiscount,
-                        coupon_discount: couponDiscount,
-                        shipping_cost: shippingCost,
-                        total,
-                        amount_paid: amountPaid,
-                        balance_due: balanceDue,
-                    }
-                });
-
-                for (const prepared of preparedItems) {
-                    const { item, variant, lineTotal } = prepared;
-                    const stockBefore = variant.stock;
-                    const stockAfter = stockBefore - item.qty;
-
-                    const orderItem = await tx.order_item.create({
-                        data: {
-                            order_id: id,
-                            variant_id: variant.variant_id,
-                            qty: item.qty,
-                            unit_price: item.unitPrice,
-                            line_total: lineTotal,
-                            product_name: variant.product.name,
-                            variant_size: variant.size,
-                            variant_color: variant.color,
-                            sku: variant.sku,
-                            image_url: variant.product.product_image[0]?.url || null,
-                        }
-                    });
-
-                    await tx.product_variant.update({
-                        where: { variant_id: variant.variant_id },
-                        data: { stock: { decrement: item.qty } }
-                    });
-
-                    await tx.inventory_movement.create({
-                        data: {
-                            variant_id: variant.variant_id,
-                            movement_type: 'OUT',
-                            qty: item.qty,
-                            stock_before: stockBefore,
-                            stock_after: stockAfter,
-                            reason: `Edición pedido ${oldData.code}`,
-                            order_id: id,
-                            order_item_id: orderItem.order_item_id,
-                        }
-                    });
-                }
-
-                return tx.order_header.findUnique({
-                    where: { order_id: header.order_id },
-                    include: { order_item: true }
-                });
-            }, {
-                timeout: 60_000,
-                maxWait: 20_000
-            });
-} else {
-            const oldSubtotal = Number(oldData.subtotal || 0);
-            const oldDiscountTotal = Number(oldData.discount_total || 0);
-            const total = Math.max(0, oldSubtotal + shippingCost - oldDiscountTotal);
-            const { amountPaid, balanceDue } = resolvePaymentAmounts(status, total, body.amount_paid, fallbackAmountPaid);
-            updated = await prisma.order_header.update({
-                where: { order_id: id },
-                data: {
-                    ...headerData,
-                    shipping_cost: shippingCost,
-                    total,
-                    amount_paid: amountPaid,
-                    balance_due: balanceDue,
-                }
-            });
-        }
-
-        if (!updated) {
-            return NextResponse.json({ error: 'No se pudo actualizar el pedido' }, { status: 500 });
-        }
-
-        // Registrar Auditoría
-        await recordAudit({
-            action: 'UPDATE',
-            entityType: 'order',
-            entityId: id,
-            oldData,
-            newData: updated
-        });
-
-        // Trigger Real-time update to the public tracker
-        try {
-            await trackerPusherServer.trigger(`order-${updated.code}`, 'status-updated', {
-                status: updated.status,
-                code: updated.code
-            });
-        } catch (pushErr) {
-            console.error('Error broadcasting to pusher tracker:', pushErr);
-        }
-
-        return NextResponse.json(updated);
-    } catch (e: unknown) {
-        return NextResponse.json({ error: getErrorMessage(e) }, { status: 500 });
-    }
+            const total = Math.max(0, Math.round((subtotal + shippingCost - discountTotal) * 100) / 100);
+            if (cents(total) < cents(paid)) throw new Error('El total no puede ser menor que los pagos registrados; concilia los cobros primero');
+            validatePaidStatus(status, total, paid);
+            if (status === 'CANCELLED') await releaseOrderStock(tx, id, 'Cancelación de pedido');
+            await tx.order_header.update({ where: { order_id: id }, data: {
+                status, sales_channel: salesChannel, shipping_name: shippingName, shipping_phone: shippingPhone, shipping_dni: shippingDni,
+                shipping_address: shippingAddress, shipping_cost: shippingCost, subtotal, total, bundle_discount: bundleDiscount, discount_total: discountTotal,
+                shipping_city: body.shipping_city === undefined ? oldData.shipping_city : nullableText(body.shipping_city),
+                shipping_reference: body.shipping_reference === undefined ? oldData.shipping_reference : nullableText(body.shipping_reference),
+                notes: body.notes === undefined ? oldData.notes : nullableText(body.notes),
+                external_reference: body.external_reference === undefined ? oldData.external_reference : nullableText(body.external_reference), updated_at: new Date(),
+            } });
+            await recalcPayments(tx, id);
+            const updated = await tx.order_header.findUniqueOrThrow({ where: { order_id: id }, include: { order_item: true } });
+            return { oldData, updated };
+        }, { timeout: 60000, maxWait: 20000 });
+        await recordAudit({ action: 'UPDATE', entityType: 'order', entityId: id, oldData: result.oldData, newData: result.updated });
+        try { await trackerPusherServer.trigger('order-' + result.updated.code, 'status-updated', { status: result.updated.status, code: result.updated.code }); } catch { console.error('No se pudo notificar el estado'); }
+        return NextResponse.json(result.updated);
+    } catch (e: unknown) { return NextResponse.json({ error: getErrorMessage(e) }, { status: 400 }); }
 }

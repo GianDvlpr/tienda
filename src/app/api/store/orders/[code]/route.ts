@@ -10,8 +10,10 @@ export async function GET(
   const resolvedParams = await params;
   const code = resolvedParams.code;
 
+  const token = _req.nextUrl.searchParams.get('token');
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const r = await prisma.order_header.findUnique({
-    where: { code },
+    where: { code, tracking_token: _req.nextUrl.searchParams.get('token') || '' },
     select: { code: true, status: true, total: true, amount_paid: true, balance_due: true, created_at: true },
   });
 
