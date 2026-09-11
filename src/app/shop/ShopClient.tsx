@@ -239,9 +239,8 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
 
             <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? '32px 12px 88px' : '48px 24px 24px' }}>
                 <Title level={1} style={{ marginTop: 0, fontSize: isMobile ? 28 : 36 }}>
-                    {customizableOnly ? 'Prendas personalizadas para mujer' : 'Ropa de mujer en Perú'}
+                    {customizableOnly ? 'Prendas personalizadas para mujer' : 'Nuestra colección'}
                 </Title>
-                {!customizableOnly && <p>Descubre las prendas de Aura Boutique. Explora tallas, colores y precios para encontrar tu próximo look.</p>}
                 {customizableOnly && (
                     <Card variant="borderless" style={{ marginBottom: 24, background: 'linear-gradient(135deg, rgba(200,159,83,0.12), rgba(255,255,255,0.85))' }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
                         <Title level={2} style={{ marginTop: 0, fontSize: isMobile ? 28 : undefined }}>Prendas personalizadas</Title>
