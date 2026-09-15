@@ -5,6 +5,7 @@ export interface ProductListItem {
     minPrice: number;
     maxPrice: number;
     variantsInStock: number;
+    colors?: string[];
     primaryImageUrl: string | null;
     secondaryImageUrl: string | null;
     isCustomizable?: boolean;

@@ -80,6 +80,7 @@ export async function listStoreProducts(qp: z.infer<typeof querySchema>): Promis
             productId: product.product_id,
             slug: product.slug,
             name: product.name,
+            colors: [...new Set(product.product_variant.map(variant => variant.color).filter(Boolean))],
             minPrice: minProductPrice,
             maxPrice: maxProductPrice,
             variantsInStock: product.product_variant.filter((variant) => variant.stock > 0).length,

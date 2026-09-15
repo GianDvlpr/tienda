@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useWishlistStore } from '@/store/wishlist.store';
 import { useCartStore } from '@/store/cart.store';
 import { formatPEN } from '@/lib/money';
-import { toast } from 'sonner';
+import { notifyCartAdded } from '@/lib/cart-toast';
 
 const { Text } = Typography;
 
@@ -38,7 +38,7 @@ export default function WishlistDrawer({
             unitPrice: item.unitPrice,
         }, 1);
         removeItem(item.variantId);
-        toast.success('Movido al carrito');
+        notifyCartAdded(item.name, item.size, item.color, onClose);
     };
 
     return (

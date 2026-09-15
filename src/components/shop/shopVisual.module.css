@@ -1,0 +1,61 @@
+.shop { --shop-text:#292722; --shop-muted:#746e64; --shop-border:#e6e1d8; --shop-surface:#fffdf8; color:var(--shop-text); padding-bottom:48px; }
+.catalog { max-width:1320px; margin:auto; padding:56px 32px 24px; scroll-margin-top:100px; }
+.catalogHeading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:28px; }
+.catalogHeading h1 { font-size:clamp(30px,3vw,42px); line-height:1.2; margin:0; }
+.count { color:var(--shop-muted); font-size:12px; letter-spacing:.04em; }
+.toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 0; border-top:1px solid var(--shop-border); border-bottom:1px solid var(--shop-border); margin-bottom:28px; }
+.filterButton { display:inline-flex; align-items:center; gap:12px; padding:0 18px; min-height:46px; font:600 12px var(--font-montserrat),sans-serif; border:1px solid var(--shop-border); border-radius:5px; background:var(--shop-surface); color:var(--shop-text); cursor:pointer; }
+.filterCount { display:grid; place-items:center; min-width:22px; height:22px; border-radius:50%; background:#292722; color:white; font-size:11px; }
+.sort { display:flex; align-items:center; gap:12px; }
+.sort label { font-size:12px; color:var(--shop-muted); }
+.sort select { min-height:46px; max-width:220px; padding:0 30px 0 12px; border:1px solid var(--shop-border); border-radius:5px; background:var(--shop-surface); color:var(--shop-text); font:12px var(--font-montserrat),sans-serif; cursor:pointer; }
+.activeFilters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin: -8px 0 24px; }
+.activeFilters button { display:flex; align-items:center; gap:8px; background:var(--shop-surface); border:1px solid var(--shop-border); color:var(--shop-text); border-radius:24px; min-height:36px; padding:6px 12px; font:12px var(--font-montserrat),sans-serif; cursor:pointer; }
+.activeFilters .clear { border:0; background:transparent; text-decoration:underline; text-underline-offset:4px; color:var(--shop-muted); }
+.productGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:36px 24px; }
+.productCard { position:relative; min-width:0; }
+.productLink { display:block; color:inherit!important; }
+.photo { position:relative; aspect-ratio:3/4; overflow:hidden; background:#eeeae2; border-radius:6px; }
+.mainImage,.alternateImage { object-fit:cover; transition:opacity 240ms ease,transform 350ms ease; }
+.alternateImage { opacity:0; }
+.photoFallback { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; font-size:12px; color:#746e64; }
+.photoFallback > span:first-child { font-size:30px; }
+.productBadge { position:absolute; left:12px; top:14px; background:#fffdf8ed; color:#514734; border:1px solid #e7decc; border-radius:3px; padding:7px 9px; font-size:9px; font-weight:600; letter-spacing:.06em; }
+.imageActions { position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:8px; }
+.favorite { width:44px; height:44px; display:grid; place-items:center; border-radius:50%; border:1px solid #e6e1d8; background:#fffdf8f2; color:#292722; font-size:19px; cursor:pointer; transition:background 160ms ease,transform 160ms ease; }
+.favorite:disabled { cursor:wait; }
+.productInfo { padding:17px 0 13px; }
+.productInfo h2 { margin:0 0 8px; font:500 15px/1.5 var(--font-montserrat),sans-serif; letter-spacing:0; }
+.price { font-size:14px; font-weight:600; margin:0; }
+.price > span { font-size:11px; font-weight:400; }
+.colorSummary { display:flex; align-items:center; gap:8px; min-height:28px; padding-top:8px; font-size:11px; color:var(--shop-muted,#746e64); }
+.swatches { display:flex; gap:4px; }
+.swatches i { display:block; width:12px; height:12px; border-radius:50%; border:1px solid #0002; }
+.cardActions { display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--shop-border,#e6e1d8); }
+.cardActions a { color:inherit; display:inline-flex; align-items:center; gap:12px; min-height:44px; font-size:11px; font-weight:500; }
+
+.filterButton:hover { background:var(--shop-surface,#f4efe6); }
+.productCard a:focus-visible,.productCard button:focus-visible,.filterButton:focus-visible,.sort select:focus-visible,.activeFilters button:focus-visible,.trust a:focus-visible,.option:focus-visible { outline:2px solid #947137; outline-offset:4px; }
+.trust { max-width:1320px; margin:52px auto 0; padding:30px 32px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px; border-top:1px solid var(--shop-border,#e6e1d8); border-bottom:1px solid var(--shop-border,#e6e1d8); }
+.trust a { display:flex; gap:14px; align-items:center; color:inherit; }
+.trust a > span:first-child { font-size:24px; color:#9a7b45; }
+.trust strong { display:block; font-size:12px; font-weight:600; line-height:1.5; }
+.trust small { display:block; margin-top:4px; font-size:10px; line-height:1.7; color:var(--shop-muted,#746e64); }
+.filterSection { border:0; padding:0 0 26px; margin:0 0 26px; border-bottom:1px solid var(--shop-border,#e6e1d8); }
+.filterSection legend { float:none; width:auto; margin-bottom:14px; font-size:13px; font-weight:600; }
+.options { display:flex; flex-wrap:wrap; gap:8px; }
+.option { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-width:44px; min-height:44px; border:1px solid var(--shop-border,#e6e1d8); border-radius:5px; padding:8px 12px; background:var(--shop-surface,#fffdf8); color:var(--shop-text,#292722); font:12px var(--font-montserrat),sans-serif; cursor:pointer; transition:border-color 160ms,background 160ms; }
+.option[aria-pressed=true] { border-color:#927140; background:#eee4d0; color:#302719; }
+.option:disabled { opacity:.5; cursor:wait; }
+.option i { display:block; width:15px; height:15px; border:1px solid #0002; border-radius:50%; }
+.drawerFooter { display:flex; gap:12px; padding:8px 0; }
+.empty { text-align:center; padding:64px 20px; border:1px solid var(--shop-border); border-radius:8px; background:var(--shop-surface); }
+.empty h2 { font-size:26px; margin-bottom:12px; }
+.empty p { color:var(--shop-muted); line-height:1.8; font-size:13px; margin-bottom:24px; }
+.primary { display:inline-flex; align-items:center; justify-content:center; min-height:46px; padding:12px 20px; background:#292722; color:#fffdf8; border:1px solid #292722; border-radius:5px; font:500 12px var(--font-montserrat),sans-serif; cursor:pointer; }
+.resultsFooter { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; gap:16px; margin-top:32px; border-top:1px solid var(--shop-border); padding-top:24px; }
+.customNote { margin:0 0 24px; font-size:13px; line-height:1.8; color:var(--shop-muted); }
+@media (hover:hover) and (pointer:fine) { .productCard:hover .alternateImage { opacity:1; } .productCard:hover .mainImage { transform:scale(1.025); } .favorite:hover { background:#fff; transform:translateY(-2px); } }
+@media (max-width:1000px) { .productGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } .trust { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px) { .catalog { padding:32px 16px 12px; } .catalogHeading { gap:8px; margin-bottom:22px; } .catalogHeading h1 { font-size:29px; } .productGrid { gap:26px 12px; } .toolbar { gap:8px; padding:14px 0; } .filterButton { padding:0 12px; } .sort label { display:none; } .sort select { max-width:190px; font-size:11px; padding-left:8px; } .productInfo h2 { font-size:12px; } .price { font-size:13px; } .imageActions { right:6px; top:6px; } .favorite { width:44px; height:44px; font-size:17px; } .productBadge { left:7px; top:auto; bottom:8px; font-size:8px; padding:5px 6px; } .productInfo { padding-top:13px; } .colorSummary { font-size:10px; gap:5px; } .swatches { gap:3px; } .swatches i { width:10px; height:10px; } .trust { margin-top:32px; padding:24px 16px; gap:24px 12px; } .trust a { gap:9px; align-items:flex-start; } .trust a > span:first-child { font-size:21px; } .trust strong { font-size:11px; } .trust small { font-size:10px; } }
+@media (prefers-reduced-motion:reduce) { .mainImage,.alternateImage,.favorite,.option { transition:none; } .productCard:hover .mainImage,.favorite:hover { transform:none; } }

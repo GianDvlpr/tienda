@@ -1,24 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-    Alert,
-    Button,
-    Card,
-    Divider,
-    Flex,
-    Pagination,
-    Select,
-    Space,
-    Typography,
-    Empty,
-    Drawer,
-    Grid,
-    Tag,
-    Row,
-    Col
-} from 'antd';
-import { FilterOutlined } from '@ant-design/icons';
+import { Alert, Drawer, Pagination, Grid, theme } from 'antd';
+import { SlidersOutlined, CloseOutlined } from '@ant-design/icons';
+import ShopTrust from '@/components/shop/ShopTrust';
+import visual from '@/components/shop/shopVisual.module.css';
 import { usePathname, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import styles from '@/components/shop/productGridTransition.module.css';
@@ -35,7 +21,7 @@ import ShopFiltersSkeleton from '@/components/shop/ShopFiltersSkeleton';
 import { sortSizes } from '@/lib/sizes';
 
 
-const { Title, Text } = Typography;
+
 
 const SORT_OPTIONS = [
     { value: 'NEW', label: 'Novedades' },
@@ -54,10 +40,11 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
     const sp = useSearchParams();
     const pathname = usePathname();
     const screens = Grid.useBreakpoint();
-    const isDesktop = screens.lg;
+    const { token } = theme.useToken();
+    const shopVariables = { "--shop-text": token.colorText, "--shop-muted": token.colorTextSecondary, "--shop-border": token.colorBorderSecondary, "--shop-surface": token.colorBgContainer } as React.CSSProperties;
     const isMobile = !screens.sm;
 
-    const [showSidebar, setShowSidebar] = useState(true);
+    const [priceSelection, setPriceSelection] = useState<{ min: string | null; max: string | null }>({ min: sp.get('minPrice'), max: sp.get('maxPrice') });
 
     const [collection, setCollection] = useState<string | undefined>(
         sp.get('collection') ?? undefined
@@ -144,15 +131,15 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
 
         setPriceBounds({ min: safeMin, max: safeMax });
 
-        setPrice((prev) => {
-            const nextMin = Math.max(safeMin, prev[0] ?? safeMin);
-            const nextMax = Math.min(safeMax, prev[1] ?? safeMax);
+        {
+            const nextMin = Math.max(safeMin, priceSelection.min == null ? safeMin : Number(priceSelection.min));
+            const nextMax = Math.min(safeMax, priceSelection.max == null ? safeMax : Number(priceSelection.max));
             const next: [number, number] = nextMin > nextMax ? [safeMin, safeMax] : [nextMin, nextMax];
 
             setPriceUI(next);
-            return next;
-        });
-    }, [meta]);
+            setPrice(next);
+        }
+    }, [meta, priceSelection]);
 
     const queryString = useMemo(() => {
         const params = new URLSearchParams();
@@ -203,6 +190,8 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
     const resetPage = () => setPage(1);
 
     const handleClearAll = () => {
+        setQ('');
+        setPriceSelection({ min: null, max: null });
         setCollection(undefined);
         setSizes([]);
         setColors([]);
@@ -212,7 +201,16 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
         resetPage();
     };
 
-    const hasActiveFilters = collection || sizes.length > 0 || colors.length > 0 || onlyInStock || price[0] > priceBounds.min || price[1] < priceBounds.max;
+    const priceActive = price[0] > priceBounds.min || price[1] < priceBounds.max;
+    const activeFilterCount = Number(Boolean(collection)) + sizes.length + colors.length + Number(onlyInStock) + Number(priceActive) + Number(Boolean(q.trim()));
+    const chips = [
+        ...(q.trim() ? [{ label: 'Búsqueda: ' + q, clear: () => { setQ(''); resetPage(); } }] : []),
+        ...(collection ? [{ label: collections.find(c => c.value === collection)?.label || collection, clear: () => { setCollection(undefined); resetPage(); } }] : []),
+        ...sizes.map(size => ({ label: 'Talla: ' + size, clear: () => { setSizes(sizes.filter(s => s !== size)); resetPage(); } })),
+        ...colors.map(color => ({ label: color, clear: () => { setColors(colors.filter(c => c !== color)); resetPage(); } })),
+        ...(onlyInStock ? [{ label: 'Con stock', clear: () => { setOnlyInStock(false); resetPage(); } }] : []),
+        ...(priceActive ? [{ label: 'S/ ' + price[0] + ' — S/ ' + price[1], clear: () => { setPriceSelection({ min: null, max: null }); setPrice([priceBounds.min,priceBounds.max]); setPriceUI([priceBounds.min,priceBounds.max]); resetPage(); } }] : []),
+    ];
 
     const filterProps = {
         collections,
@@ -223,7 +221,7 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
         priceBounds,
         priceUI,
         setPriceUI,
-        onPriceChangeComplete: (v: [number, number]) => { setPrice(v); resetPage(); },
+        onPriceChangeComplete: (v: [number, number]) => { setPriceSelection({ min: String(v[0]), max: String(v[1]) }); setPrice(v); resetPage(); },
         sizeOptions,
         sizes,
         setSizes: (v: string[]) => { setSizes(v); resetPage(); },
@@ -234,170 +232,59 @@ export default function ShopClient({ customizableOnly = false, initialData }: { 
     };
 
     return (
-        <div style={{ paddingBottom: 64 }}>
+        <div className={visual.shop} style={shopVariables}>
             <HeroSlider />
-
-            <div id="shop-grid" style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? '32px 12px 88px' : '48px 24px 24px' }}>
-                <Title level={1} style={{ marginTop: 0, fontSize: isMobile ? 28 : 36 }}>
-                    {customizableOnly ? 'Prendas personalizadas para mujer' : 'Nuestra colección'}
-                </Title>
-                {customizableOnly && (
-                    <Card variant="borderless" style={{ marginBottom: 24, background: 'linear-gradient(135deg, rgba(200,159,83,0.12), rgba(255,255,255,0.85))' }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
-                        <Title level={2} style={{ marginTop: 0, fontSize: isMobile ? 28 : undefined }}>Prendas personalizadas</Title>
-                        <Text type="secondary">
-                            Elige una prenda, selecciona talla y color, y ajusta tus medidas antes de pedirla por WhatsApp.
-                        </Text>
-                    </Card>
-                )}
-
-                {(metaError || productsError) ? (
-                    <Alert
-                        type="error"
-                        showIcon
-                        message="Ocurrió un error"
-                        description={(metaError?.message ?? productsError?.message) || 'Error'}
-                        style={{ marginBottom: 24 }}
-                    />
-                ) : null}
-
-                <Row gutter={[isMobile ? 16 : 32, isMobile ? 24 : 32]}>
-                    {isDesktop && showSidebar && (
-                        <Col lg={6}>
-                            <Card variant="borderless" style={{ position: 'sticky', top: 100 }}>
-                                <Flex justify="space-between" align="center" style={{ marginBottom: 24 }}>
-                                    <Title level={4} style={{ margin: 0 }}>Filtros</Title>
-                                    {hasActiveFilters && (
-                                        <Button type="link" onClick={handleClearAll} style={{ padding: 0 }}>Limpiar</Button>
-                                    )}
-                                </Flex>
-                                {metaLoading && !meta ? <ShopFiltersSkeleton /> : <ShopFilters {...filterProps} />}
-                            </Card>
-                        </Col>
-                    )}
-
-                    {!isDesktop && (
-                        <Drawer
-                            title="Filtrar Productos"
-                            placement="left"
-                            onClose={() => setFilterDrawerOpen(false)}
-                            open={isFilterDrawerOpen}
-                            width={isMobile ? '100vw' : 420}
-                            styles={{ body: { padding: isMobile ? 16 : 24 } }}
-                            extra={hasActiveFilters && <Button type="link" onClick={handleClearAll}>Limpiar</Button>}
-                        >
-                            {metaLoading && !meta ? <ShopFiltersSkeleton /> : <ShopFilters {...filterProps} />}
-                        </Drawer>
-                    )}
-
-                    <Col xs={24} lg={isDesktop && showSidebar ? 18 : 24}>
-                        <Flex justify="space-between" align="center" wrap="wrap" gap={16} style={{ marginBottom: 24 }}>
-                            <Flex wrap="wrap" gap={8} align="center" style={{ flex: 1, minWidth: isMobile ? '100%' : 280 }}>
-                                {isDesktop && (
-                                    <Button 
-                                        icon={<FilterOutlined />} 
-                                        onClick={() => setShowSidebar(!showSidebar)}
-                                    >
-                                        {showSidebar ? 'Ocultar Filtros' : 'Mostrar Filtros'}
-                                    </Button>
-                                )}
-                                {!isDesktop && (
-                                    <Button 
-                                        icon={<FilterOutlined />} 
-                                        onClick={() => setFilterDrawerOpen(true)}
-                                    >
-                                        Filtros {hasActiveFilters ? '(Activos)' : ''}
-                                    </Button>
-                                )}
-                                
-                                {collection && (
-                                    <Tag closable onClose={() => setCollection(undefined)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
-                                        {collections.find(c => c.value === collection)?.label || 'Colección'}
-                                    </Tag>
-                                )}
-                                {sizes.map(s => (
-                                    <Tag key={s} closable onClose={() => setSizes(sizes.filter(x => x !== s))} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
-                                        Talla: {s}
-                                    </Tag>
-                                ))}
-                                {colors.map(c => (
-                                    <Tag key={c} closable onClose={() => setColors(colors.filter(x => x !== c))} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
-                                        Color: {c}
-                                    </Tag>
-                                ))}
-                                {onlyInStock && (
-                                    <Tag closable onClose={() => setOnlyInStock(false)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 16 }}>
-                                        Con stock
-                                    </Tag>
-                                )}
-                            </Flex>
-
-                            <Select
-                                value={sort}
-                                onChange={(v) => {
-                                    setSort(v);
-                                    resetPage();
-                                }}
-                                options={[...SORT_OPTIONS]}
-                                style={{ minWidth: isMobile ? '100%' : 200, width: isMobile ? '100%' : undefined }}
-                                placeholder="Ordenar por"
-                                size="large"
-                            />
-                        </Flex>
-
-                        <Card variant="borderless" style={{ background: 'transparent' }} styles={{ body: { padding: 0 } }}>
-                            {productsLoading && !data ? (
-                                <ProductGridSkeleton count={pageSize} />
-                            ) : !data || data.items.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: isMobile ? '44px 16px' : '64px 0', background: '#fff', borderRadius: 12 }}>
-                                    <Empty 
-                                        description={<Text type="secondary" style={{ fontSize: 16 }}>No hay productos que coincidan con estos filtros</Text>} 
-                                    />
-                                    {hasActiveFilters && (
-                                        <Button type="primary" onClick={handleClearAll} style={{ marginTop: 16, background: '#000', borderColor: '#000' }}>
-                                            Limpiar Filtros
-                                        </Button>
-                                    )}
-                                </div>
-                            ) : (
-                                <>
-                                    <div className={`${styles.grid} ${productsLoading ? styles.gridLoading : ''}`}>
-                                        <ProductGrid items={data.items} />
-                                    </div>
-                                    <Divider />
-                                    <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-                                        <Text type="secondary" style={{ fontWeight: 500 }}>Mostrando {data.items.length} de {data.total}</Text>
-                                        <Pagination
-                                            current={data.page}
-                                            pageSize={data.pageSize}
-                                            total={data.total}
-                                            showSizeChanger={false}
-                                            itemRender={(targetPage, type, element) => {
-                                                if (!['page', 'prev', 'next'].includes(type) || targetPage < 1 || targetPage > Math.ceil(data.total / data.pageSize)) return element;
-                                                const params = new URLSearchParams(queryString);
-                                                if (targetPage > 1) params.set('page', String(targetPage));
-                                                else params.delete('page');
-                                                const href = pathname + (params.size ? '?' + params.toString() : '');
-                                                return <a href={href} aria-label={'Página ' + targetPage}>{type === 'page' ? targetPage : type === 'prev' ? '‹' : '›'}</a>;
-                                            }}
-                                            onChange={(p, ps) => {
-                                                setPage(p);
-                                                if (ps) setPageSize(ps);
-                                                window.scrollTo({ top: document.getElementById('shop-grid')?.offsetTop || 0, behavior: 'smooth' });
-                                            }}
-                                        />
-                                    </Flex>
-
-                                    {productsLoading && data ? (
-                                        <div style={{ marginTop: 12 }}>
-                                            <Text type="secondary">Actualizando...</Text>
-                                        </div>
-                                    ) : null}
-                                </>
-                            )}
-                        </Card>
-                    </Col>
-                </Row>
-            </div>
+            <section id="shop-grid" className={visual.catalog} aria-labelledby="collection-title">
+                <div className={visual.catalogHeading}>
+                    <h1 id="collection-title">{customizableOnly ? 'Prendas personalizadas para mujer' : 'Nuestra colección'}</h1>
+                    <span className={visual.count} role="status" aria-live="polite">{productsLoading && !data ? 'Buscando prendas…' : data ? data.total + (data.total === 1 ? ' prenda' : ' prendas') : ''}</span>
+                </div>
+                {customizableOnly && <p className={visual.customNote}>Elige una prenda, selecciona talla y color, y ajusta tus medidas antes de pedirla por WhatsApp.</p>}
+                <div className={visual.toolbar}>
+                    <button type="button" className={visual.filterButton} onClick={() => setFilterDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={isFilterDrawerOpen}>
+                        <SlidersOutlined />Filtros {activeFilterCount > 0 && <span className={visual.filterCount}>{activeFilterCount}</span>}
+                    </button>
+                    <div className={visual.sort}><label htmlFor="shop-sort">Ordenar por</label>
+                        <select id="shop-sort" aria-label="Ordenar prendas" value={sort} onChange={e => { setSort(e.target.value); resetPage(); }}>
+                            {SORT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                    </div>
+                </div>
+                {chips.length > 0 && <div className={visual.activeFilters} aria-label="Filtros activos">
+                    {chips.map(chip => <button type="button" key={chip.label} onClick={chip.clear} aria-label={'Quitar filtro: ' + chip.label}>{chip.label}<CloseOutlined /></button>)}
+                    <button type="button" className={visual.clear} onClick={handleClearAll}>Limpiar todo</button>
+                </div>}
+                <Drawer title="Encuentra tu prenda" placement="left" size={isMobile ? '100vw' : 420} open={isFilterDrawerOpen}
+                    onClose={() => setFilterDrawerOpen(false)} rootStyle={shopVariables} styles={{ body: { padding:24 } }}
+                    footer={<div className={visual.drawerFooter}>
+                        <button type="button" className={visual.filterButton} onClick={handleClearAll}>Limpiar</button>
+                        <button type="button" className={visual.primary} style={{flex:1}} onClick={() => setFilterDrawerOpen(false)}>Ver resultados</button>
+                    </div>}>
+                    <p style={{fontSize:12,marginBottom:24,color:token.colorTextSecondary}}>Combina tus preferencias. El catálogo se actualiza mientras eliges.</p>
+                    {metaLoading && !meta ? <ShopFiltersSkeleton /> : <ShopFilters {...filterProps} />}
+                </Drawer>
+                {(metaError || productsError) && <Alert type="error" showIcon title="No pudimos actualizar el catálogo" description="Intenta nuevamente en unos momentos." style={{marginBottom:24}} />}
+                {productsLoading && !data ? <ProductGridSkeleton count={pageSize} /> : data && data.items.length > 0 ? <>
+                    <div className={styles.grid + (productsLoading ? ' ' + styles.gridLoading : '')} aria-busy={productsLoading}><ProductGrid items={data.items} /></div>
+                    <div className={visual.resultsFooter}>
+                        <span className={visual.count}>Mostrando {data.items.length} de {data.total} prendas</span>
+                        <Pagination current={data.page} pageSize={data.pageSize} total={data.total} showSizeChanger={false} hideOnSinglePage
+                            itemRender={(targetPage,type,element) => {
+                                if (!['page','prev','next'].includes(type) || targetPage < 1 || targetPage > Math.ceil(data.total / data.pageSize)) return element;
+                                const params = new URLSearchParams(queryString);
+                                if (targetPage > 1) params.set('page',String(targetPage)); else params.delete('page');
+                                const href = pathname + (params.size ? '?' + params.toString() : '');
+                                return <a href={href} aria-label={'Página ' + targetPage}>{type === 'page' ? targetPage : type === 'prev' ? '‹' : '›'}</a>;
+                            }}
+                            onChange={(p,ps) => { setPage(p); if (ps) setPageSize(ps); document.getElementById('shop-grid')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); }} />
+                    </div>
+                </> : !productsError && <div className={visual.empty}>
+                    <h2>No encontramos esa combinación</h2>
+                    <p>Prueba con otra talla, color o rango de precio para descubrir más prendas.</p>
+                    {activeFilterCount > 0 && <button type="button" className={visual.primary} onClick={handleClearAll}>Ver todas las prendas</button>}
+                </div>}
+            </section>
+            <ShopTrust />
         </div>
     );
 }

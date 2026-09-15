@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyCartAdded } from '@/lib/cart-toast';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Divider, InputNumber, Radio, Space, Typography, Row, Col, Flex, Grid, Modal, Image, theme } from 'antd';
 import { WhatsAppOutlined, HeartOutlined, HeartFilled, ShoppingCartOutlined } from '@ant-design/icons';
@@ -262,7 +263,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
             unitPrice: selectedVariant.price,
         }, 1);
 
-        toast.success('Agregado a tu carrito');
+        notifyCartAdded(initialData.product.name, selectedVariant.size, selectedVariant.color);
     };
 
     const openCustomization = () => {
@@ -324,7 +325,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
 
         setIsCustomizationOpen(false);
         setCartOpen(true);
-        toast.success('Prenda personalizada agregada a tu carrito');
+        notifyCartAdded(`${initialData.product.name} · Personalizada`, customSize, customColor);
     };
 
     const openBundleCustomization = (bundle: BundlePromotion) => {
@@ -434,7 +435,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
         trackBundleEvent('bundle_add_to_cart_custom', customBundle, { items: lines.length });
         setCustomBundle(null);
         setCartOpen(true);
-        toast.success('Conjunto personalizado agregado a tu carrito');
+        notifyCartAdded(`Conjunto personalizado: ${customBundle.name}`);
     };
 
     const onToggleWishlist = () => {
@@ -780,7 +781,7 @@ export default function ProductDetailClient({ initialData }: ProductDetailClient
                                                                                 }, 1);
                                                                             }
                                                                         });
-                                                                        toast.success("Conjunto añadido al carrito");
+                                                                        notifyCartAdded(`Conjunto: ${bundle.name}`);
                                                                     }}
                                                                 >
                                                                     Añadir conjunto

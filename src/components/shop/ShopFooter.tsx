@@ -19,6 +19,7 @@ import {
     MailFilled
 } from '@ant-design/icons';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import AuraLogo from '@/components/AuraLogo';
 import { useThemeStore } from '@/store/theme.store';
 
@@ -26,6 +27,8 @@ const { Footer } = Layout;
 const { Text, Title, Paragraph } = Typography;
 
 export default function ShopFooter() {
+    const pathname = usePathname();
+    const hasShopTrust = pathname === '/shop' || pathname === '/personalizadas';
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
@@ -46,6 +49,7 @@ export default function ShopFooter() {
     return (
         <Footer style={{ background: bgFooter, padding: isMobile ? '40px 20px' : '60px 80px', borderTop: `1px solid ${borderColor}` }}>
             {/* Top Row: Service Highlights */}
+            {!hasShopTrust && <>
             <Row gutter={[24, 24]} justify="space-around" style={{ marginBottom: 60 }}>
                 <Col xs={24} sm={8} style={{ textAlign: 'center' }}>
                     <Space size="large" align="center" orientation={isMobile ? 'vertical' : 'horizontal'}>
@@ -77,6 +81,7 @@ export default function ShopFooter() {
             </Row>
 
             <Divider style={{ borderColor }} />
+            </>}
 
             {/* Main Footer Row */}
             <Row gutter={[40, 40]} style={{ marginTop: 40 }}>

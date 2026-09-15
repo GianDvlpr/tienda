@@ -5,11 +5,13 @@ import { Carousel, Typography, Button } from 'antd';
 import { CaretRightOutlined } from '@ant-design/icons';
 import Image from 'next/image';
 import useSWR from 'swr';
+import { useReducedMotion } from 'framer-motion';
 import { fetcher } from '@/lib/fetcher';
 
 const { Title, Text } = Typography;
 
 export default function HeroSlider() {
+    const reduceMotion = useReducedMotion();
     const { data: slides } = useSWR<any[]>('/api/store/slider', fetcher);
 
     const defaultSlides = [
@@ -36,7 +38,7 @@ export default function HeroSlider() {
     return (
         <div className="hero-slider" style={{ position: 'relative', width: '100vw', height: 'var(--hero-height)', overflow: 'hidden' }}>
             <Carousel 
-                autoplay 
+                autoplay={!reduceMotion}
                 effect="fade" 
                 dots={false}
                 style={{ width: '100vw', height: 'var(--hero-height)' }}

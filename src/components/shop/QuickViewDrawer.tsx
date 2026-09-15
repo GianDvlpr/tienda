@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Drawer, Spin, Typography, Space, Divider, Radio, Flex, Button, Alert, Grid } from 'antd';
 import { ShoppingFilled } from '@ant-design/icons';
 import useSWR from 'swr';
-import { toast } from 'sonner';
+import { notifyCartAdded } from '@/lib/cart-toast';
 import { useRouter } from 'next/navigation';
 
 import { useUIStore } from '@/store/ui.store';
@@ -93,7 +93,7 @@ export default function QuickViewDrawer() {
             imageUrl: selectedImage?.url || undefined,
             unitPrice: selectedVariant.price,
         }, 1);
-        toast.success(`Agregado al carrito: ${data.product.name}`);
+        notifyCartAdded(data.product.name, selectedVariant.size, selectedVariant.color);
         handleClose();
     };
 
