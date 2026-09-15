@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { App, Typography, Tabs, Card, Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, Tag, Popconfirm, Row, Col, theme } from 'antd';
 import { BgColorsOutlined, EditOutlined, EyeOutlined, PlusOutlined, ToolOutlined, ScissorOutlined } from '@ant-design/icons';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { formatPEN } from '@/lib/money';
 import UnitCostHelper from '@/components/admin/UnitCostHelper';
@@ -12,6 +12,7 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 function SuppliesTab() {
+    const { mutate: refreshCache } = useSWRConfig();
     const { token } = theme.useToken();
     const { message } = App.useApp();
     const { data: supplies, mutate, isLoading } = useSWR<any[]>('/api/admin/supplies', fetcher);
@@ -92,8 +93,9 @@ function SuppliesTab() {
                 body: JSON.stringify({
                     supply_id: restockSupply.supply_id,
                     qty: values.qty,
+                    color_id: values.color_id,
                     reason: values.reason,
-                    new_unit_cost: values.new_unit_cost || undefined
+                    new_unit_cost: values.new_unit_cost ?? undefined
                 }),
             });
             if (!res.ok) throw new Error(await res.text());
@@ -101,6 +103,8 @@ function SuppliesTab() {
             setRestockSupply(null);
             restockForm.resetFields();
             mutate();
+            refreshCache('/api/admin/supplies');
+            refreshCache('/api/admin/supply-colors');
         } catch (e: any) {
             message.error(e.message);
         } finally {
@@ -140,7 +144,7 @@ function SuppliesTab() {
             title: 'Acciones', 
             render: (_: any, r: any) => (
                 <Space>
-                    <Button size="small" type="primary" ghost onClick={() => setRestockSupply(r)}>+ Abastecer</Button>
+                    <Button size="small" type="primary" ghost onClick={() => { restockForm.resetFields(); setRestockSupply(r); }}>+ Abastecer</Button>
                     <Button size="small" onClick={() => setHistorySupply(r)}>Kardex</Button>
                     <Popconfirm
                         title="¿Eliminar este insumo?"
@@ -220,6 +224,9 @@ function SuppliesTab() {
             {/* Abastecer Modal */}
             <Modal title={`Ingreso de ${restockSupply?.name || ''}`} open={!!restockSupply} onCancel={() => setRestockSupply(null)} footer={null}>
                 <Form layout="vertical" form={restockForm} onFinish={handleRestock}>
+                    {restockSupply?.supply_color_stock?.length > 0 && <Form.Item name="color_id" label="Color a reponer" rules={[{ required: true, message: 'Selecciona el color' }]}>
+                        <Select options={restockSupply.supply_color_stock.filter((r: any) => r.is_active && r.color?.is_active).map((r: any) => ({ value: r.color_id, label: r.color.name }))} />
+                    </Form.Item>}
                     <Form.Item name="qty" label={`Cantidad Entrante en ${restockSupply?.unit || 'U'}`} rules={[{ required: true }]}>
                         <InputNumber min={0.1} style={{ width: '100%' }} />
                     </Form.Item>
@@ -254,8 +261,8 @@ function SuppliesTab() {
                     columns={[
                         { title: 'Fecha', dataIndex: 'created_at', render: (d) => new Date(d).toLocaleString() },
                         { title: 'Motivo', dataIndex: 'reason' },
-                        { title: 'Tipo', dataIndex: 'movement_type', render: (t) => <Tag color={t === 'IN' ? 'green' : 'red'}>{t}</Tag> },
-                        { title: 'Qty', dataIndex: 'qty', render: (v, r: any) => <strong>{r.movement_type === 'OUT' ? '-' : '+'}{Number(v)}</strong> },
+                        { title: 'Tipo', dataIndex: 'movement_type', render: (t) => <Tag color={t === 'ADJUST' ? 'gold' : t === 'IN' ? 'green' : 'red'}>{t === 'ADJUST' ? 'AJUSTE' : t}</Tag> },
+                        { title: 'Qty', dataIndex: 'qty', render: (v, r: any) => <strong>{Number(r.stock_after) < Number(r.stock_before) ? '-' : '+'}{Number(v)}</strong> },
                         { title: 'Saldo Post-Mov', dataIndex: 'stock_after', render: (v) => Number(v) },
                     ]}
                 />
@@ -524,6 +531,7 @@ function ColorsTab() {
 }
 
 function SupplyColorStockTab() {
+    const { mutate: refreshCache } = useSWRConfig();
     const { token } = theme.useToken();
     const { message } = App.useApp();
     const { data: fabricSupplies, mutate, isLoading } = useSWR<any[]>('/api/admin/supply-colors', fetcher);
@@ -556,6 +564,7 @@ function SupplyColorStockTab() {
 
     const openStock = (supply: any, row?: any) => {
         setStockSupply(supply);
+        stockForm.resetFields();
         stockForm.setFieldsValue(row ? {
             color_ids: [row.color_id],
             stock: Number(row.stock || 0),
@@ -572,9 +581,12 @@ function SupplyColorStockTab() {
             const res = await fetch('/api/admin/supply-colors', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...values, supply_id: stockSupply.supply_id }),
+                body: JSON.stringify({ ...values, supply_id: stockSupply.supply_id,
+                    expected_total: Number(stockSupply.stock),
+                    expected_stocks: Object.fromEntries((stockSupply.supply_color_stock || []).map((row: any) => [row.color_id, Number(row.stock)])),
+                }),
             });
-            if (!res.ok) throw new Error('Error al guardar stock por color');
+            if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'Error al guardar stock por color'); }
             message.success('Stock por color guardado');
             setStockSupply(null);
             stockForm.resetFields();
@@ -645,6 +657,8 @@ function SupplyColorStockTab() {
             />
             <Modal title={`Stock por color: ${stockSupply?.name || ''}`} open={!!stockSupply} onCancel={() => setStockSupply(null)} footer={null}>
                 <Form layout="vertical" form={stockForm} onFinish={saveStock}>
+                    <Typography.Paragraph type="secondary">El stock indicado reemplaza el conteo de cada color seleccionado. Incluye el material físico aunque el color esté oculto.</Typography.Paragraph>
+                    <Form.Item name="reconcile" label="He verificado el conteo físico y confirmo corregir diferencias con el total" valuePropName="checked"><Switch /></Form.Item>
                     <Form.Item name="color_ids" label="Colores" rules={[{ required: true, message: 'Selecciona al menos un color' }]}> 
                         <Select mode="multiple" placeholder="Selecciona uno o varios colores" showSearch optionFilterProp="label" options={(colors || []).map((color) => ({ value: color.color_id, label: color.name }))} />
                     </Form.Item>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Typography, Card, Table, Tag, Button, Space, Modal, Descriptions, Divider, Row, Col } from 'antd';
+import { App, Alert, Popconfirm, Typography, Card, Table, Tag, Button, Space, Modal, Descriptions, Divider, Row, Col } from 'antd';
 import { PrinterOutlined, FileTextOutlined } from '@ant-design/icons';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -11,7 +11,20 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 
 export default function LotsHistoryPage() {
-    const { data: lots, isLoading } = useSWR<any[]>('/api/admin/production/lots', fetcher);
+    const { data: lots, isLoading, error, mutate } = useSWR<any[]>('/api/admin/production/lots', fetcher);
+    const { message } = App.useApp();
+    const [finishingId, setFinishingId] = useState<string | null>(null);
+    const finishLot = async (id: string) => {
+        setFinishingId(id);
+        try {
+            const res = await fetch('/api/admin/production/lots/' + id + '/finish', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'No se pudo finalizar');
+            message.success('Producción finalizada: materiales descontados y prendas ingresadas');
+            await mutate();
+        } catch (error) { message.error(error instanceof Error ? error.message : 'Error al finalizar'); }
+        finally { setFinishingId(null); }
+    };
     const [selectedLot, setSelectedLot] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [printMode, setPrintMode] = useState<'ODT' | 'COST'>('ODT');
@@ -46,7 +59,12 @@ export default function LotsHistoryPage() {
         { 
             title: 'Acciones', 
             render: (_: any, r: any) => (
-                <Button size="small" icon={<FileTextOutlined />} onClick={() => viewLot(r)}>Ver Detalle</Button>
+                <Space wrap>
+                    <Button size="small" icon={<FileTextOutlined />} onClick={() => viewLot(r)}>Ver Detalle</Button>
+                    {r.status === 'PENDIENTE' && <Popconfirm title="¿Finalizar este lote?" description="Se consumirán materiales y se ingresarán las prendas al almacén." onConfirm={() => finishLot(r.lot_id)}>
+                        <Button size="small" type="primary" loading={finishingId === r.lot_id} disabled={finishingId !== null}>Finalizar</Button>
+                    </Popconfirm>}
+                </Space>
             )
         }
     ];
@@ -69,6 +87,7 @@ export default function LotsHistoryPage() {
         <div>
             {generatePrintStyle()}
             <Title level={2} style={{ marginBottom: 24 }}>Historial de Lotes / Órdenes</Title>
+            {error && <Alert type="error" showIcon title="No se pudo cargar el historial" description={error.message} style={{ marginBottom: 16 }} />}
             <Card variant="borderless">
                 <Table 
                     columns={columns} 
@@ -119,6 +138,13 @@ export default function LotsHistoryPage() {
                             })()}
                         </Descriptions>
 
+                        {selectedLot.cost_snapshot && (() => {
+                            const snapshot = JSON.parse(selectedLot.cost_snapshot);
+                            return <Descriptions bordered size="small" column={1} title="Costos guardados al crear el lote">
+                                {(snapshot.serviceNeeds || []).map((service: { service_id: string; name: string; quantity: number; unit_cost: number; cost: number }, index: number) =>
+                                    <Descriptions.Item key={service.service_id + index} label={service.name}>{service.quantity} × {formatPEN(service.unit_cost)} = {formatPEN(service.cost)}</Descriptions.Item>)}
+                            </Descriptions>;
+                        })()}
                         <Divider style={{ margin: '16px 0' }}>CANTIDADES A CORTAR</Divider>
                         
                         <Table 

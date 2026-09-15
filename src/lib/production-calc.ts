@@ -1,3 +1,5 @@
+import { lotItemsSchema, ProductionError } from './production-rules';
+type Numeric = number | string | { toString(): string };
 export interface CalcLotItem {
   size: string;
   color: string;
@@ -10,31 +12,37 @@ export interface CalcSupplyInput {
     name: string;
     type: string;
     unit: string;
-    unit_cost: number | any;
+    unit_cost: Numeric;
   };
-  quantity: number | any;
+  quantity: Numeric;
   size?: string | null;
   varies_by_color?: boolean;
+  colorCosts?: Record<string, number>;
 }
 
 export interface CalcServiceInput {
   service: {
     service_id: string;
     name: string;
-    unit_cost: number | any;
+    unit_cost: Numeric;
   };
-  quantity: number | any;
-  unit_cost_override?: number | any;
+  quantity: Numeric;
+  unit_cost_override?: Numeric | null;
 }
 
+export interface SupplyNeed {
+  supply_id: string; name: string; type: string; unit: string; unit_cost: number; color: string | null;
+  quantity: number; cost: number; waste: number;
+}
+export interface ServiceNeed { service_id: string; name: string; unit_cost: number; quantity: number; cost: number; }
 export interface CalcResult {
   totalQty: number;
   totalSupplyCost: number;
   totalServiceCost: number;
   totalCost: number;
   avgCostPerGarment: number;
-  supplyNeeds: any[];
-  serviceNeeds: any[];
+  supplyNeeds: SupplyNeed[];
+  serviceNeeds: ServiceNeed[];
 }
 
 export function calculateProductionCost(
@@ -42,11 +50,18 @@ export function calculateProductionCost(
   bomSupplies: CalcSupplyInput[],
   bomServices: CalcServiceInput[]
 ): CalcResult {
+  lotItemsSchema.parse(lotItems);
+  for (const row of [...bomSupplies, ...bomServices]) {
+    if (!Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0) throw new ProductionError('La receta contiene cantidades inválidas');
+    const source = 'supply' in row ? row.supply : row.service;
+    const cost = 'unit_cost_override' in row && row.unit_cost_override != null ? row.unit_cost_override : source.unit_cost;
+    if (!Number.isFinite(Number(cost)) || Number(cost) < 0) throw new ProductionError('La receta contiene costos inválidos');
+  }
   let totalSupplyCost = 0;
   let totalServiceCost = 0;
   let totalQty = 0;
 
-  const supplyNeeds: any[] = []; // { supply_id, name, type, unit, unit_cost, color, quantity, cost, waste }
+  const supplyNeeds: SupplyNeed[] = []; // { supply_id, name, type, unit, unit_cost, color, quantity, cost, waste }
 
   // Process lot items one by one
   for (const lotItem of lotItems) {
@@ -70,7 +85,7 @@ export function calculateProductionCost(
             name: boms.supply.name,
             type: boms.supply.type,
             unit: boms.supply.unit,
-            unit_cost: Number(boms.supply.unit_cost),
+            unit_cost: targetColor && boms.colorCosts?.[targetColor] != null ? boms.colorCosts[targetColor] : Number(boms.supply.unit_cost),
             color: targetColor,
             quantity: materialRawQty,
             cost: 0,
@@ -84,6 +99,7 @@ export function calculateProductionCost(
   // Apply rounding for fabrics and sum up total supply cost
   totalSupplyCost = 0;
   for (const sn of supplyNeeds) {
+    if (!Number.isFinite(sn.unit_cost) || sn.unit_cost < 0) throw new ProductionError('Costo de material inválido');
     sn.waste = 0;
     if (sn.type === 'TELA' || sn.unit === 'MT') {
       const rounded = Math.ceil(sn.quantity * 2) / 2;
@@ -95,7 +111,7 @@ export function calculateProductionCost(
   }
 
   // 2. Calculate Services
-  const serviceNeeds: any[] = [];
+  const serviceNeeds: ServiceNeed[] = [];
   for (const bserv of bomServices) {
     const qtyNeeded = Number(bserv.quantity) * totalQty;
     

@@ -361,17 +361,26 @@ function CalculateTab({ productId, product }: any) {
     };
 
     const handleSaveLot = async (status: string) => {
+        if (isSavingLot) return;
         setIsSavingLot(true);
         try {
-            const res = await fetch(`/api/admin/production/lots`, {
+            const requestBody = { product_id: productId, lotItems, status };
+            const storageKey = 'aura-production-request:' + productId;
+            const fingerprint = JSON.stringify(requestBody);
+            const stored = localStorage.getItem(storageKey);
+            const previous = stored ? JSON.parse(stored) : null;
+            const lotId = previous?.fingerprint === fingerprint ? previous.lotId : crypto.randomUUID();
+            localStorage.setItem(storageKey, JSON.stringify({ fingerprint, lotId }));
+            const res = await fetch('/api/admin/production/lots', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: productId, lotItems, status })
+                body: JSON.stringify({ ...requestBody, lot_id: lotId })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Error al guardar');
             message.success(data.message);
-            // Optionally clear or redirect
+            localStorage.removeItem(storageKey);
+            window.location.assign('/admin/production/lots');
         } catch(e:any) {
             message.error(e.message);
         } finally {
@@ -526,7 +535,7 @@ function CalculateTab({ productId, product }: any) {
                                 Guardar Presupuesto (Lote Pendiente)
                             </Button>
                             <Button type="primary" size="large" icon={<CheckCircleOutlined />} onClick={() => handleSaveLot('PRODUCIDO')} loading={isSavingLot}>
-                                Marcar como PRODUCIDO (Descuenta Stock)
+                                Finalizar producción (consume materiales e ingresa prendas)
                             </Button>
                         </div>
                     </Card>

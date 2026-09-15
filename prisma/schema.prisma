@@ -520,6 +520,7 @@ model product_bom_service {
 }
 
 model production_lot {
+  cost_snapshot String? @db.Text
   lot_id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code       String   @unique @db.VarChar(50)
   product_id String   @db.Uuid

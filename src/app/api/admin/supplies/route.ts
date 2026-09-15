@@ -1,24 +1,28 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
+import { z } from 'zod';
+import { amount, productionErrorResponse } from '@/lib/production-rules';
 
 export async function GET() {
     try {
         const supplies = await prisma.supply.findMany({
             orderBy: { name: 'asc' },
+            include: { supply_color_stock: { include: { color: true } } },
         });
         return NextResponse.json(supplies);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return productionErrorResponse(e);
     }
 }
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const body = z.object({ name: z.string().trim().min(1).max(200), type: z.string().min(1).max(50), unit: z.string().min(1).max(20),
+            unit_cost: amount, stock: amount.default(0), min_stock: amount.default(0), is_active: z.boolean().default(true) }).parse(await req.json());
         const { name, type, unit, unit_cost, stock, min_stock, is_active } = body;
 
-        const newSupply = await (prisma as any).supply.create({
+        const newSupply = await prisma.supply.create({
             data: {
                 name,
                 type,
@@ -40,8 +44,8 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(newSupply);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return productionErrorResponse(e);
     }
 }
 
